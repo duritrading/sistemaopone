@@ -12,6 +12,7 @@ import { Client, ClientMetrics, RelationshipStatus, AccountHealth } from '@/type
 import NewClientModal from '@/components/modals/NewClientModal'
 import ClientDetailsModal from '@/components/modals/ClientDetailsModal'
 import EditClientModal from '@/components/modals/EditClientModal'
+import DeleteClientModal from '@/components/modals/DeleteClientModal'
 
 export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([])
@@ -23,8 +24,10 @@ export default function ClientsPage() {
   const [showNewClientModal, setShowNewClientModal] = useState(false)
   const [showDetailsModal, setShowDetailsModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null)
   const [selectedClient, setSelectedClient] = useState<Client | null>(null)
+  const [clientToDelete, setClientToDelete] = useState<Client | null>(null)
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -141,6 +144,11 @@ export default function ClientsPage() {
     loadMetrics()
   }
 
+  const handleClientDeleted = () => {
+    loadClients()
+    loadMetrics()
+  }
+
   const handleViewClient = (clientId: string) => {
     setSelectedClientId(clientId)
     setShowDetailsModal(true)
@@ -157,6 +165,14 @@ export default function ClientsPage() {
     if (client) {
       setSelectedClient(client)
       setShowEditModal(true)
+    }
+  }
+
+  const handleDeleteClient = (clientId: string) => {
+    const client = clients.find(c => c.id === clientId)
+    if (client) {
+      setClientToDelete(client)
+      setShowDeleteModal(true)
     }
   }
 
@@ -387,7 +403,10 @@ export default function ClientsPage() {
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
-                    <button className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                    <button 
+                      onClick={() => handleDeleteClient(client.id)}
+                      className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
@@ -506,6 +525,14 @@ export default function ClientsPage() {
         onClose={() => setShowEditModal(false)}
         client={selectedClient}
         onClientUpdated={handleClientUpdated}
+      />
+
+      {/* Modal Excluir Cliente */}
+      <DeleteClientModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        client={clientToDelete}
+        onClientDeleted={handleClientDeleted}
       />
     </div>
   )
