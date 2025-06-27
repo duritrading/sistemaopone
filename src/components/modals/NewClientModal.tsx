@@ -98,24 +98,43 @@ export default function NewClientModal({ isOpen, onClose, onClientCreated }: New
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
 
-    if (!formData.company_name.trim()) {
+    // Nome da empresa é obrigatório
+    if (!formData.company_name?.trim()) {
       newErrors.company_name = 'Nome da empresa é obrigatório'
     }
 
-    if (formData.company_cnpj && formData.company_cnpj.replace(/\D/g, '').length < 11) {
-      newErrors.company_cnpj = 'CNPJ deve ter pelo menos 11 dígitos'
+    // CNPJ deve ter formato válido se preenchido
+    if (formData.company_cnpj) {
+      const cnpjNumbers = formData.company_cnpj.replace(/\D/g, '')
+      if (cnpjNumbers.length > 0 && cnpjNumbers.length < 11) {
+        newErrors.company_cnpj = 'CNPJ deve ter pelo menos 11 dígitos'
+      }
     }
 
-    if (formData.website && !formData.website.startsWith('http')) {
-      newErrors.website = 'Website deve começar com http:// ou https://'
+    // Website deve ter formato válido se preenchido
+    if (formData.website && formData.website.trim()) {
+      const website = formData.website.trim()
+      if (!website.startsWith('http://') && !website.startsWith('https://')) {
+        newErrors.website = 'Website deve começar com http:// ou https://'
+      }
     }
 
-    if (formData.total_contract_value && formData.total_contract_value < 0) {
+    // Valores devem ser positivos se preenchidos
+    if (formData.total_contract_value && Number(formData.total_contract_value) < 0) {
       newErrors.total_contract_value = 'Valor deve ser positivo'
     }
 
-    if (formData.monthly_recurring_revenue && formData.monthly_recurring_revenue < 0) {
+    if (formData.monthly_recurring_revenue && Number(formData.monthly_recurring_revenue) < 0) {
       newErrors.monthly_recurring_revenue = 'MRR deve ser positivo'
+    }
+
+    // Data de fim deve ser maior que data de início se ambas preenchidas
+    if (formData.contract_start_date && formData.contract_end_date) {
+      const startDate = new Date(formData.contract_start_date)
+      const endDate = new Date(formData.contract_end_date)
+      if (endDate <= startDate) {
+        newErrors.contract_end_date = 'Data de fim deve ser posterior à data de início'
+      }
     }
 
     setErrors(newErrors)
@@ -148,57 +167,83 @@ export default function NewClientModal({ isOpen, onClose, onClientCreated }: New
     setLoading(true)
 
     try {
-      // Preparar dados para inserção
+      // Preparar dados limpos para inserção
       const clientData = {
-        ...formData,
-        total_contract_value: formData.total_contract_value || 0,
-        monthly_recurring_revenue: formData.monthly_recurring_revenue || 0,
-        account_manager_id: formData.account_manager_id || null,
+        company_name: formData.company_name.trim(),
+        company_cnpj: formData.company_cnpj?.trim() || null,
+        company_size: formData.company_size || null,
+        industry: formData.industry?.trim() || null,
+        website: formData.website?.trim() || null,
+        address_street: formData.address_street?.trim() || null,
+        address_city: formData.address_city?.trim() || null,
+        address_state: formData.address_state?.trim() || null,
+        address_zipcode: formData.address_zipcode?.trim() || null,
+        address_country: formData.address_country?.trim() || 'Brasil',
+        relationship_status: formData.relationship_status,
+        account_health: formData.account_health,
+        total_contract_value: Number(formData.total_contract_value) || 0,
+        monthly_recurring_revenue: Number(formData.monthly_recurring_revenue) || 0,
         contract_start_date: formData.contract_start_date || null,
-        contract_end_date: formData.contract_end_date || null
+        contract_end_date: formData.contract_end_date || null,
+        account_manager_id: formData.account_manager_id || null,
+        notes: formData.notes?.trim() || null,
+        is_active: true
       }
 
-      // Remover campos vazios opcionais
-      Object.keys(clientData).forEach(key => {
-        if (clientData[key as keyof typeof clientData] === '') {
-          clientData[key as keyof typeof clientData] = null as any
-        }
-      })
+      console.log('Dados a serem inseridos:', clientData)
 
-      const { error } = await supabase
+      const { data: insertedClient, error: insertError } = await supabase
         .from('clients')
         .insert([clientData])
-
-      if (error) throw error
-
-      // Criar interação inicial
-      const { data: newClient } = await supabase
-        .from('clients')
         .select('id')
-        .eq('company_name', formData.company_name)
-        .order('created_at', { ascending: false })
-        .limit(1)
         .single()
 
-      if (newClient) {
-        await supabase
+      if (insertError) {
+        console.error('Erro detalhado:', insertError)
+        throw insertError
+      }
+
+      console.log('Cliente inserido:', insertedClient)
+
+      // Criar interação inicial
+      if (insertedClient?.id) {
+        const { error: interactionError } = await supabase
           .from('client_interactions')
           .insert([{
-            client_id: newClient.id,
+            client_id: insertedClient.id,
             interaction_type: 'Nota',
             title: 'Cliente cadastrado',
-            description: 'Cliente cadastrado no sistema',
+            description: `Cliente ${clientData.company_name} cadastrado no sistema`,
             outcome: 'Positivo',
-            created_by: formData.account_manager_id || null
+            created_by: clientData.account_manager_id,
+            interaction_date: new Date().toISOString()
           }])
+
+        if (interactionError) {
+          console.error('Erro ao criar interação:', interactionError)
+          // Não interromper o fluxo se falhar criar a interação
+        }
       }
 
       alert('Cliente criado com sucesso!')
       onClientCreated()
       onClose()
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao criar cliente:', error)
-      alert('Erro ao criar cliente. Tente novamente.')
+      
+      let errorMessage = 'Erro ao criar cliente. Tente novamente.'
+      
+      if (error?.message) {
+        if (error.message.includes('duplicate key')) {
+          errorMessage = 'Já existe um cliente com essas informações.'
+        } else if (error.message.includes('foreign key')) {
+          errorMessage = 'Responsável selecionado é inválido.'
+        } else if (error.message.includes('check constraint')) {
+          errorMessage = 'Alguns valores inseridos são inválidos.'
+        }
+      }
+      
+      alert(errorMessage)
     } finally {
       setLoading(false)
     }
