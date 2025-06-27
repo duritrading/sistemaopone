@@ -6,6 +6,7 @@ import DashboardLayout from '@/components/layout/DashboardLayout'
 import NewOpportunityModal from '@/components/modals/NewOpportunityModal'
 import OpportunityDetailsModal from '@/components/modals/OpportunityDetailsModal'
 import EditOpportunityModal from '@/components/modals/EditOpportunityModal'
+import ConfirmationModal from '@/components/modals/ConfirmationModal'
 import { supabase } from '@/lib/supabase'
 import { SalesOpportunity, SalesStage, SalesPipelineStats } from '@/types/sales'
 import { 
@@ -41,9 +42,12 @@ export default function VendasPage() {
   const [showNewOpportunityModal, setShowNewOpportunityModal] = useState(false)
   const [showDetailsModal, setShowDetailsModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
+  const [showConfirmationModal, setShowConfirmationModal] = useState(false)
   const [selectedOpportunity, setSelectedOpportunity] = useState<SalesOpportunity | null>(null)
+  const [opportunityToDelete, setOpportunityToDelete] = useState<{ id: string; title: string } | null>(null)
   const [draggedItem, setDraggedItem] = useState<string | null>(null)
   const [dragOverStage, setDragOverStage] = useState<SalesStage | null>(null)
+  const [deletingOpportunity, setDeletingOpportunity] = useState<string | null>(null)
 
   useEffect(() => {
     fetchOpportunities()
@@ -276,6 +280,60 @@ export default function VendasPage() {
     setShowEditModal(true)
   }
 
+  const handleDeleteOpportunity = async (e: React.MouseEvent, opportunityId: string, opportunityTitle: string) => {
+    e.stopPropagation()
+    
+    // Definir oportunidade a ser excluída e mostrar modal de confirmação
+    setOpportunityToDelete({ id: opportunityId, title: opportunityTitle })
+    setShowConfirmationModal(true)
+  }
+
+  const confirmDeleteOpportunity = async () => {
+    if (!opportunityToDelete) return
+
+    setDeletingOpportunity(opportunityToDelete.id)
+    
+    try {
+      // Soft delete - marcar como inativo
+      const { error } = await supabase
+        .from('sales_opportunities')
+        .update({ 
+          is_active: false,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', opportunityToDelete.id)
+
+      if (error) throw error
+
+      // Adicionar atividade de exclusão
+      await supabase
+        .from('sales_activities')
+        .insert([{
+          opportunity_id: opportunityToDelete.id,
+          activity_type: 'Nota',
+          title: 'Oportunidade excluída',
+          description: `A oportunidade "${opportunityToDelete.title}" foi marcada como excluída`
+        }])
+
+      // Reset estados e refresh data
+      setShowConfirmationModal(false)
+      setOpportunityToDelete(null)
+      await fetchOpportunities()
+      await fetchStats()
+      
+    } catch (error) {
+      console.error('Erro ao excluir oportunidade:', error)
+      alert('Erro ao excluir oportunidade. Tente novamente.')
+    } finally {
+      setDeletingOpportunity(null)
+    }
+  }
+
+  const cancelDeleteOpportunity = () => {
+    setShowConfirmationModal(false)
+    setOpportunityToDelete(null)
+  }
+
   if (loading) {
     return (
       <DashboardLayout>
@@ -444,10 +502,16 @@ export default function VendasPage() {
                                 <Edit2 className="h-4 w-4" />
                               </button>
                               <button 
-                                className="p-1 text-gray-400 hover:text-red-500 rounded"
+                                onClick={(e) => handleDeleteOpportunity(e, opportunity.id, opportunity.opportunity_title)}
+                                disabled={deletingOpportunity === opportunity.id || showConfirmationModal}
+                                className="p-1 text-gray-400 hover:text-red-500 rounded disabled:opacity-50 disabled:cursor-not-allowed"
                                 title="Excluir oportunidade"
                               >
-                                <Trash2 className="h-4 w-4" />
+                                {deletingOpportunity === opportunity.id ? (
+                                  <div className="h-4 w-4 animate-spin border-2 border-red-500 border-t-transparent rounded-full"></div>
+                                ) : (
+                                  <Trash2 className="h-4 w-4" />
+                                )}
                               </button>
                             </div>
                           </div>
@@ -548,6 +612,21 @@ export default function VendasPage() {
           fetchOpportunities() // Refresh opportunities
           fetchStats() // Refresh stats
         }}
+      />
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal 
+        isOpen={showConfirmationModal}
+        title="Excluir Oportunidade"
+        message={`Tem certeza que deseja excluir a oportunidade "${opportunityToDelete?.title}"?
+
+Esta ação irá marcar a oportunidade como inativa e ela não aparecerá mais no pipeline.`}
+        confirmText="Excluir"
+        cancelText="Cancelar"
+        onConfirm={confirmDeleteOpportunity}
+        onCancel={cancelDeleteOpportunity}
+        isLoading={!!deletingOpportunity && deletingOpportunity === opportunityToDelete?.id}
+        variant="danger"
       />
     </DashboardLayout>
   )
