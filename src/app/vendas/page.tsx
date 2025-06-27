@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import NewOpportunityModal from '@/components/modals/NewOpportunityModal'
+import OpportunityDetailsModal from '@/components/modals/OpportunityDetailsModal'
 import { supabase } from '@/lib/supabase'
 import { SalesOpportunity, SalesStage, SalesPipelineStats } from '@/types/sales'
 import { 
@@ -37,6 +38,8 @@ export default function VendasPage() {
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState<SalesPipelineStats | null>(null)
   const [showNewOpportunityModal, setShowNewOpportunityModal] = useState(false)
+  const [showDetailsModal, setShowDetailsModal] = useState(false)
+  const [selectedOpportunity, setSelectedOpportunity] = useState<SalesOpportunity | null>(null)
   const [draggedItem, setDraggedItem] = useState<string | null>(null)
   const [dragOverStage, setDragOverStage] = useState<SalesStage | null>(null)
 
@@ -254,6 +257,17 @@ export default function VendasPage() {
     setDraggedItem(null)
   }
 
+  const handleViewDetails = (opportunity: SalesOpportunity) => {
+    setSelectedOpportunity(opportunity)
+    setShowDetailsModal(true)
+  }
+
+  const handleEditOpportunity = (opportunity: SalesOpportunity) => {
+    // TODO: Implementar modal de edição
+    console.log('Editar oportunidade:', opportunity.opportunity_title)
+    setShowDetailsModal(false)
+  }
+
   if (loading) {
     return (
       <DashboardLayout>
@@ -404,7 +418,13 @@ export default function VendasPage() {
                             </div>
                             
                             <div className="flex items-center space-x-1">
-                              <button className="p-1 text-gray-400 hover:text-blue-500 rounded">
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleViewDetails(opportunity)
+                                }}
+                                className="p-1 text-gray-400 hover:text-blue-500 rounded"
+                              >
                                 <Eye className="h-4 w-4" />
                               </button>
                               <button className="p-1 text-gray-400 hover:text-blue-500 rounded">
@@ -479,6 +499,21 @@ export default function VendasPage() {
       <NewOpportunityModal 
         isOpen={showNewOpportunityModal}
         onClose={() => setShowNewOpportunityModal(false)}
+        onSuccess={() => {
+          fetchOpportunities() // Refresh opportunities
+          fetchStats() // Refresh stats
+        }}
+      />
+
+      {/* Opportunity Details Modal */}
+      <OpportunityDetailsModal 
+        isOpen={showDetailsModal}
+        opportunity={selectedOpportunity}
+        onClose={() => {
+          setShowDetailsModal(false)
+          setSelectedOpportunity(null)
+        }}
+        onEdit={handleEditOpportunity}
         onSuccess={() => {
           fetchOpportunities() // Refresh opportunities
           fetchStats() // Refresh stats
