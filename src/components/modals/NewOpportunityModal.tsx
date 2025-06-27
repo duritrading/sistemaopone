@@ -23,6 +23,7 @@ import {
 // Schema de validação
 const newOpportunitySchema = z.object({
   company_name: z.string().min(2, 'Nome da empresa deve ter pelo menos 2 caracteres'),
+  company_cnpj: z.string().min(11, 'CNPJ deve ter pelo menos 11 caracteres').optional().or(z.literal('')),
   contact_name: z.string().min(2, 'Nome do contato deve ter pelo menos 2 caracteres'),
   contact_email: z.string().email('Email inválido'),
   contact_phone: z.string().min(10, 'Telefone deve ter pelo menos 10 caracteres'),
@@ -121,6 +122,7 @@ export default function NewOpportunityModal({ isOpen, onClose, onSuccess }: NewO
         .from('sales_opportunities')
         .insert([{
           company_name: data.company_name,
+          company_cnpj: data.company_cnpj || null,
           contact_name: data.contact_name,
           contact_email: data.contact_email,
           contact_phone: data.contact_phone,
@@ -157,6 +159,19 @@ export default function NewOpportunityModal({ isOpen, onClose, onSuccess }: NewO
 
   // Watch para atualizar probabilidade baseada no stage
   const selectedStage = watch('stage')
+  
+  // Função para formatar CNPJ
+  const formatCNPJ = (value: string) => {
+    const cleanValue = value.replace(/\D/g, '')
+    if (cleanValue.length <= 14) {
+      return cleanValue
+        .replace(/^(\d{2})(\d)/, '$1.$2')
+        .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+        .replace(/\.(\d{3})(\d)/, '.$1/$2')
+        .replace(/(\d{4})(\d)/, '$1-$2')
+    }
+    return value
+  }
   
   useEffect(() => {
     const stageProbabilities: Record<SalesStage, number> = {
@@ -213,7 +228,7 @@ export default function NewOpportunityModal({ isOpen, onClose, onSuccess }: NewO
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Nome da Empresa */}
-                  <div className="md:col-span-2">
+                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Nome da Empresa
                     </label>
@@ -227,6 +242,28 @@ export default function NewOpportunityModal({ isOpen, onClose, onSuccess }: NewO
                       <p className="mt-1 text-sm text-red-600">{errors.company_name.message}</p>
                     )}
                   </div>
+
+                  {/* CNPJ */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      CNPJ (opcional)
+                    </label>
+                    <input
+                      type="text"
+                      {...register('company_cnpj')}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="00.000.000/0000-00"
+                      maxLength={18}
+                      onChange={(e) => {
+                        const formatted = formatCNPJ(e.target.value)
+                        e.target.value = formatted
+                      }}
+                    />
+                    {errors.company_cnpj && (
+                      <p className="mt-1 text-sm text-red-600">{errors.company_cnpj.message}</p>
+                    )}
+                  </div>
+                </div>
 
                   {/* Nome do Contato */}
                   <div>

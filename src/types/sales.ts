@@ -20,6 +20,7 @@ export type ActivityType =
 export interface SalesOpportunity {
   id: string
   company_name: string
+  company_cnpj: string | null  // ← ADICIONAR ESTA LINHA
   contact_name: string
   contact_email: string
   contact_phone: string | null
