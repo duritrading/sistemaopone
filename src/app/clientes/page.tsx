@@ -172,6 +172,10 @@ export default function ClientsPage() {
     }).format(value)
   }
 
+  const getPrimaryContact = (contacts?: any[]) => {
+    return contacts?.find(contact => contact.is_primary) || contacts?.[0]
+  }
+
   const handleClientCreated = () => {
     loadClients()
     loadMetrics()
@@ -199,10 +203,6 @@ export default function ClientsPage() {
       setSelectedClient(client)
       setShowEditModal(true)
     }
-  }
-
-  const getPrimaryContact = (contacts?: any[]) => {
-    return contacts?.find(contact => contact.is_primary) || contacts?.[0]
   }
 
   const getPrimaryContact = (contacts?: any[]) => {
