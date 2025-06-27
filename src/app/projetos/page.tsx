@@ -1,98 +1,106 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
 import { 
   Search, Download, Filter, Eye, MoreHorizontal, Edit, FileText, Copy, Archive
 } from 'lucide-react'
-import { Project, ProjectMetrics, ProjectStatus, ProjectType, ProjectHealth } from '@/types/projects'
+
+// Tipos simplificados para evitar problemas
+interface SimpleProject {
+  id: string
+  name: string
+  description?: string
+  project_type: string
+  status: string
+  health: string
+  health_score: number
+  total_budget: number
+  used_budget: number
+  progress_percentage: number
+  start_date?: string
+  estimated_end_date?: string
+  risk_level: string
+  is_active: boolean
+  created_at: string
+  client?: {
+    id: string
+    company_name: string
+  }
+  manager?: {
+    id: string
+    full_name: string
+    email: string
+  }
+}
+
+interface SimpleMetrics {
+  total_projects: number
+  active_projects: number
+  critical_projects: number
+  total_value: number
+  average_progress: number
+}
 
 export default function ProjectsPage() {
-  const [projects, setProjects] = useState<Project[]>([])
-  const [metrics, setMetrics] = useState<ProjectMetrics | null>(null)
+  const [projects, setProjects] = useState<SimpleProject[]>([])
+  const [metrics, setMetrics] = useState<SimpleMetrics | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'all'>('all')
-  const [typeFilter, setTypeFilter] = useState<ProjectType | 'all'>('all')
-  const [healthFilter, setHealthFilter] = useState<ProjectHealth | 'all'>('all')
-  const [showMoreFilters, setShowMoreFilters] = useState(false)
-  const [expandedProject, setExpandedProject] = useState<string | null>(null)
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [typeFilter, setTypeFilter] = useState<string>('all')
+  const [healthFilter, setHealthFilter] = useState<string>('all')
+  
+  // Estado para controlar hidratação
+  const [mounted, setMounted] = useState(false)
+
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
 
   useEffect(() => {
+    setMounted(true)
     loadProjects()
     loadMetrics()
   }, [])
 
   const loadProjects = async () => {
     try {
-      console.log('Carregando projetos...')
+      setLoading(true)
+      setError(null)
       
+      console.log('🔄 Carregando projetos...')
+      console.log('📍 URL Supabase:', process.env.NEXT_PUBLIC_SUPABASE_URL)
+      
+      // Tentar query simples primeiro
       const { data, error } = await supabase
         .from('projects')
-        .select(`
-          *,
-          client:clients(id, company_name, logo_url),
-          manager:team_members!projects_manager_id_fkey(id, full_name, avatar_url, email),
-          team_members:project_team_members(
-            id,
-            role,
-            allocation_percentage,
-            user:team_members!project_team_members_user_id_fkey(id, full_name, avatar_url)
-          ),
-          scope_items:project_scope_items(id, item_name, is_completed),
-          technologies:project_technologies(id, technology_name)
-        `)
+        .select('*')
         .eq('is_active', true)
         .order('created_at', { ascending: false })
 
+      console.log('📊 Resultado da query:', { data, error })
+
       if (error) {
-        console.error('Erro na query:', error)
-        throw error
+        console.error('❌ Erro na query:', error)
+        throw new Error(`Erro Supabase: ${error.message} (Código: ${error.code})`)
       }
 
-      console.log('Dados carregados:', data)
+      if (!data || data.length === 0) {
+        console.warn('⚠️ Nenhum projeto encontrado')
+        setProjects([])
+        return
+      }
 
-      // Processar dados para formato esperado
-      const processedProjects: Project[] = (data || []).map(project => {
-        const remaining_budget = (project.total_budget || 0) - (project.used_budget || 0)
-        const budget_percentage = project.total_budget > 0 ? Math.round(((project.used_budget || 0) / project.total_budget) * 100) : 0
-        const completed_milestones = project.scope_items?.filter((item: any) => item.is_completed).length || 0
-        const total_milestones = project.scope_items?.length || 0
-        
-        // Calcular dias restantes
-        const days_remaining = project.estimated_end_date ? 
-          Math.ceil((new Date(project.estimated_end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 0
-        
-        const is_overdue = project.estimated_end_date ? new Date(project.estimated_end_date) < new Date() : false
-        const is_near_deadline = days_remaining <= 15 && days_remaining > 0
-
-        return {
-          ...project,
-          health_status: project.health as ProjectHealth,
-          remaining_budget,
-          budget_percentage,
-          completed_milestones,
-          total_milestones,
-          next_milestone: project.next_milestone ? {
-            id: '1',
-            name: project.next_milestone,
-            due_date: project.next_milestone_date || '',
-            is_overdue: project.next_milestone_date ? new Date(project.next_milestone_date) < new Date() : false
-          } : undefined,
-          days_remaining,
-          is_overdue,
-          is_near_deadline,
-          comments_count: 0,
-          attachments_count: 0,
-          team_members_count: project.team_members?.length || 0,
-          scope_items: project.scope_items?.map((item: any) => item.item_name) || [],
-          technologies: project.technologies?.map((tech: any) => tech.technology_name) || []
-        } as Project
-      })
-
-      setProjects(processedProjects)
-    } catch (error) {
-      console.error('Erro ao carregar projetos:', error)
+      console.log('✅ Projetos carregados:', data.length)
+      setProjects(data)
+      
+    } catch (error: any) {
+      console.error('💥 Erro completo:', error)
+      const errorMessage = error.message || error.toString() || 'Erro desconhecido'
+      setError(errorMessage)
       setProjects([])
     } finally {
       setLoading(false)
@@ -106,7 +114,10 @@ export default function ProjectsPage() {
         .select('*')
         .eq('is_active', true)
 
-      if (error) throw error
+      if (error) {
+        console.error('Erro ao carregar métricas:', error)
+        return
+      }
 
       const totalProjects = projectsData?.length || 0
       const activeProjects = projectsData?.filter(p => p.status === 'Executando').length || 0
@@ -115,63 +126,16 @@ export default function ProjectsPage() {
       const totalProgress = projectsData?.reduce((sum, p) => sum + (p.progress_percentage || 0), 0) || 0
       const averageProgress = totalProjects > 0 ? Math.round(totalProgress / totalProjects) : 0
 
-      const metrics: ProjectMetrics = {
+      const metrics: SimpleMetrics = {
         total_projects: totalProjects,
         active_projects: activeProjects,
-        completed_projects: projectsData?.filter(p => p.status === 'Concluído').length || 0,
-        overdue_projects: projectsData?.filter(p => p.estimated_end_date && new Date(p.estimated_end_date) < new Date()).length || 0,
         critical_projects: criticalProjects,
-        
-        projects_by_status: {
-          'Rascunho': projectsData?.filter(p => p.status === 'Rascunho').length || 0,
-          'Proposta': projectsData?.filter(p => p.status === 'Proposta').length || 0,
-          'Aprovado': projectsData?.filter(p => p.status === 'Aprovado').length || 0,
-          'Executando': activeProjects,
-          'Pausado': projectsData?.filter(p => p.status === 'Pausado').length || 0,
-          'Concluído': projectsData?.filter(p => p.status === 'Concluído').length || 0,
-          'Cancelado': projectsData?.filter(p => p.status === 'Cancelado').length || 0
-        },
-        
-        projects_by_health: {
-          'Excelente': projectsData?.filter(p => p.health === 'Excelente').length || 0,
-          'Bom': projectsData?.filter(p => p.health === 'Bom').length || 0,
-          'Crítico': criticalProjects
-        },
-        
-        projects_by_type: {
-          'MVP': projectsData?.filter(p => p.project_type === 'MVP').length || 0,
-          'PoC': projectsData?.filter(p => p.project_type === 'PoC').length || 0,
-          'Implementação': projectsData?.filter(p => p.project_type === 'Implementação').length || 0,
-          'Consultoria': projectsData?.filter(p => p.project_type === 'Consultoria').length || 0,
-          'Suporte': projectsData?.filter(p => p.project_type === 'Suporte').length || 0
-        },
-        
-        projects_by_risk: {
-          'Baixo': projectsData?.filter(p => p.risk_level === 'Baixo').length || 0,
-          'Médio': projectsData?.filter(p => p.risk_level === 'Médio').length || 0,
-          'Alto': projectsData?.filter(p => p.risk_level === 'Alto').length || 0,
-          'Crítico': projectsData?.filter(p => p.risk_level === 'Crítico').length || 0
-        },
-        
-        total_budget: projectsData?.reduce((sum, p) => sum + (p.total_budget || 0), 0) || 0,
-        used_budget: projectsData?.reduce((sum, p) => sum + (p.used_budget || 0), 0) || 0,
-        remaining_budget: projectsData?.reduce((sum, p) => sum + ((p.total_budget || 0) - (p.used_budget || 0)), 0) || 0,
-        average_health_score: projectsData?.reduce((sum, p) => sum + (p.health_score || 0), 0) / totalProjects || 0,
-        
-        completion_rate: averageProgress,
-        on_time_delivery_rate: 0,
-        budget_efficiency: 0,
-        
-        upcoming_deadlines: 0,
-        overdue_milestones: 0,
-        
-        // Métricas específicas do OpOne
         total_value: totalValue,
         average_progress: averageProgress
       }
 
       setMetrics(metrics)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao carregar métricas:', error)
     }
   }
@@ -179,11 +143,11 @@ export default function ProjectsPage() {
   const filteredProjects = projects.filter(project => {
     const matchesSearch = !searchTerm || 
       project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      project.client?.company_name?.toLowerCase().includes(searchTerm.toLowerCase())
+      project.description?.toLowerCase().includes(searchTerm.toLowerCase())
 
     const matchesStatus = statusFilter === 'all' || project.status === statusFilter
     const matchesType = typeFilter === 'all' || project.project_type === typeFilter
-    const matchesHealth = healthFilter === 'all' || project.health_status === healthFilter
+    const matchesHealth = healthFilter === 'all' || project.health === healthFilter
 
     return matchesSearch && matchesStatus && matchesType && matchesHealth
   })
@@ -198,12 +162,17 @@ export default function ProjectsPage() {
     }).format(value)
   }
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString?: string) => {
     if (!dateString) return 'Não definido'
-    return new Date(dateString).toLocaleDateString('pt-BR')
+    try {
+      return new Date(dateString).toLocaleDateString('pt-BR')
+    } catch {
+      return 'Data inválida'
+    }
   }
 
-  const getStatusColor = (status: ProjectStatus) => {
+  // Funções de cor estáticas para evitar hidratação
+  const getStatusColorClass = (status: string) => {
     switch (status) {
       case 'Executando': return 'w-2 h-2 bg-blue-500 rounded-full'
       case 'Pausado': return 'w-2 h-2 bg-yellow-500 rounded-full'
@@ -214,7 +183,7 @@ export default function ProjectsPage() {
     }
   }
 
-  const getStatusBadgeColor = (status: ProjectStatus) => {
+  const getStatusBadgeClass = (status: string) => {
     switch (status) {
       case 'Executando': return 'bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium'
       case 'Pausado': return 'bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium'
@@ -225,7 +194,7 @@ export default function ProjectsPage() {
     }
   }
 
-  const getRiskBadgeColor = (risk: string) => {
+  const getRiskBadgeClass = (risk: string) => {
     switch (risk) {
       case 'Alto': return 'bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs font-medium'
       case 'Médio': return 'bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium'
@@ -236,8 +205,26 @@ export default function ProjectsPage() {
   }
 
   const handleProjectClick = (projectId: string) => {
-    // Navegar para página de detalhes do projeto
     window.location.href = `/projetos/${projectId}`
+  }
+
+  // Não renderizar até montar para evitar hidratação
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="animate-pulse">
+            <div className="h-8 bg-gray-200 rounded w-64 mb-2"></div>
+            <div className="h-5 bg-gray-200 rounded w-96 mb-8"></div>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+              {[1, 2, 3, 4].map(i => (
+                <div key={i} className="h-24 bg-gray-200 rounded-lg"></div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   if (loading) {
@@ -258,6 +245,56 @@ export default function ProjectsPage() {
     )
   }
 
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-8">
+            <h2 className="text-xl font-semibold text-red-800 mb-4">❌ Erro ao Carregar Projetos</h2>
+            <div className="bg-red-100 rounded-lg p-4 mb-6">
+              <p className="text-red-700 font-mono text-sm">{error}</p>
+            </div>
+            
+            <div className="space-y-4 mb-6">
+              <h3 className="font-semibold text-red-800">🔍 Possíveis Causas:</h3>
+              <ul className="text-red-700 space-y-2">
+                <li>• Tabela 'projects' não existe no Supabase</li>
+                <li>• Variáveis de ambiente incorretas</li>
+                <li>• RLS (Row Level Security) bloqueando acesso</li>
+                <li>• Chave de API inválida</li>
+              </ul>
+            </div>
+
+            <div className="space-y-4 mb-6">
+              <h3 className="font-semibold text-red-800">✅ Soluções:</h3>
+              <ol className="text-red-700 space-y-2">
+                <li>1. Execute o SQL no Supabase Dashboard</li>
+                <li>2. Verifique .env.local na raiz do projeto</li>
+                <li>3. Desabilite RLS temporariamente</li>
+                <li>4. Instale: npm install @supabase/supabase-js</li>
+              </ol>
+            </div>
+            
+            <div className="flex gap-3">
+              <button 
+                onClick={loadProjects}
+                className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
+              >
+                🔄 Tentar Novamente
+              </button>
+              <a 
+                href="/debug"
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+              >
+                🔍 Página de Debug
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
@@ -267,10 +304,9 @@ export default function ProjectsPage() {
           <p className="text-gray-600">Acompanhe o progresso e saúde dos seus projetos</p>
         </div>
 
-        {/* Métricas - Layout exato do OpOne */}
+        {/* Métricas */}
         {metrics && (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            {/* Projetos Ativos */}
             <div className="bg-white rounded-lg p-6 border border-gray-200">
               <div className="flex items-center">
                 <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
@@ -283,7 +319,6 @@ export default function ProjectsPage() {
               </div>
             </div>
 
-            {/* Críticos */}
             <div className="bg-white rounded-lg p-6 border border-gray-200">
               <div className="flex items-center">
                 <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center mr-4">
@@ -296,7 +331,6 @@ export default function ProjectsPage() {
               </div>
             </div>
 
-            {/* Valor Total */}
             <div className="bg-white rounded-lg p-6 border border-gray-200">
               <div className="flex items-center">
                 <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mr-4">
@@ -309,7 +343,6 @@ export default function ProjectsPage() {
               </div>
             </div>
 
-            {/* Média Progresso */}
             <div className="bg-white rounded-lg p-6 border border-gray-200">
               <div className="flex items-center">
                 <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center mr-4">
@@ -329,10 +362,9 @@ export default function ProjectsPage() {
           <div className="p-6 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Lista de Projetos</h2>
             
-            {/* Barra de Busca e Filtros */}
+            {/* Busca e Filtros */}
             <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
               <div className="flex flex-col lg:flex-row gap-3 items-start lg:items-center flex-1">
-                {/* Busca */}
                 <div className="relative w-full lg:w-80">
                   <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
                   <input
@@ -344,11 +376,10 @@ export default function ProjectsPage() {
                   />
                 </div>
 
-                {/* Filtros */}
                 <div className="flex gap-3">
                   <select
                     value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value as ProjectStatus | 'all')}
+                    onChange={(e) => setStatusFilter(e.target.value)}
                     className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white min-w-0"
                   >
                     <option value="all">Todos os Status</option>
@@ -363,7 +394,7 @@ export default function ProjectsPage() {
 
                   <select
                     value={typeFilter}
-                    onChange={(e) => setTypeFilter(e.target.value as ProjectType | 'all')}
+                    onChange={(e) => setTypeFilter(e.target.value)}
                     className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white"
                   >
                     <option value="all">Todos os Tipos</option>
@@ -376,7 +407,7 @@ export default function ProjectsPage() {
 
                   <select
                     value={healthFilter}
-                    onChange={(e) => setHealthFilter(e.target.value as ProjectHealth | 'all')}
+                    onChange={(e) => setHealthFilter(e.target.value)}
                     className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white"
                   >
                     <option value="all">Todas as Saúdes</option>
@@ -384,18 +415,9 @@ export default function ProjectsPage() {
                     <option value="Bom">Bom</option>
                     <option value="Crítico">Crítico</option>
                   </select>
-
-                  <button 
-                    onClick={() => setShowMoreFilters(!showMoreFilters)}
-                    className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm flex items-center gap-2"
-                  >
-                    <Filter className="w-4 h-4" />
-                    Mais Filtros
-                  </button>
                 </div>
               </div>
 
-              {/* Botão Exportar */}
               <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm flex items-center gap-2">
                 <Download className="w-4 h-4" />
                 Exportar
@@ -403,27 +425,25 @@ export default function ProjectsPage() {
             </div>
           </div>
 
-          {/* Lista de Projetos - Cards horizontais */}
+          {/* Lista */}
           <div className="divide-y divide-gray-200">
             {filteredProjects.map(project => (
               <div key={project.id} className="p-6 hover:bg-gray-50 transition-colors">
-                {/* Header do Card */}
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <div className={getStatusColor(project.status)}></div>
+                    <div className={getStatusColorClass(project.status)}></div>
                     <h3 className="font-semibold text-gray-900 text-lg">{project.name}</h3>
-                    <span className={getStatusBadgeColor(project.project_type)}>
+                    <span className={getStatusBadgeClass(project.project_type)}>
                       {project.project_type}
                     </span>
-                    <span className={getStatusBadgeColor(project.status)}>
+                    <span className={getStatusBadgeClass(project.status)}>
                       {project.status}
                     </span>
-                    <span className={getRiskBadgeColor(project.risk_level)}>
-                      Risco {project.risk_level.toLowerCase()}
+                    <span className={getRiskBadgeClass(project.risk_level)}>
+                      Risco {project.risk_level?.toLowerCase()}
                     </span>
                   </div>
                   
-                  {/* Ações */}
                   <div className="flex items-center gap-2">
                     <button 
                       onClick={() => handleProjectClick(project.id)}
@@ -441,7 +461,10 @@ export default function ProjectsPage() {
                   </div>
                 </div>
 
-                {/* Informações do Projeto */}
+                {project.description && (
+                  <p className="text-gray-600 mb-4">{project.description}</p>
+                )}
+
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-6 mb-4">
                   <div>
                     <div className="text-sm text-gray-600 mb-1">Cliente</div>
@@ -454,48 +477,32 @@ export default function ProjectsPage() {
                   </div>
                   
                   <div>
+                    <div className="text-sm text-gray-600 mb-1">Início</div>
+                    <div className="font-medium text-gray-900">{formatDate(project.start_date)}</div>
+                  </div>
+                  
+                  <div>
                     <div className="text-sm text-gray-600 mb-1">Previsão Fim</div>
-                    <div className="font-medium text-gray-900">{formatDate(project.estimated_end_date || '')}</div>
-                    {project.is_overdue && (
-                      <div className="text-xs text-red-600">{Math.abs(project.days_remaining || 0)} dias atrasado</div>
-                    )}
+                    <div className="font-medium text-gray-900">{formatDate(project.estimated_end_date)}</div>
                   </div>
                   
                   <div>
-                    <div className="text-sm text-gray-600 mb-1">Próximo Marco</div>
-                    <div className="font-medium text-gray-900">{project.next_milestone?.name || 'Não definido'}</div>
-                  </div>
-                  
-                  <div>
-                    <div className="text-sm text-gray-600 mb-1">Equipe</div>
-                    <div className="font-medium text-gray-900">{project.team_members_count} pessoas</div>
+                    <div className="text-sm text-gray-600 mb-1">Orçamento</div>
+                    <div className="font-medium text-gray-900">{formatCurrency(project.total_budget)}</div>
                   </div>
                 </div>
 
-                {/* Progresso e Financeiro */}
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-4 mb-2">
                       <span className="text-sm font-medium text-gray-900">Progresso: {project.progress_percentage}%</span>
-                      <span className="text-sm text-gray-600">Saldo: {formatCurrency(project.remaining_budget)}</span>
+                      <span className="text-sm text-gray-600">Usado: {formatCurrency(project.used_budget)}</span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2 mb-1">
+                    <div className="w-full bg-gray-200 rounded-full h-2">
                       <div 
-                        className="bg-gray-900 h-2 rounded-full transition-all duration-300" 
-                        style={{ width: `${project.progress_percentage}%` }}
+                        className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                        style={{ width: `${Math.min(project.progress_percentage, 100)}%` }}
                       ></div>
-                    </div>
-                  </div>
-                  
-                  <div className="text-right ml-6">
-                    <div className="text-lg font-bold text-gray-900">
-                      {formatCurrency(project.used_budget)} / {formatCurrency(project.total_budget)}
-                    </div>
-                    <div className={`text-sm font-medium ${project.budget_percentage > 100 ? 'text-red-600' : project.budget_percentage > 80 ? 'text-orange-600' : 'text-green-600'}`}>
-                      ({project.budget_percentage}% usado)
-                    </div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      Início: {formatDate(project.start_date || '')}
                     </div>
                   </div>
                 </div>
@@ -509,13 +516,39 @@ export default function ProjectsPage() {
               <div className="text-gray-400 mb-4">
                 <FileText className="w-12 h-12 mx-auto" />
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum projeto encontrado</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                {projects.length === 0 ? 'Nenhum projeto encontrado' : 'Nenhum projeto corresponde aos filtros'}
+              </h3>
               <p className="text-gray-600 mb-4">
-                {searchTerm || statusFilter !== 'all' || typeFilter !== 'all' || healthFilter !== 'all'
-                  ? 'Tente ajustar os filtros para encontrar projetos.'
-                  : 'Comece criando seu primeiro projeto.'
+                {projects.length === 0 
+                  ? 'Execute o SQL no Supabase para criar dados de exemplo.'
+                  : 'Tente ajustar os filtros para encontrar projetos.'
                 }
               </p>
+              {projects.length === 0 && (
+                <button 
+                  onClick={loadProjects}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+                >
+                  Recarregar
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Debug Info */}
+        <div className="mt-6 bg-gray-100 rounded-lg p-4">
+          <h3 className="text-sm font-semibold text-gray-700 mb-2">🔍 Debug Info:</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600">
+            <div>Total: {projects.length}</div>
+            <div>Filtrados: {filteredProjects.length}</div>
+            <div>Mounted: {mounted ? '✅' : '❌'}</div>
+            <div>Loading: {loading ? '🔄' : '✅'}</div>
+          </div>
+          {error && (
+            <div className="mt-2 p-2 bg-red-100 rounded text-red-700 text-xs">
+              Último erro: {error}
             </div>
           )}
         </div>
