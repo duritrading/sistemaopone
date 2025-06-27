@@ -6,10 +6,12 @@ import { createClient } from '@supabase/supabase-js'
 import { 
   X, Building2, MapPin, DollarSign, User, FileText, Phone, Mail, 
   Users, MessageSquare, Calendar, Plus, Edit2, CheckCircle, Clock,
-  XCircle, TrendingUp, AlertTriangle, Heart, Globe, MapPinIcon, Trash2
+  XCircle, TrendingUp, AlertTriangle, Heart, Globe, MapPinIcon, Trash2,
+  Search, Filter
 } from 'lucide-react'
 import { Client, ClientContact, ClientInteraction, InteractionType, InteractionOutcome } from '@/types/clients'
 import NewContactModal from '@/components/modals/NewContactModal'
+import EditContactModal from '@/components/modals/EditContactModal'
 
 interface ClientDetailsModalProps {
   isOpen: boolean
@@ -50,6 +52,16 @@ export default function ClientDetailsModal({
 
   // Estados para contatos
   const [showNewContactModal, setShowNewContactModal] = useState(false)
+  const [showEditContactModal, setShowEditContactModal] = useState(false)
+  const [selectedContact, setSelectedContact] = useState<ClientContact | null>(null)
+
+  // Estados para filtros de interações
+  const [interactionFilters, setInteractionFilters] = useState({
+    search: '',
+    type: 'all' as InteractionType | 'all',
+    outcome: 'all' as InteractionOutcome | 'all',
+    dateRange: 'all' as 'all' | 'today' | 'week' | 'month' | 'quarter'
+  })
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -171,9 +183,16 @@ export default function ClientDetailsModal({
     loadClientDetails()
   }
 
+  const handleContactUpdated = () => {
+    loadClientDetails()
+  }
+
   const handleEditContact = (contactId: string) => {
-    // Função para editar contato (implementaremos depois)
-    console.log('Editar contato:', contactId)
+    const contact = contacts.find(c => c.id === contactId)
+    if (contact) {
+      setSelectedContact(contact)
+      setShowEditContactModal(true)
+    }
   }
 
   const handleDeleteContact = async (contactId: string, contactName: string) => {
@@ -210,6 +229,56 @@ export default function ClientDetailsModal({
       console.error('Erro ao remover contato:', error)
       alert('Erro ao remover contato')
     }
+  }
+
+  // Filtrar interações
+  const filteredInteractions = interactions.filter(interaction => {
+    // Filtro por busca
+    const matchesSearch = !interactionFilters.search || 
+      interaction.title.toLowerCase().includes(interactionFilters.search.toLowerCase()) ||
+      interaction.description?.toLowerCase().includes(interactionFilters.search.toLowerCase())
+
+    // Filtro por tipo
+    const matchesType = interactionFilters.type === 'all' || interaction.interaction_type === interactionFilters.type
+
+    // Filtro por outcome
+    const matchesOutcome = interactionFilters.outcome === 'all' || interaction.outcome === interactionFilters.outcome
+
+    // Filtro por data
+    let matchesDate = true
+    if (interactionFilters.dateRange !== 'all') {
+      const interactionDate = new Date(interaction.interaction_date)
+      const now = new Date()
+      
+      switch (interactionFilters.dateRange) {
+        case 'today':
+          matchesDate = interactionDate.toDateString() === now.toDateString()
+          break
+        case 'week':
+          const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+          matchesDate = interactionDate >= weekAgo
+          break
+        case 'month':
+          const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+          matchesDate = interactionDate >= monthAgo
+          break
+        case 'quarter':
+          const quarterAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
+          matchesDate = interactionDate >= quarterAgo
+          break
+      }
+    }
+
+    return matchesSearch && matchesType && matchesOutcome && matchesDate
+  })
+
+  const resetInteractionFilters = () => {
+    setInteractionFilters({
+      search: '',
+      type: 'all',
+      outcome: 'all',
+      dateRange: 'all'
+    })
   }
 
   const getStatusIcon = (status: string) => {
@@ -600,7 +669,14 @@ export default function ClientDetailsModal({
               {activeTab === 'interactions' && (
                 <div className="p-6">
                   <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-lg font-medium text-gray-900">Histórico de Interações</h3>
+                    <h3 className="text-lg font-medium text-gray-900">
+                      Histórico de Interações 
+                      {filteredInteractions.length !== interactions.length && (
+                        <span className="text-sm text-gray-500 ml-2">
+                          ({filteredInteractions.length} de {interactions.length})
+                        </span>
+                      )}
+                    </h3>
                     <button 
                       onClick={() => setShowNewInteraction(!showNewInteraction)}
                       className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
@@ -608,6 +684,102 @@ export default function ClientDetailsModal({
                       <Plus className="w-4 h-4" />
                       Nova Interação
                     </button>
+                  </div>
+
+                  {/* Filtros */}
+                  <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Filter className="w-4 h-4 text-gray-600" />
+                      <h4 className="font-medium text-gray-900">Filtros</h4>
+                      {(interactionFilters.search || interactionFilters.type !== 'all' || 
+                        interactionFilters.outcome !== 'all' || interactionFilters.dateRange !== 'all') && (
+                        <button
+                          onClick={resetInteractionFilters}
+                          className="text-xs text-blue-600 hover:text-blue-800 ml-auto"
+                        >
+                          Limpar filtros
+                        </button>
+                      )}
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                      {/* Busca */}
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Buscar</label>
+                        <div className="relative">
+                          <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+                          <input
+                            type="text"
+                            placeholder="Título ou descrição..."
+                            value={interactionFilters.search}
+                            onChange={(e) => setInteractionFilters(prev => ({ ...prev, search: e.target.value }))}
+                            className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Tipo */}
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Tipo</label>
+                        <select
+                          value={interactionFilters.type}
+                          onChange={(e) => setInteractionFilters(prev => ({ 
+                            ...prev, 
+                            type: e.target.value as InteractionType | 'all' 
+                          }))}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                          <option value="all">Todos os tipos</option>
+                          <option value="Ligação">Ligação</option>
+                          <option value="Email">Email</option>
+                          <option value="Reunião">Reunião</option>
+                          <option value="Apresentação">Apresentação</option>
+                          <option value="Workshop">Workshop</option>
+                          <option value="Check-in">Check-in</option>
+                          <option value="Suporte">Suporte</option>
+                          <option value="Renovação">Renovação</option>
+                          <option value="Feedback">Feedback</option>
+                          <option value="Nota">Nota</option>
+                        </select>
+                      </div>
+
+                      {/* Resultado */}
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Resultado</label>
+                        <select
+                          value={interactionFilters.outcome}
+                          onChange={(e) => setInteractionFilters(prev => ({ 
+                            ...prev, 
+                            outcome: e.target.value as InteractionOutcome | 'all' 
+                          }))}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                          <option value="all">Todos os resultados</option>
+                          <option value="Positivo">Positivo</option>
+                          <option value="Neutro">Neutro</option>
+                          <option value="Negativo">Negativo</option>
+                        </select>
+                      </div>
+
+                      {/* Período */}
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Período</label>
+                        <select
+                          value={interactionFilters.dateRange}
+                          onChange={(e) => setInteractionFilters(prev => ({ 
+                            ...prev, 
+                            dateRange: e.target.value as any 
+                          }))}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                          <option value="all">Todo período</option>
+                          <option value="today">Hoje</option>
+                          <option value="week">Última semana</option>
+                          <option value="month">Último mês</option>
+                          <option value="quarter">Último trimestre</option>
+                        </select>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Formulário Nova Interação */}
@@ -625,16 +797,16 @@ export default function ClientDetailsModal({
                             }))}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                           >
-                            <option value="Ligação">Ligação</option>
-                            <option value="Email">Email</option>
-                            <option value="Reunião">Reunião</option>
-                            <option value="Apresentação">Apresentação</option>
-                            <option value="Workshop">Workshop</option>
-                            <option value="Check-in">Check-in</option>
-                            <option value="Suporte">Suporte</option>
-                            <option value="Renovação">Renovação</option>
-                            <option value="Feedback">Feedback</option>
-                            <option value="Nota">Nota</option>
+                            <option value="Ligação">📞 Ligação</option>
+                            <option value="Email">✉️ Email</option>
+                            <option value="Reunião">🎥 Reunião</option>
+                            <option value="Apresentação">📊 Apresentação</option>
+                            <option value="Workshop">🎓 Workshop</option>
+                            <option value="Check-in">✅ Check-in</option>
+                            <option value="Suporte">🛠️ Suporte</option>
+                            <option value="Renovação">🔄 Renovação</option>
+                            <option value="Feedback">💬 Feedback</option>
+                            <option value="Nota">📝 Nota</option>
                           </select>
                         </div>
                         <div>
@@ -647,12 +819,31 @@ export default function ClientDetailsModal({
                             }))}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                           >
-                            <option value="Positivo">Positivo</option>
-                            <option value="Neutro">Neutro</option>
-                            <option value="Negativo">Negativo</option>
+                            <option value="Positivo">😊 Positivo</option>
+                            <option value="Neutro">😐 Neutro</option>
+                            <option value="Negativo">😞 Negativo</option>
                           </select>
                         </div>
                       </div>
+                      
+                      {contacts.length > 0 && (
+                        <div className="mb-4">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Contato (opcional)</label>
+                          <select
+                            value={newInteraction.contact_id}
+                            onChange={(e) => setNewInteraction(prev => ({ ...prev, contact_id: e.target.value }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="">Selecionar contato...</option>
+                            {contacts.map(contact => (
+                              <option key={contact.id} value={contact.id}>
+                                {contact.full_name} - {contact.job_title || contact.contact_type}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                      
                       <div className="mb-4">
                         <label className="block text-sm font-medium text-gray-700 mb-1">Título</label>
                         <input
@@ -700,18 +891,45 @@ export default function ClientDetailsModal({
                   {interactions.length === 0 ? (
                     <div className="text-center py-8">
                       <MessageSquare className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                      <p className="text-gray-600">Nenhuma interação registrada</p>
+                      <p className="text-gray-600 mb-4">Nenhuma interação registrada</p>
+                      <button 
+                        onClick={() => setShowNewInteraction(true)}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg inline-flex items-center gap-2 transition-colors"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Primeira Interação
+                      </button>
+                    </div>
+                  ) : filteredInteractions.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Search className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                      <p className="text-gray-600 mb-2">Nenhuma interação encontrada</p>
+                      <p className="text-gray-500 text-sm mb-4">Tente ajustar os filtros para encontrar interações.</p>
+                      <button 
+                        onClick={resetInteractionFilters}
+                        className="text-blue-600 hover:text-blue-800 text-sm"
+                      >
+                        Limpar todos os filtros
+                      </button>
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      {interactions.map(interaction => (
+                      {filteredInteractions.map(interaction => (
                         <div key={interaction.id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
                           <div className="flex justify-between items-start mb-3">
                             <div className="flex items-center gap-3">
                               {getInteractionIcon(interaction.interaction_type)}
                               <div>
                                 <h4 className="font-medium text-gray-900">{interaction.title}</h4>
-                                <p className="text-sm text-gray-600">{interaction.interaction_type}</p>
+                                <div className="flex items-center gap-2 text-sm text-gray-600">
+                                  <span>{interaction.interaction_type}</span>
+                                  {interaction.contact && (
+                                    <>
+                                      <span>•</span>
+                                      <span>{interaction.contact.full_name}</span>
+                                    </>
+                                  )}
+                                </div>
                               </div>
                             </div>
                             <div className="flex items-center gap-2 text-sm text-gray-500">
@@ -725,18 +943,13 @@ export default function ClientDetailsModal({
                           </div>
                           
                           {interaction.description && (
-                            <p className="text-gray-700 mb-3">{interaction.description}</p>
+                            <p className="text-gray-700 mb-3 pl-7">{interaction.description}</p>
                           )}
                           
-                          <div className="flex justify-between items-center text-sm text-gray-500">
-                            <div>
-                              {interaction.contact && (
-                                <span>Contato: {interaction.contact.full_name}</span>
-                              )}
-                            </div>
+                          <div className="flex justify-between items-center text-xs text-gray-500 pl-7">
                             <div>
                               {interaction.creator && (
-                                <span>Por: {interaction.creator.full_name}</span>
+                                <span>Criado por: {interaction.creator.full_name}</span>
                               )}
                             </div>
                           </div>
@@ -758,6 +971,15 @@ export default function ClientDetailsModal({
         clientId={clientId}
         clientName={client?.company_name || ''}
         onContactCreated={handleContactCreated}
+      />
+
+      {/* Modal Editar Contato */}
+      <EditContactModal
+        isOpen={showEditContactModal}
+        onClose={() => setShowEditContactModal(false)}
+        contact={selectedContact}
+        clientName={client?.company_name || ''}
+        onContactUpdated={handleContactUpdated}
       />
     </div>
   )
