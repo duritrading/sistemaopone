@@ -9,6 +9,7 @@ import {
   CheckCircle, XCircle, Clock, Phone, Mail, MapPin
 } from 'lucide-react'
 import { Client, ClientMetrics, RelationshipStatus, AccountHealth } from '@/types/clients'
+import NewClientModal from '@/components/modals/NewClientModal'
 
 export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([])
@@ -17,6 +18,7 @@ export default function ClientsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<RelationshipStatus | 'all'>('all')
   const [healthFilter, setHealthFilter] = useState<AccountHealth | 'all'>('all')
+  const [showNewClientModal, setShowNewClientModal] = useState(false)
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -164,6 +166,11 @@ export default function ClientsPage() {
     }).format(value)
   }
 
+  const handleClientCreated = () => {
+    loadClients()
+    loadMetrics()
+  }
+
   const getPrimaryContact = (contacts?: any[]) => {
     return contacts?.find(contact => contact.is_primary) || contacts?.[0]
   }
@@ -194,7 +201,10 @@ export default function ClientsPage() {
             <h1 className="text-3xl font-bold text-gray-900">Clientes</h1>
             <p className="text-gray-600 mt-1">Gestão completa de relacionamento com clientes</p>
           </div>
-          <button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center gap-2 transition-colors">
+          <button 
+            onClick={() => setShowNewClientModal(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center gap-2 transition-colors"
+          >
             <Plus className="w-5 h-5" />
             Novo Cliente
           </button>
@@ -428,13 +438,23 @@ export default function ClientsPage() {
                 : 'Comece adicionando seu primeiro cliente.'
               }
             </p>
-            <button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg inline-flex items-center gap-2 transition-colors">
+            <button 
+              onClick={() => setShowNewClientModal(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg inline-flex items-center gap-2 transition-colors"
+            >
               <Plus className="w-5 h-5" />
               Novo Cliente
             </button>
           </div>
         )}
       </div>
+
+      {/* Modal Novo Cliente */}
+      <NewClientModal
+        isOpen={showNewClientModal}
+        onClose={() => setShowNewClientModal(false)}
+        onClientCreated={handleClientCreated}
+      />
     </div>
   )
 }
