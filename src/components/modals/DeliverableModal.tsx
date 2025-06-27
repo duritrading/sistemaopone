@@ -54,6 +54,8 @@ export default function DeliverableModal({ isOpen, onClose, projectId, deliverab
 
   const onSubmit: SubmitHandler<FormValues> = async (data) => {
     try {
+      // **CORREÇÃO APLICADA AQUI**
+      // Objeto de dados limpo para garantir que valores vazios sejam enviados como null.
       const payload = {
         project_id: projectId,
         title: data.title,
@@ -68,19 +70,24 @@ export default function DeliverableModal({ isOpen, onClose, projectId, deliverab
       let error;
 
       if (isEditing) {
+        // Atualiza um entregável existente
         const { error: updateError } = await supabase
           .from('project_deliverables')
           .update(payload)
           .eq('id', deliverable.id);
         error = updateError;
       } else {
+        // Cria um novo entregável
         const { error: insertError } = await supabase
           .from('project_deliverables')
           .insert(payload);
         error = insertError;
       }
 
-      if (error) throw error;
+      if (error) {
+        console.error("Erro do Supabase:", error);
+        throw error;
+      }
 
       alert(`Entregável ${isEditing ? 'atualizado' : 'criado'} com sucesso!`);
       onSuccess();
@@ -88,11 +95,16 @@ export default function DeliverableModal({ isOpen, onClose, projectId, deliverab
 
     } catch (error) {
       console.error(`Erro ao salvar entregável:`, error);
-      alert(`Falha ao salvar o entregável.`);
+      alert(`Falha ao salvar o entregável. Verifique o console para mais detalhes.`);
     }
   };
 
   if (!isOpen) return null;
+  
+  // Componentes de formulário com estilo corrigido
+  const Input = (props) => <input {...props} className={`w-full px-3 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900 placeholder:text-gray-400 ${props.className || ''}`} />;
+  const Select = (props) => <select {...props} className={`w-full px-3 py-2 border rounded-md bg-white focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900 ${props.className || ''}`} />;
+  const TextArea = (props) => <textarea {...props} rows={4} className={`w-full px-3 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900 placeholder:text-gray-400 ${props.className || ''}`} />;
 
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={onClose}>
@@ -105,43 +117,43 @@ export default function DeliverableModal({ isOpen, onClose, projectId, deliverab
           <div className="p-6 space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Nome do Entregável</label>
-              <input {...register('title', { required: 'O nome é obrigatório' })} className={`w-full px-3 py-2 border ${errors.title ? 'border-red-500' : 'border-gray-300'} rounded-md focus:ring-blue-500 focus:border-blue-500`} />
+              <Input {...register('title', { required: 'O nome é obrigatório' })} placeholder="Ex: Documento de Requisitos" className={errors.title ? 'border-red-500' : 'border-gray-300'} />
               {errors.title && <p className="text-red-600 text-xs mt-1">{errors.title.message}</p>}
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
-                <select {...register('type')} className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:ring-blue-500 focus:border-blue-500">
+                <Select {...register('type')}>
                   <option>Documento</option>
                   <option>Código</option>
                   <option>Design</option>
                   <option>Relatório</option>
                   <option>Apresentação</option>
-                </select>
+                </Select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                <select {...register('status')} className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:ring-blue-500 focus:border-blue-500">
+                <Select {...register('status')}>
                   <option>Rascunho</option>
                   <option>Revisão</option>
                   <option>Aprovado</option>
                   <option>Rejeitado</option>
-                </select>
+                </Select>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Versão</label>
-                <input {...register('version')} defaultValue="v1.0" className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" />
+                <Input {...register('version')} defaultValue="v1.0" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Data de Entrega</label>
-                <input type="date" {...register('due_date')} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" />
+                <Input type="date" {...register('due_date')} />
               </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
-              <textarea {...register('description')} rows={4} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" />
+              <TextArea {...register('description')} placeholder="Descreva o que este item representa..." />
             </div>
           </div>
           <footer className="px-6 py-4 bg-gray-50 border-t flex justify-end gap-3 rounded-b-lg">
