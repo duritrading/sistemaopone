@@ -1,5 +1,3 @@
-# Criar o arquivo com o conteúdo completo
-cat > src/components/layout/DashboardLayout.tsx << 'EOF'
 'use client'
 
 import { useState } from 'react'
@@ -146,4 +144,3 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     </div>
   )
 }
-EOF
