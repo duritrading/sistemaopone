@@ -6,9 +6,10 @@ import { createClient } from '@supabase/supabase-js'
 import { 
   X, Building2, MapPin, DollarSign, User, FileText, Phone, Mail, 
   Users, MessageSquare, Calendar, Plus, Edit2, CheckCircle, Clock,
-  XCircle, TrendingUp, AlertTriangle, Heart, Globe, MapPinIcon
+  XCircle, TrendingUp, AlertTriangle, Heart, Globe, MapPinIcon, Trash2
 } from 'lucide-react'
 import { Client, ClientContact, ClientInteraction, InteractionType, InteractionOutcome } from '@/types/clients'
+import NewContactModal from '@/components/modals/NewContactModal'
 
 interface ClientDetailsModalProps {
   isOpen: boolean
@@ -46,6 +47,9 @@ export default function ClientDetailsModal({
     contact_id: ''
   })
   const [savingInteraction, setSavingInteraction] = useState(false)
+
+  // Estados para contatos
+  const [showNewContactModal, setShowNewContactModal] = useState(false)
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -160,6 +164,51 @@ export default function ClientDetailsModal({
       alert('Erro ao adicionar interação')
     } finally {
       setSavingInteraction(false)
+    }
+  }
+
+  const handleContactCreated = () => {
+    loadClientDetails()
+  }
+
+  const handleEditContact = (contactId: string) => {
+    // Função para editar contato (implementaremos depois)
+    console.log('Editar contato:', contactId)
+  }
+
+  const handleDeleteContact = async (contactId: string, contactName: string) => {
+    if (!confirm(`Tem certeza que deseja excluir o contato "${contactName}"?`)) {
+      return
+    }
+
+    try {
+      const { error } = await supabase
+        .from('client_contacts')
+        .update({ is_active: false })
+        .eq('id', contactId)
+
+      if (error) throw error
+
+      // Criar interação de exclusão
+      if (clientId) {
+        await supabase
+          .from('client_interactions')
+          .insert([{
+            client_id: clientId,
+            contact_id: contactId,
+            interaction_type: 'Nota',
+            title: 'Contato removido',
+            description: `Contato ${contactName} foi removido`,
+            outcome: 'Neutro',
+            interaction_date: new Date().toISOString()
+          }])
+      }
+
+      loadClientDetails()
+      alert('Contato removido com sucesso!')
+    } catch (error) {
+      console.error('Erro ao remover contato:', error)
+      alert('Erro ao remover contato')
     }
   }
 
@@ -449,7 +498,10 @@ export default function ClientDetailsModal({
                 <div className="p-6">
                   <div className="flex justify-between items-center mb-6">
                     <h3 className="text-lg font-medium text-gray-900">Contatos</h3>
-                    <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors">
+                    <button 
+                      onClick={() => setShowNewContactModal(true)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+                    >
                       <Plus className="w-4 h-4" />
                       Novo Contato
                     </button>
@@ -458,14 +510,21 @@ export default function ClientDetailsModal({
                   {contacts.length === 0 ? (
                     <div className="text-center py-8">
                       <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                      <p className="text-gray-600">Nenhum contato cadastrado</p>
+                      <p className="text-gray-600 mb-4">Nenhum contato cadastrado</p>
+                      <button 
+                        onClick={() => setShowNewContactModal(true)}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg inline-flex items-center gap-2 transition-colors"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Adicionar Primeiro Contato
+                      </button>
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {contacts.map(contact => (
-                        <div key={contact.id} className="bg-gray-50 rounded-lg p-4">
+                        <div key={contact.id} className="bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-colors">
                           <div className="flex justify-between items-start mb-3">
-                            <div>
+                            <div className="flex-1">
                               <h4 className="font-medium text-gray-900">{contact.full_name}</h4>
                               {contact.job_title && (
                                 <p className="text-sm text-gray-600">{contact.job_title}</p>
@@ -474,7 +533,7 @@ export default function ClientDetailsModal({
                                 <p className="text-xs text-gray-500">{contact.department}</p>
                               )}
                             </div>
-                            <div className="flex gap-1">
+                            <div className="flex items-center gap-1">
                               {contact.is_primary && (
                                 <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
                                   Principal
@@ -486,7 +545,7 @@ export default function ClientDetailsModal({
                             </div>
                           </div>
                           
-                          <div className="space-y-2">
+                          <div className="space-y-2 mb-3">
                             {contact.email && (
                               <div className="flex items-center gap-2 text-sm">
                                 <Mail className="w-4 h-4 text-gray-400" />
@@ -511,6 +570,24 @@ export default function ClientDetailsModal({
                                 </a>
                               </div>
                             )}
+                          </div>
+
+                          {/* Ações do Contato */}
+                          <div className="flex justify-end gap-2 pt-2 border-t border-gray-200">
+                            <button
+                              onClick={() => handleEditContact(contact.id)}
+                              className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                              title="Editar contato"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteContact(contact.id, contact.full_name)}
+                              className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                              title="Remover contato"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           </div>
                         </div>
                       ))}
@@ -673,6 +750,15 @@ export default function ClientDetailsModal({
           )}
         </div>
       </div>
+
+      {/* Modal Novo Contato */}
+      <NewContactModal
+        isOpen={showNewContactModal}
+        onClose={() => setShowNewContactModal(false)}
+        clientId={clientId}
+        clientName={client?.company_name || ''}
+        onContactCreated={handleContactCreated}
+      />
     </div>
   )
 }
