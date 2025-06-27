@@ -6,38 +6,51 @@ import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { 
   ArrowLeft, Edit, AlertTriangle, Calendar, Users, DollarSign, 
-  Target, BarChart3, CheckCircle, FileText, Code, Database, Clock
+  Target, BarChart3, CheckCircle, FileText, Code, Clock,
+  CheckSquare, Loader, XSquare 
 } from 'lucide-react'
+import { Gantt, Task, ViewMode } from 'gantt-task-react'
+import "gantt-task-react/dist/index.css"
 
-// Interfaces para os dados que vamos buscar
+// --- Interfaces ---
 interface ProjectDetails {
-  id: string
-  name: string
-  description?: string
-  status: string
-  health: string
-  progress_percentage: number
-  total_budget: number
-  used_budget: number
-  start_date?: string
-  estimated_end_date?: string
-  risk_level: string
-  project_type: string
-  next_milestone?: string
-  client?: { company_name: string }
-  manager?: { full_name: string }
-  technologies: { name: string }[]
+  id: string;
+  name: string;
+  description?: string;
+  status: string;
+  health: string;
+  progress_percentage: number;
+  total_budget: number;
+  used_budget: number;
+  start_date?: string;
+  estimated_end_date?: string;
+  risk_level: string;
+  project_type: string;
+  next_milestone?: string;
+  client?: { company_name: string };
+  manager?: { full_name: string };
+  technologies: { name: string }[];
   team_members: {
-    role_in_project: string
+    role_in_project: string;
     team_member: {
-        full_name: string
-        primary_specialization: string
+        full_name: string;
+        primary_specialization: string;
     }
-  }[]
-  scope_items: { id: string, title: string, status: string }[]
+  }[];
+  scope_items: { id: string, title: string, status: string }[];
 }
 
-// Componentes de UI reutilizáveis para esta página
+interface ProjectMilestone {
+  id: string;
+  title: string;
+  due_date?: string;
+  start_date?: string; // Adicionado para o Gantt
+  status: string;
+  progress_percentage: number;
+  team_member?: { full_name: string };
+}
+
+// --- Componentes de UI ---
 const KPI_Card = ({ title, value, icon: Icon, colorClass, subtitle }) => (
     <div className={`p-4 rounded-lg flex items-center gap-4 ${colorClass}`}>
         <Icon className="w-6 h-6" />
@@ -70,33 +83,34 @@ const InfoPair = ({ label, value }) => (
     </div>
 );
 
-
+// --- Página Principal ---
 export default function ProjectDetailPage() {
-  const params = useParams()
-  const router = useRouter()
-  const projectId = params.id as string
+  const params = useParams();
+  const router = useRouter();
+  const projectId = params.id as string;
   
-  const [project, setProject] = useState<ProjectDetails | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState('overview')
+  const [project, setProject] = useState<ProjectDetails | null>(null);
+  const [milestones, setMilestones] = useState<ProjectMilestone[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
     if (projectId) {
-      loadProjectDetails()
+      loadProjectDetails();
     }
-  }, [projectId])
+  }, [projectId]);
 
   const loadProjectDetails = async () => {
     try {
-      setLoading(true)
-      const { data, error } = await supabase
+      setLoading(true);
+      const projectPromise = supabase
         .from('projects')
         .select(`
-          *,
-          client:clients(company_name),
+          *, 
+          client:clients(company_name), 
           manager:team_members(full_name),
-          technologies:project_technologies(name),
+          technologies:project_technologies(name), 
           scope_items:project_scope(id, title, status),
           team_members:project_team_members(
             role_in_project,
@@ -104,37 +118,66 @@ export default function ProjectDetailPage() {
           )
         `)
         .eq('id', projectId)
-        .single()
+        .single();
+      
+      const milestonesPromise = supabase
+        .from('project_milestones')
+        .select(`*, team_member:team_members(full_name)`)
+        .eq('project_id', projectId)
+        .order('due_date');
 
-      if (error) throw error
-      setProject(data)
+      const [
+          { data: projectData, error: projectError }, 
+          { data: milestonesData, error: milestonesError }
+      ] = await Promise.all([projectPromise, milestonesPromise]);
+
+      if (projectError) throw projectError;
+      if (milestonesError) throw milestonesError;
+      
+      setProject(projectData);
+      setMilestones(milestonesData || []);
 
     } catch (err: any) {
-      setError(err.message)
+      setError(err.message);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  // Funções de formatação
+  // --- Funções de Formatação e Helpers ---
   const formatDate = (dateString?: string) => dateString ? new Date(dateString).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : 'N/D';
   const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
   
-  const daysRemaining = project?.estimated_end_date
-    ? Math.ceil((new Date(project.estimated_end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
-    : null;
-
   const getHealthConfig = (health: string) => {
       switch (health) {
           case 'Crítico': return { text: 'Crítico', color: 'bg-red-100 text-red-700', icon: AlertTriangle };
           case 'Bom': return { text: 'Bom', color: 'bg-blue-100 text-blue-700', icon: CheckCircle };
           default: return { text: 'Excelente', color: 'bg-green-100 text-green-700', icon: CheckCircle };
       }
-  }
-
+  };
   const healthConfig = project ? getHealthConfig(project.health) : null;
+  const daysRemaining = project?.estimated_end_date ? Math.ceil((new Date(project.estimated_end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : null;
 
-  // Renderização
+  // --- Transformar marcos para o Gráfico de Gantt ---
+  const ganttTasks: Task[] = milestones.map(m => ({
+    start: m.start_date ? new Date(m.start_date) : (m.due_date ? new Date(new Date(m.due_date).setDate(new Date(m.due_date).getDate() - 7)) : new Date()),
+    end: m.due_date ? new Date(m.due_date) : new Date(),
+    name: m.title,
+    id: m.id,
+    type: 'task',
+    progress: m.progress_percentage,
+    isDisabled: m.status === 'Concluído',
+    styles: { progressColor: '#3b82f6', progressSelectedColor: '#2563eb' }
+  }));
+
+  // --- Métricas do Cronograma ---
+  const timelineMetrics = {
+      concluidos: milestones.filter(m => m.status === 'Concluído').length,
+      emAndamento: milestones.filter(m => m.status === 'Em Andamento').length,
+      atrasados: milestones.filter(m => m.status === 'Atrasado').length,
+  };
+
+  // --- Renderização ---
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -162,7 +205,6 @@ export default function ProjectDetailPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header da Página */}
       <div className="bg-white p-6 border-b border-gray-200">
         <div className="max-w-7xl mx-auto">
           <div className="flex justify-between items-center mb-6">
@@ -182,7 +224,6 @@ export default function ProjectDetailPage() {
           </div>
           <h1 className="text-3xl font-bold text-gray-900">{project.name}</h1>
           
-          {/* KPIs */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
             <KPI_Card title="Saúde" value={healthConfig?.text} icon={healthConfig?.icon} colorClass="bg-white border border-gray-200" />
             <KPI_Card title="Progresso" value={`${project.progress_percentage}%`} icon={BarChart3} colorClass="bg-white border border-gray-200" />
@@ -192,7 +233,6 @@ export default function ProjectDetailPage() {
         </div>
       </div>
       
-      {/* Abas e Conteúdo */}
       <div className="max-w-7xl mx-auto p-6">
         <div className="border-b border-gray-200 mb-6">
           <nav className="flex space-x-8">
@@ -203,10 +243,8 @@ export default function ProjectDetailPage() {
           </nav>
         </div>
 
-        {/* Conteúdo da Aba "Visão Geral" */}
         {activeTab === 'overview' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Coluna Esquerda */}
             <div className="lg:col-span-2 space-y-6">
               <InfoCard title="Informações do Projeto" icon={Target}>
                   <p className="text-gray-700">{project.description}</p>
@@ -217,7 +255,6 @@ export default function ProjectDetailPage() {
                       <InfoPair label="Próximo Marco" value={project.next_milestone} />
                   </div>
               </InfoCard>
-
               <InfoCard title="Cronograma" icon={Calendar}>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <InfoPair label="Data de Início" value={formatDate(project.start_date)} />
@@ -230,7 +267,6 @@ export default function ProjectDetailPage() {
                         </div>
                   </div>
               </InfoCard>
-
               <InfoCard title="Tecnologias" icon={Code}>
                   <div className="flex flex-wrap gap-2">
                       {project.technologies.map(tech => (
@@ -239,8 +275,6 @@ export default function ProjectDetailPage() {
                   </div>
               </InfoCard>
             </div>
-            
-            {/* Coluna Direita */}
             <div className="space-y-6">
                 <InfoCard title="Informações Financeiras" icon={DollarSign}>
                     <InfoPair label="Orçamento Total" value={formatCurrency(project.total_budget)} />
@@ -268,8 +302,49 @@ export default function ProjectDetailPage() {
           </div>
         )}
 
-        {/* Placeholders para outras abas */}
-        {activeTab !== 'overview' && (
+        {activeTab === 'timeline' && (
+          <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="bg-white p-4 rounded-lg border flex items-center gap-3"><CheckSquare className="text-green-500" /> <div><p className="text-xl font-bold">{timelineMetrics.concluidos}</p><p className="text-sm text-gray-500">Concluídos</p></div></div>
+                  <div className="bg-white p-4 rounded-lg border flex items-center gap-3"><Loader className="text-blue-500" /> <div><p className="text-xl font-bold">{timelineMetrics.emAndamento}</p><p className="text-sm text-gray-500">Em Andamento</p></div></div>
+                  <div className="bg-white p-4 rounded-lg border flex items-center gap-3"><Clock className="text-gray-500" /> <div><p className="text-xl font-bold">{daysRemaining ?? '--'}</p><p className="text-sm text-gray-500">Dias Restantes</p></div></div>
+                  <div className="bg-white p-4 rounded-lg border flex items-center gap-3"><XSquare className="text-red-500" /> <div><p className="text-xl font-bold">{timelineMetrics.atrasados}</p><p className="text-sm text-gray-500">Atrasados</p></div></div>
+              </div>
+              
+              <div className="bg-white p-4 rounded-lg border">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">Gráfico de Gantt</h3>
+                  {ganttTasks.length > 0 ? (
+                      <Gantt tasks={ganttTasks} viewMode={ViewMode.Month} />
+                  ) : <p className="text-gray-500 py-8 text-center">Nenhum marco cadastrado para este projeto.</p>}
+              </div>
+
+              <div className="bg-white p-6 rounded-lg border">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">Marcos e Entregas</h3>
+                  <div className="space-y-4">
+                      {milestones.length > 0 ? milestones.map(milestone => (
+                          <div key={milestone.id} className="p-4 border rounded-lg hover:bg-gray-50">
+                              <div className="flex justify-between items-center mb-2">
+                                  <p className="font-medium text-gray-800">{milestone.title}</p>
+                                  <span className="text-sm text-gray-500">{formatDate(milestone.due_date)}</span>
+                              </div>
+                               <div className="text-sm text-gray-500 mb-2">Responsável: {milestone.team_member?.full_name || 'N/A'}</div>
+                              <div>
+                                  <div className="flex justify-between text-xs text-gray-600 mb-1">
+                                      <span>Progresso</span>
+                                      <span>{milestone.progress_percentage}%</span>
+                                  </div>
+                                  <div className="w-full bg-gray-200 rounded-full h-2">
+                                      <div className="bg-blue-600 h-2 rounded-full" style={{width: `${milestone.progress_percentage}%`}}></div>
+                                  </div>
+                              </div>
+                          </div>
+                      )) : <p className="text-gray-500 py-8 text-center">Nenhum marco cadastrado.</p>}
+                  </div>
+              </div>
+          </div>
+        )}
+
+        {(activeTab === 'risks' || activeTab === 'deliverables') && (
           <div className="text-center py-16 bg-white rounded-lg border">
             <h2 className="text-xl font-semibold">Em Desenvolvimento</h2>
             <p className="text-gray-600 mt-2">A aba de "{activeTab}" será implementada em breve.</p>
