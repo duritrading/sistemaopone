@@ -1,351 +1,280 @@
 // src/hooks/useOptimizedProjects.ts
 /**
- * Hooks otimizados para gestão de estado com memoização inteligente
- * Reduz re-renders e melhora performance significativamente
+ * Hook otimizado para projetos - SUBSTITUIÇÃO DIRETA
+ * Use este hook no lugar dos existentes para ganhos imediatos de performance
  */
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { optimizedQueryService } from '@/services/optimizedQueries'
-import { useDebounce } from './useDebounce'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { optimizedProjectService } from '@/services/optimizedProjectService'
 
 interface ProjectFilters {
+  search?: string
   status?: string[]
   health?: string[]
-  search?: string
-  limit?: number
-  offset?: number
+  type?: string[]
 }
 
 interface UseProjectsOptions {
   enabled?: boolean
-  refetchInterval?: number
-  suspense?: boolean
+  autoRefresh?: boolean
+  refreshInterval?: number
 }
 
 /**
- * Hook principal para lista de projetos com otimizações avançadas
+ * Hook principal para lista de projetos
+ * USO: const { projects, loading, error, metrics } = useOptimizedProjects(filters)
  */
 export function useOptimizedProjects(
   filters: ProjectFilters = {},
-  options: UseProjectsOptions = {}
+  options: UseProjectsOptions = { enabled: true }
 ) {
   const [projects, setProjects] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [hasMore, setHasMore] = useState(true)
+  const [metrics, setMetrics] = useState({
+    active: 0,
+    critical: 0,
+    totalBudget: 0,
+    avgProgress: 0
+  })
 
-  const abortControllerRef = useRef<AbortController | null>(null)
-  const lastFiltersRef = useRef<string>('')
+  // Debounce da busca para evitar muitas queries
+  const [debouncedSearch, setDebouncedSearch] = useState(filters.search || '')
+  
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(filters.search || '')
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [filters.search])
 
-  // Debounce search para evitar queries excessivas
-  const debouncedSearch = useDebounce(filters.search || '', 300)
-
-  // Memoizar filtros para evitar re-fetches desnecessários
+  // Filtros memoizados
   const memoizedFilters = useMemo(() => ({
-    ...filters,
-    search: debouncedSearch
-  }), [filters.status, filters.health, debouncedSearch, filters.limit, filters.offset])
+    search: debouncedSearch,
+    status: filters.status,
+    health: filters.health,
+    limit: 50 // Limite razoável
+  }), [debouncedSearch, filters.status, filters.health])
 
-  // Função otimizada de fetch com cancelamento
-  const fetchProjects = useCallback(async (resetData = false) => {
+  // Função para carregar projetos
+  const loadProjects = useCallback(async () => {
     if (!options.enabled) return
-
-    // Cancelar requisição anterior se existir
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort()
-    }
-
-    abortControllerRef.current = new AbortController()
 
     try {
       setLoading(true)
       setError(null)
 
-      let results
-      
-      if (memoizedFilters.search) {
-        // Usar search otimizado
-        results = await optimizedQueryService.searchProjectsOptimized(
-          memoizedFilters.search,
-          memoizedFilters
-        )
-      } else {
-        // Usar query padrão otimizada
-        results = await optimizedQueryService.getProjectsOptimized(memoizedFilters)
-      }
+      const [projectsData, metricsData] = await Promise.all([
+        optimizedProjectService.getProjects(memoizedFilters),
+        optimizedProjectService.getDashboardMetrics()
+      ])
 
-      if (resetData || memoizedFilters.offset === 0) {
-        setProjects(results || [])
-      } else {
-        // Append para paginação infinita
-        setProjects(prev => [...prev, ...(results || [])])
-      }
-
-      setHasMore((results?.length || 0) === (memoizedFilters.limit || 10))
+      setProjects(projectsData)
+      setMetrics(metricsData)
 
     } catch (err: any) {
-      if (err.name !== 'AbortError') {
-        setError(err.message)
-        console.error('Error fetching projects:', err)
-      }
+      console.error('Erro ao carregar projetos:', err)
+      setError(err.message)
     } finally {
       setLoading(false)
     }
   }, [memoizedFilters, options.enabled])
 
-  // Invalidação inteligente de cache
-  const invalidateCache = useCallback(() => {
-    optimizedQueryService.invalidateProjectCache()
-    fetchProjects(true)
-  }, [fetchProjects])
-
-  // Load more para infinite scroll
-  const loadMore = useCallback(() => {
-    if (!loading && hasMore) {
-      const nextFilters = {
-        ...memoizedFilters,
-        offset: projects.length
-      }
-      fetchProjects(false)
-    }
-  }, [memoizedFilters, projects.length, loading, hasMore, fetchProjects])
-
-  // Effect principal para fetch
+  // Carregar dados quando filtros mudam
   useEffect(() => {
-    const filtersString = JSON.stringify(memoizedFilters)
-    
-    // Só fazer fetch se os filtros mudaram
-    if (filtersString !== lastFiltersRef.current) {
-      lastFiltersRef.current = filtersString
-      fetchProjects(true)
-    }
-  }, [memoizedFilters, fetchProjects])
+    loadProjects()
+  }, [loadProjects])
 
-  // Cleanup ao desmontar
+  // Auto-refresh opcional
   useEffect(() => {
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort()
+    if (!options.autoRefresh || !options.refreshInterval) return
+
+    const interval = setInterval(() => {
+      if (!loading) {
+        console.log('🔄 Auto-refresh dos projetos')
+        loadProjects()
       }
-    }
-  }, [])
+    }, options.refreshInterval)
 
-  // Auto-refetch configurável
-  useEffect(() => {
-    if (options.refetchInterval && options.refetchInterval > 0) {
-      const interval = setInterval(() => {
-        if (!loading) {
-          fetchProjects(true)
-        }
-      }, options.refetchInterval)
+    return () => clearInterval(interval)
+  }, [options.autoRefresh, options.refreshInterval, loading, loadProjects])
 
-      return () => clearInterval(interval)
-    }
-  }, [options.refetchInterval, loading, fetchProjects])
+  // Função para invalidar cache e recarregar
+  const refresh = useCallback(() => {
+    optimizedProjectService.invalidateCache('projects')
+    loadProjects()
+  }, [loadProjects])
 
-  // Métricas derivadas memoizadas
-  const metrics = useMemo(() => {
-    if (!projects.length) {
-      return {
-        active: 0,
-        critical: 0,
-        totalBudget: 0,
-        avgProgress: 0
-      }
-    }
-
-    return {
-      active: projects.filter(p => p.status === 'Executando').length,
-      critical: projects.filter(p => p.health === 'Crítico').length,
-      totalBudget: projects.reduce((sum, p) => sum + (p.total_budget || 0), 0),
-      avgProgress: Math.round(
-        projects.reduce((sum, p) => sum + (p.progress_percentage || 0), 0) / projects.length
-      )
-    }
-  }, [projects])
+  // Estatísticas do cache
+  const cacheStats = useMemo(() => {
+    return optimizedProjectService.getCacheStats()
+  }, [projects]) // Recalcula quando projetos mudam
 
   return {
     projects,
     loading,
     error,
-    hasMore,
     metrics,
-    fetchProjects: () => fetchProjects(true),
-    loadMore,
-    invalidateCache
+    refresh,
+    cacheStats
   }
 }
 
 /**
- * Hook para detalhes de projeto individual
+ * Hook para detalhes de um projeto específico
+ * USO: const { project, loading } = useProjectDetails(projectId)
  */
 export function useProjectDetails(projectId: string, enabled = true) {
   const [project, setProject] = useState<any>(null)
   const [loading, setLoading] = useState(enabled)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchProject = useCallback(async () => {
+  const loadProject = useCallback(async () => {
     if (!projectId || !enabled) return
 
     try {
       setLoading(true)
       setError(null)
 
-      const result = await optimizedQueryService.getProjectDetailsOptimized(projectId)
-      setProject(result)
+      const projectData = await optimizedProjectService.getProjectDetails(projectId)
+      setProject(projectData)
 
     } catch (err: any) {
+      console.error('Erro ao carregar projeto:', err)
       setError(err.message)
-      console.error('Error fetching project details:', err)
     } finally {
       setLoading(false)
     }
   }, [projectId, enabled])
 
   useEffect(() => {
-    fetchProject()
-  }, [fetchProject])
+    loadProject()
+  }, [loadProject])
 
-  const invalidateCache = useCallback(() => {
-    optimizedQueryService.invalidateProjectCache(projectId)
-    fetchProject()
-  }, [projectId, fetchProject])
+  const refresh = useCallback(() => {
+    optimizedProjectService.invalidateCache(`project_details_${projectId}`)
+    loadProject()
+  }, [projectId, loadProject])
 
   return {
     project,
     loading,
     error,
-    refetch: fetchProject,
-    invalidateCache
+    refresh
   }
 }
 
 /**
- * Hook para operações batch
+ * Hook para busca de projetos
+ * USO: const { results, searching } = useProjectSearch(searchTerm)
  */
-export function useBatchOperations() {
-  const [loading, setLoading] = useState(false)
+export function useProjectSearch(searchTerm: string, enabled = true) {
+  const [results, setResults] = useState<any[]>([])
+  const [searching, setSearching] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const batchUpdate = useCallback(async (
-    projectIds: string[], 
-    updates: Record<string, any>
-  ) => {
+  // Debounce da busca
+  const [debouncedTerm, setDebouncedTerm] = useState(searchTerm)
+  
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedTerm(searchTerm)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchTerm])
+
+  const search = useCallback(async () => {
+    if (!debouncedTerm.trim() || !enabled) {
+      setResults([])
+      return
+    }
+
     try {
-      setLoading(true)
+      setSearching(true)
       setError(null)
 
-      // Implementar batch update otimizado
-      const { error: updateError } = await supabase
-        .from('projects')
-        .update(updates)
-        .in('id', projectIds)
+      const searchResults = await optimizedProjectService.searchProjects(debouncedTerm)
+      setResults(searchResults)
 
-      if (updateError) throw updateError
-
-      // Invalidar cache relevante
-      projectIds.forEach(id => {
-        optimizedQueryService.invalidateProjectCache(id)
-      })
-
-      return true
     } catch (err: any) {
+      console.error('Erro na busca:', err)
       setError(err.message)
-      return false
+      setResults([])
     } finally {
-      setLoading(false)
+      setSearching(false)
     }
-  }, [])
+  }, [debouncedTerm, enabled])
 
-  const batchDelete = useCallback(async (projectIds: string[]) => {
-    try {
-      setLoading(true)
-      setError(null)
-
-      const { error: deleteError } = await supabase
-        .from('projects')
-        .delete()
-        .in('id', projectIds)
-
-      if (deleteError) throw deleteError
-
-      // Invalidar todo o cache de projetos
-      optimizedQueryService.invalidateProjectCache()
-
-      return true
-    } catch (err: any) {
-      setError(err.message)
-      return false
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  useEffect(() => {
+    search()
+  }, [search])
 
   return {
-    loading,
+    results,
+    searching,
     error,
-    batchUpdate,
-    batchDelete
+    hasResults: results.length > 0,
+    hasSearch: debouncedTerm.trim().length > 0
   }
 }
 
 /**
  * Hook para métricas em tempo real
+ * USO: const { metrics, loading } = useDashboardMetrics()
  */
-export function useRealTimeMetrics() {
-  const [metrics, setMetrics] = useState<any>(null)
+export function useDashboardMetrics(autoRefresh = false, refreshInterval = 30000) {
+  const [metrics, setMetrics] = useState({
+    active: 0,
+    critical: 0,
+    totalBudget: 0,
+    avgProgress: 0
+  })
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    const fetchMetrics = async () => {
-      try {
-        const { data, error } = await supabase.rpc('get_dashboard_metrics')
-        if (error) throw error
-        setMetrics(data)
-      } catch (err) {
-        console.error('Error fetching metrics:', err)
-      } finally {
-        setLoading(false)
-      }
-    }
+  const loadMetrics = useCallback(async () => {
+    try {
+      setLoading(true)
+      setError(null)
 
-    fetchMetrics()
+      const metricsData = await optimizedProjectService.getDashboardMetrics()
+      setMetrics(metricsData)
 
-    // Subscription para updates em tempo real
-    const subscription = supabase
-      .channel('metrics_updates')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'projects'
-      }, () => {
-        fetchMetrics()
-      })
-      .subscribe()
-
-    return () => {
-      subscription.unsubscribe()
+    } catch (err: any) {
+      console.error('Erro ao carregar métricas:', err)
+      setError(err.message)
+    } finally {
+      setLoading(false)
     }
   }, [])
 
-  return { metrics, loading }
-}
-
-/**
- * Hook customizado para debounce
- */
-function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState<T>(value)
-
   useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value)
-    }, delay)
+    loadMetrics()
+  }, [loadMetrics])
 
-    return () => {
-      clearTimeout(handler)
-    }
-  }, [value, delay])
+  // Auto-refresh
+  useEffect(() => {
+    if (!autoRefresh) return
 
-  return debouncedValue
+    const interval = setInterval(() => {
+      if (!loading) {
+        console.log('🔄 Auto-refresh das métricas')
+        loadMetrics()
+      }
+    }, refreshInterval)
+
+    return () => clearInterval(interval)
+  }, [autoRefresh, refreshInterval, loading, loadMetrics])
+
+  const refresh = useCallback(() => {
+    optimizedProjectService.invalidateCache('dashboard_metrics')
+    loadMetrics()
+  }, [loadMetrics])
+
+  return {
+    metrics,
+    loading,
+    error,
+    refresh
+  }
 }

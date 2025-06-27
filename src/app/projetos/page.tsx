@@ -1,28 +1,20 @@
-// src/app/projetos/page.tsx - VERSÃO OTIMIZADA
-/**
- * Página de projetos completamente otimizada
- * Implementa todas as melhorias de performance identificadas
- */
+// src/app/projetos/page.tsx - VERSÃO OTIMIZADA PRÁTICA
+// SUBSTITUA O CÓDIGO EXISTENTE POR ESTE
 
 'use client'
 
-import React, { Suspense, lazy, useMemo, useCallback, useState } from 'react'
-import { ErrorBoundary } from 'react-error-boundary'
+import { useState, useMemo } from 'react'
 import { 
-  Search, Download, Filter, Plus, 
+  Search, Download, Filter, Plus,
   AlertTriangle, CheckCircle, DollarSign, BarChart3 
 } from 'lucide-react'
 
+// IMPORT DOS NOVOS HOOKS OTIMIZADOS
 import { useOptimizedProjects } from '@/hooks/useOptimizedProjects'
-import { usePerformanceMonitor, useQueryMonitor } from '@/utils/performanceMonitor'
-import { useDebounce } from '@/hooks/useDebounce'
 
-// Lazy loading de componentes pesados
-const OptimizedProjectList = lazy(() => import('@/components/optimized/OptimizedProjectList'))
-const ExportModal = lazy(() => import('@/components/modals/ExportModal'))
-const NewProjectModal = lazy(() => import('@/components/modals/NewProjectModal'))
+// IMPORT DO COMPONENTE SIMPLIFICADO (sem dependências externas)
+import SimpleOptimizedProjectList from '@/components/optimized/SimpleOptimizedProjectList'
 
-// Interfaces otimizadas
 interface ProjectFilters {
   search: string
   status: string[]
@@ -30,378 +22,301 @@ interface ProjectFilters {
   type: string[]
 }
 
-interface MetricCardProps {
-  title: string
-  value: string | number
-  icon: React.ComponentType<any>
-  colorClass: string
-  trend?: {
-    value: number
-    isPositive: boolean
-  }
-}
-
-/**
- * Componente de métrica memoizado para evitar re-renders
- */
-const MetricCard = React.memo<MetricCardProps>(function MetricCard({ 
-  title, 
-  value, 
-  icon: Icon, 
-  colorClass,
-  trend 
-}) {
-  return (
-    <div className="bg-white rounded-lg p-5 border border-gray-200 flex items-center gap-4 hover:shadow-md transition-shadow">
-      <div className={`w-12 h-12 ${colorClass} rounded-lg flex items-center justify-center`}>
-        <Icon className="w-6 h-6 text-white" />
-      </div>
-      <div className="flex-1">
-        <p className="text-2xl font-bold text-gray-900">{value}</p>
-        <p className="text-sm text-gray-600">{title}</p>
-        {trend && (
-          <p className={`text-xs ${trend.isPositive ? 'text-green-600' : 'text-red-600'}`}>
-            {trend.isPositive ? '↗' : '↘'} {Math.abs(trend.value)}%
-          </p>
-        )}
-      </div>
+// Componente de métricas (mesmo do seu código)
+const MetricCard = ({ title, value, icon: Icon, colorClass }) => (
+  <div className="bg-white rounded-lg p-5 border border-gray-200 flex items-center gap-4">
+    <div className={`w-10 h-10 ${colorClass} rounded-full flex items-center justify-center`}>
+      <Icon className="w-5 h-5 text-white" />
     </div>
-  )
-})
-
-/**
- * Componente de filtros memoizado
- */
-const FilterPanel = React.memo<{
-  filters: ProjectFilters
-  onFiltersChange: (filters: ProjectFilters) => void
-  onExport: () => void
-  onNewProject: () => void
-}>(function FilterPanel({ filters, onFiltersChange, onExport, onNewProject }) {
-  const { measureSync } = usePerformanceMonitor('FilterPanel')
-  
-  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    measureSync('search_change', () => {
-      onFiltersChange({
-        ...filters,
-        search: e.target.value
-      })
-    })
-  }, [filters, onFiltersChange, measureSync])
-
-  const handleStatusFilter = useCallback((status: string) => {
-    measureSync('status_filter', () => {
-      const newStatuses = filters.status.includes(status)
-        ? filters.status.filter(s => s !== status)
-        : [...filters.status, status]
-      
-      onFiltersChange({
-        ...filters,
-        status: newStatuses
-      })
-    })
-  }, [filters, onFiltersChange, measureSync])
-
-  const handleHealthFilter = useCallback((health: string) => {
-    measureSync('health_filter', () => {
-      const newHealth = filters.health.includes(health)
-        ? filters.health.filter(h => h !== health)
-        : [...filters.health, health]
-      
-      onFiltersChange({
-        ...filters,
-        health: newHealth
-      })
-    })
-  }, [filters, onFiltersChange, measureSync])
-
-  return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
-      <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
-        {/* Busca */}
-        <div className="flex-1 max-w-md">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Buscar projetos..."
-              value={filters.search}
-              onChange={handleSearchChange}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-        </div>
-
-        {/* Filtros rápidos */}
-        <div className="flex flex-wrap gap-2">
-          {/* Status */}
-          <div className="flex gap-1">
-            {['Executando', 'Planejamento', 'Pausado'].map(status => (
-              <button
-                key={status}
-                onClick={() => handleStatusFilter(status)}
-                className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-                  filters.status.includes(status)
-                    ? 'bg-blue-100 text-blue-800'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                {status}
-              </button>
-            ))}
-          </div>
-
-          {/* Health */}
-          <div className="flex gap-1 ml-2">
-            {[
-              { key: 'healthy', label: 'Saudável', color: 'green' },
-              { key: 'warning', label: 'Atenção', color: 'yellow' },
-              { key: 'critical', label: 'Crítico', color: 'red' }
-            ].map(({ key, label, color }) => (
-              <button
-                key={key}
-                onClick={() => handleHealthFilter(key)}
-                className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-                  filters.health.includes(key)
-                    ? `bg-${color}-100 text-${color}-800`
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Ações */}
-        <div className="flex gap-2">
-          <button
-            onClick={onExport}
-            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            <Download className="w-4 h-4" />
-            Exportar
-          </button>
-          
-          <button
-            onClick={onNewProject}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            Novo Projeto
-          </button>
-        </div>
-      </div>
+    <div>
+      <p className="text-2xl font-bold text-gray-900">{value}</p>
+      <p className="text-sm text-gray-600">{title}</p>
     </div>
-  )
-})
+  </div>
+)
 
-/**
- * Componente principal da página
- */
 export default function OptimizedProjectsPage() {
-  const { measureAsync } = usePerformanceMonitor('ProjectsPage')
-  const { measureQuery } = useQueryMonitor()
-  
-  // Estados locais
+  // Estados locais (mesmo que antes)
   const [filters, setFilters] = useState<ProjectFilters>({
     search: '',
     status: [],
     health: [],
     type: []
   })
-  
-  const [modals, setModals] = useState({
-    export: false,
-    newProject: false
-  })
 
-  // Debounce da busca para otimizar queries
-  const debouncedSearch = useDebounce(filters.search, 300)
-
-  // Filtros otimizados para o hook
-  const optimizedFilters = useMemo(() => ({
-    search: debouncedSearch,
-    status: filters.status.length > 0 ? filters.status : undefined,
-    health: filters.health.length > 0 ? filters.health : undefined,
-    limit: 20 // Paginação
-  }), [debouncedSearch, filters.status, filters.health])
-
-  // Hook otimizado para projetos
+  // SUBSTITUIR: em vez de useEffect + supabase, use os hooks otimizados
   const {
     projects,
     loading,
     error,
     metrics,
-    hasMore,
-    loadMore,
-    invalidateCache
-  } = useOptimizedProjects(optimizedFilters, {
+    refresh,
+    cacheStats
+  } = useOptimizedProjects(filters, {
     enabled: true,
-    refetchInterval: 30000 // 30 segundos
+    autoRefresh: true,
+    refreshInterval: 30000 // 30 segundos
   })
 
-  // Callbacks otimizados
-  const handleFiltersChange = useCallback((newFilters: ProjectFilters) => {
-    measureAsync('filter_change', async () => {
-      setFilters(newFilters)
-    })
-  }, [measureAsync])
-
-  const handleProjectSelect = useCallback((project: any) => {
-    measureAsync('project_select', async () => {
-      // Navegar para detalhes do projeto
-      window.location.href = `/projetos/${project.id}`
-    })
-  }, [measureAsync])
-
-  const handleExport = useCallback(() => {
-    measureAsync('export', async () => {
-      setModals(prev => ({ ...prev, export: true }))
-    })
-  }, [measureAsync])
-
-  const handleNewProject = useCallback(() => {
-    setModals(prev => ({ ...prev, newProject: true }))
-  }, [])
-
-  const handleModalClose = useCallback((modalName: keyof typeof modals) => {
-    setModals(prev => ({ ...prev, [modalName]: false }))
-  }, [])
-
-  const handleProjectCreated = useCallback(() => {
-    measureAsync('project_created', async () => {
-      invalidateCache()
-      setModals(prev => ({ ...prev, newProject: false }))
-    })
-  }, [invalidateCache, measureAsync])
-
-  // Métricas memoizadas com trends
-  const metricsWithTrends = useMemo(() => [
+  // Formatação das métricas (adaptação dos seus valores existentes)
+  const formattedMetrics = useMemo(() => [
     {
       title: 'Projetos Ativos',
       value: metrics.active,
       icon: CheckCircle,
-      colorClass: 'bg-blue-500',
-      trend: { value: 12, isPositive: true }
+      colorClass: 'bg-blue-500'
     },
     {
-      title: 'Críticos',
+      title: 'Críticos', 
       value: metrics.critical,
       icon: AlertTriangle,
-      colorClass: 'bg-red-500',
-      trend: { value: 8, isPositive: false }
+      colorClass: 'bg-red-500'
     },
     {
-      title: 'Orçamento Total',
+      title: 'Valor Total',
       value: `R$ ${(metrics.totalBudget / 1000000).toFixed(1)}M`,
       icon: DollarSign,
-      colorClass: 'bg-green-500',
-      trend: { value: 15, isPositive: true }
+      colorClass: 'bg-green-500'
     },
     {
-      title: 'Progresso Médio',
+      title: 'Média Progresso',
       value: `${metrics.avgProgress}%`,
       icon: BarChart3,
-      colorClass: 'bg-orange-500',
-      trend: { value: 5, isPositive: true }
+      colorClass: 'bg-orange-500'
     }
   ], [metrics])
 
-  // Error boundary fallback
-  const ErrorFallback = useCallback(({ error, resetErrorBoundary }: any) => (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="bg-white p-8 rounded-lg border border-red-200 max-w-md w-full">
-        <h2 className="text-xl font-semibold text-red-800 mb-4">
-          Erro no Sistema
-        </h2>
-        <p className="text-red-600 mb-4">
-          {error.message || 'Ocorreu um erro inesperado'}
-        </p>
-        <button
-          onClick={resetErrorBoundary}
-          className="w-full bg-red-600 text-white py-2 rounded-lg hover:bg-red-700"
-        >
-          Tentar Novamente
-        </button>
-      </div>
-    </div>
-  ), [])
+  // Funções de filtro (mantém a mesma lógica)
+  const filteredProjects = useMemo(() => {
+    return projects.filter(project => {
+      // Aplicar filtros locais se necessário
+      if (filters.status.length > 0 && !filters.status.includes(project.status)) {
+        return false
+      }
+      if (filters.health.length > 0 && !filters.health.includes(project.health)) {
+        return false
+      }
+      return true
+    })
+  }, [projects, filters])
 
-  return (
-    <ErrorBoundary FallbackComponent={ErrorFallback}>
+  // Handlers (mantém a mesma lógica)
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFilters(prev => ({ ...prev, search: e.target.value }))
+  }
+
+  const handleStatusFilter = (status: string) => {
+    setFilters(prev => ({
+      ...prev,
+      status: prev.status.includes(status)
+        ? prev.status.filter(s => s !== status)
+        : [...prev.status, status]
+    }))
+  }
+
+  const handleHealthFilter = (health: string) => {
+    setFilters(prev => ({
+      ...prev,
+      health: prev.health.includes(health)
+        ? prev.health.filter(h => h !== health)
+        : [...prev.health, health]
+    }))
+  }
+
+  // Loading state (melhorado)
+  if (loading && projects.length === 0) {
+    return (
       <div className="min-h-screen bg-gray-50 p-6">
         <div className="max-w-7xl mx-auto">
-          {/* Header */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              Gestão de Projetos
-            </h1>
-            <p className="text-gray-600">
-              Acompanhe o progresso e saúde dos seus projetos em tempo real
-            </p>
+            <h1 className="text-3xl font-bold text-gray-900">Gestão de Projetos</h1>
+            <p className="text-gray-600">Carregando dados otimizados...</p>
           </div>
-
-          {/* Métricas */}
+          
+          {/* Skeleton loading */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            {metricsWithTrends.map((metric, index) => (
-              <MetricCard
-                key={metric.title}
-                {...metric}
-              />
+            {Array.from({ length: 4 }, (_, i) => (
+              <div key={i} className="bg-white rounded-lg p-5 border border-gray-200 animate-pulse">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
+                  <div className="flex-1">
+                    <div className="h-6 bg-gray-200 rounded mb-2"></div>
+                    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                  </div>
+                </div>
+              </div>
             ))}
           </div>
-
-          {/* Filtros */}
-          <FilterPanel
-            filters={filters}
-            onFiltersChange={handleFiltersChange}
-            onExport={handleExport}
-            onNewProject={handleNewProject}
-          />
-
-          {/* Lista de Projetos */}
-          <Suspense fallback={
-            <div className="flex justify-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <div className="animate-pulse">
+              <div className="h-8 bg-gray-200 rounded mb-4"></div>
+              <div className="space-y-4">
+                {Array.from({ length: 5 }, (_, i) => (
+                  <div key={i} className="h-24 bg-gray-200 rounded"></div>
+                ))}
+              </div>
             </div>
-          }>
-            <OptimizedProjectList
-              filters={filters}
-              onProjectSelect={handleProjectSelect}
-              height={800}
-              enableVirtualization={projects.length > 50}
-            />
-          </Suspense>
-
-          {/* Modais Lazy Loaded */}
-          <Suspense fallback={null}>
-            {modals.export && (
-              <ExportModal
-                isOpen={modals.export}
-                onClose={() => handleModalClose('export')}
-                data={projects}
-                filename="projetos"
-              />
-            )}
-          </Suspense>
-
-          <Suspense fallback={null}>
-            {modals.newProject && (
-              <NewProjectModal
-                isOpen={modals.newProject}
-                onClose={() => handleModalClose('newProject')}
-                onSuccess={handleProjectCreated}
-              />
-            )}
-          </Suspense>
+          </div>
         </div>
       </div>
-    </ErrorBoundary>
+    )
+  }
+
+  // Error state (melhorado)
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-8">
+            <h2 className="text-xl font-semibold text-red-800 mb-4">❌ Erro ao Carregar Projetos</h2>
+            <p className="text-red-600 mb-4">{error}</p>
+            <div className="flex gap-4">
+              <button 
+                onClick={refresh}
+                className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
+              >
+                Tentar Novamente
+              </button>
+              <button 
+                onClick={() => window.location.reload()}
+                className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700"
+              >
+                Recarregar Página
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Header com indicador de performance */}
+        <div className="mb-8">
+          <div className="flex justify-between items-start">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Gestão de Projetos</h1>
+              <p className="text-gray-600">
+                Acompanhe o progresso e saúde dos seus projetos
+                {loading && <span className="ml-2 text-blue-600">🔄 Atualizando...</span>}
+              </p>
+            </div>
+            
+            {/* Indicador de cache (opcional - para debug) */}
+            {cacheStats && (
+              <div className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                Cache: {cacheStats.valid}/{cacheStats.total} • Hit Rate: {cacheStats.hitRate.toFixed(1)}%
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Métricas - MESMO LAYOUT, DADOS OTIMIZADOS */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {formattedMetrics.map((metric, index) => (
+            <MetricCard
+              key={metric.title}
+              {...metric}
+            />
+          ))}
+        </div>
+        
+        {/* Filtros - MESMO LAYOUT */}
+        <div className="bg-white rounded-lg border border-gray-200">
+          <div className="p-6 border-b border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Lista de Projetos</h2>
+            <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
+              
+              {/* Busca */}
+              <div className="flex-1 max-w-md">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                  <input
+                    type="text"
+                    placeholder="Buscar projetos..."
+                    value={filters.search}
+                    onChange={handleSearchChange}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+
+              {/* Filtros rápidos */}
+              <div className="flex flex-wrap gap-2">
+                {/* Status */}
+                {['Executando', 'Planejamento', 'Pausado'].map(status => (
+                  <button
+                    key={status}
+                    onClick={() => handleStatusFilter(status)}
+                    className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                      filters.status.includes(status)
+                        ? 'bg-blue-100 text-blue-800'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    {status}
+                  </button>
+                ))}
+
+                {/* Health */}
+                {[
+                  { key: 'healthy', label: 'Saudável' },
+                  { key: 'warning', label: 'Atenção' },
+                  { key: 'critical', label: 'Crítico' }
+                ].map(({ key, label }) => (
+                  <button
+                    key={key}
+                    onClick={() => handleHealthFilter(key)}
+                    className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                      filters.health.includes(key)
+                        ? 'bg-red-100 text-red-800'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Ações */}
+              <div className="flex gap-2">
+                <button 
+                  onClick={refresh}
+                  className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  disabled={loading}
+                >
+                  {loading ? '🔄' : '🔄'} Atualizar
+                </button>
+                
+                <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                  <Download className="w-4 h-4" />
+                  Exportar
+                </button>
+                
+                <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                  <Plus className="w-4 h-4" />
+                  Novo Projeto
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Lista de Projetos - USA COMPONENTE OTIMIZADO SIMPLIFICADO */}
+          <div className="p-6">
+            <SimpleOptimizedProjectList
+              projects={filteredProjects}
+              onProjectSelect={(project) => {
+                // Navegar para página de detalhes
+                window.location.href = `/projetos/${project.id}`
+              }}
+              loading={loading}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
-
-// Export do componente com React.lazy para code splitting
-export const LazyOptimizedProjectsPage = lazy(() => Promise.resolve({ 
-  default: OptimizedProjectsPage 
-}))
