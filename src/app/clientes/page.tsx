@@ -2,7 +2,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createClient } from '@supabase/supabase-js'
 import { 
   Plus, Search, Filter, Eye, Edit2, Trash2, Users, 
   TrendingUp, DollarSign, Building2, Heart, AlertTriangle,
@@ -18,7 +18,10 @@ export default function ClientsPage() {
   const [statusFilter, setStatusFilter] = useState<RelationshipStatus | 'all'>('all')
   const [healthFilter, setHealthFilter] = useState<AccountHealth | 'all'>('all')
 
-  const supabase = createClientComponentClient()
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
 
   useEffect(() => {
     loadClients()
