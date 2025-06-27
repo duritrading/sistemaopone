@@ -63,23 +63,42 @@ export default function EditProjectModal({ isOpen, onClose, project, onSuccess }
   const onSubmit = async (data) => {
     setIsSubmitting(true);
     try {
-      const { client, manager, technologies, team_members, scope_items, created_at, updated_at, ...projectData } = data;
-      
-      projectData.updated_at = new Date().toISOString();
+      // **CORREÇÃO PRINCIPAL AQUI**
+      // Construímos o objeto de atualização manualmente para garantir que apenas
+      // os campos corretos da tabela 'projects' sejam enviados.
+      const updateData = {
+        name: data.name,
+        description: data.description,
+        status: data.status,
+        health: data.health,
+        risk_level: data.risk_level,
+        project_type: data.project_type,
+        manager_id: data.manager_id,
+        start_date: data.start_date || null,
+        estimated_end_date: data.estimated_end_date || null,
+        progress_percentage: data.progress_percentage,
+        next_milestone: data.next_milestone,
+        total_budget: data.total_budget,
+        used_budget: data.used_budget,
+        updated_at: new Date().toISOString(),
+      };
 
       const { error } = await supabase
         .from('projects')
-        .update(projectData)
+        .update(updateData)
         .eq('id', project.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase error details:", error);
+        throw error;
+      }
 
       alert('Projeto atualizado com sucesso!');
       onSuccess();
       onClose();
     } catch (error) {
       console.error('Erro ao atualizar projeto:', error);
-      alert('Falha ao atualizar o projeto.');
+      alert('Falha ao atualizar o projeto. Verifique o console para mais detalhes.');
     } finally {
       setIsSubmitting(false);
     }
@@ -126,7 +145,7 @@ export default function EditProjectModal({ isOpen, onClose, project, onSuccess }
         <form className="p-6 space-y-6 overflow-y-auto">
             <FormSection title="Informações Básicas" icon={Info}>
                 <FormField label="Nome do Projeto" fullWidth><Input {...register('name')} /></FormField>
-                <FormField label="Cliente"><Input value={project.client?.company_name || 'N/A'} readOnly className="bg-gray-100" /></FormField>
+                <FormField label="Cliente"><Input value={project.client?.company_name || 'N/A'} readOnly className="bg-gray-100 cursor-not-allowed" /></FormField>
                 <FormField label="Gerente de Projeto"><Select {...register('manager_id')}><option value="">Selecione</option>{teamMembers.map(m => <option key={m.id} value={m.id}>{m.full_name}</option>)}</Select></FormField>
                 <FormField label="Tipo"><Select {...register('project_type')}><option>MVP</option><option>PoC</option><option>Implementação</option><option>Consultoria</option></Select></FormField>
                 <FormField label="Status"><Select {...register('status')}><option>Planejamento</option><option>Executando</option><option>Pausado</option><option>Concluído</option><option>Cancelado</option></Select></FormField>
@@ -145,7 +164,6 @@ export default function EditProjectModal({ isOpen, onClose, project, onSuccess }
 
              <FormSection title="Detalhes do Projeto" icon={FileText}>
                 <FormField label="Objetivo" fullWidth><TextArea {...register('description')} /></FormField>
-                {/* Campos de Escopo e Tecnologia serão adicionados em uma próxima fase para não complexificar a edição inicial */}
             </FormSection>
         </form>
       </div>
