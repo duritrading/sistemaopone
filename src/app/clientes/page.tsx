@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { Client, ClientMetrics, RelationshipStatus, AccountHealth } from '@/types/clients'
 import NewClientModal from '@/components/modals/NewClientModal'
+import ClientDetailsModal from '@/components/modals/ClientDetailsModal'
 
 export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([])
@@ -19,6 +20,8 @@ export default function ClientsPage() {
   const [statusFilter, setStatusFilter] = useState<RelationshipStatus | 'all'>('all')
   const [healthFilter, setHealthFilter] = useState<AccountHealth | 'all'>('all')
   const [showNewClientModal, setShowNewClientModal] = useState(false)
+  const [showDetailsModal, setShowDetailsModal] = useState(false)
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null)
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -169,6 +172,17 @@ export default function ClientsPage() {
   const handleClientCreated = () => {
     loadClients()
     loadMetrics()
+  }
+
+  const handleViewClient = (clientId: string) => {
+    setSelectedClientId(clientId)
+    setShowDetailsModal(true)
+  }
+
+  const handleEditClient = (client: Client) => {
+    // Função para modal de edição (implementaremos depois)
+    console.log('Editar cliente:', client)
+    setShowDetailsModal(false)
   }
 
   const getPrimaryContact = (contacts?: any[]) => {
@@ -345,7 +359,10 @@ export default function ClientsPage() {
                     )}
                   </div>
                   <div className="flex gap-2">
-                    <button className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                    <button 
+                      onClick={() => handleViewClient(client.id)}
+                      className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                    >
                       <Eye className="w-4 h-4" />
                     </button>
                     <button className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors">
@@ -454,6 +471,14 @@ export default function ClientsPage() {
         isOpen={showNewClientModal}
         onClose={() => setShowNewClientModal(false)}
         onClientCreated={handleClientCreated}
+      />
+
+      {/* Modal Detalhes do Cliente */}
+      <ClientDetailsModal
+        isOpen={showDetailsModal}
+        onClose={() => setShowDetailsModal(false)}
+        clientId={selectedClientId}
+        onEditClient={handleEditClient}
       />
     </div>
   )
