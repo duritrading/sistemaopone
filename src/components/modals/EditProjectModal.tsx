@@ -4,13 +4,13 @@
 import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { supabase } from '@/lib/supabase'
-import { X, Info, Calendar, DollarSign, FileText, Users, BrainCircuit, Save } from 'lucide-react'
+import { X, Info, Calendar, DollarSign, FileText, Save } from 'lucide-react'
 
-// Tipos para os dados do formulário e props
+// Tipos
 interface EditProjectModalProps {
   isOpen: boolean;
   onClose: () => void;
-  project: any; // Usamos 'any' por simplicidade, mas o ideal seria um tipo mais estrito
+  project: any;
   onSuccess: () => void;
 }
 
@@ -25,12 +25,11 @@ interface Client {
 }
 
 export default function EditProjectModal({ isOpen, onClose, project, onSuccess }: EditProjectModalProps) {
-  const { register, handleSubmit, setValue, watch } = useForm();
+  const { register, handleSubmit, setValue } = useForm();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
 
-  // Carrega dados para os dropdowns
   useEffect(() => {
     const fetchData = async () => {
       const { data: members, error: membersError } = await supabase.from('team_members').select('id, full_name').eq('is_active', true);
@@ -41,29 +40,32 @@ export default function EditProjectModal({ isOpen, onClose, project, onSuccess }
       if (clientsError) console.error('Error fetching clients:', clientsError);
       else setClients(clientsData || []);
     };
-    fetchData();
-  }, []);
+    if (isOpen) {
+      fetchData();
+    }
+  }, [isOpen]);
 
-  // Popula o formulário quando o projeto é carregado
   useEffect(() => {
-    if (project) {
+    if (project && isOpen) {
       Object.keys(project).forEach(key => {
         if (key === 'start_date' || key === 'estimated_end_date') {
-            setValue(key, project[key] ? new Date(project[key]).toISOString().split('T')[0] : '');
+            const dateValue = project[key] ? new Date(project[key]).toISOString().split('T')[0] : '';
+            setValue(key, dateValue);
         } else {
             setValue(key, project[key]);
         }
       });
-      // Campos específicos para relacionamentos
       setValue('client_id', project.client?.id);
       setValue('manager_id', project.manager?.id);
     }
-  }, [project, setValue]);
+  }, [project, isOpen, setValue]);
   
   const onSubmit = async (data) => {
     setIsSubmitting(true);
     try {
-      const { client, manager, technologies, team_members, scope_items, ...projectData } = data;
+      const { client, manager, technologies, team_members, scope_items, created_at, updated_at, ...projectData } = data;
+      
+      projectData.updated_at = new Date().toISOString();
 
       const { error } = await supabase
         .from('projects')
@@ -104,22 +106,14 @@ export default function EditProjectModal({ isOpen, onClose, project, onSuccess }
     </div>
   );
 
-  const Input = (props) => (
-    <input {...props} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm" />
-  );
-  
-  const Select = (props) => (
-    <select {...props} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm bg-white" />
-  );
-
-   const TextArea = (props) => (
-    <textarea {...props} rows={4} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm" />
-  );
+  const Input = (props) => <input {...props} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm" />;
+  const Select = (props) => <select {...props} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm bg-white" />;
+  const TextArea = (props) => <textarea {...props} rows={4} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm" />;
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-      <div className="bg-gray-50 rounded-lg w-full max-w-6xl max-h-[95vh] flex flex-col">
-        <header className="flex justify-between items-center p-6 border-b">
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-gray-50 rounded-lg w-full max-w-6xl max-h-[95vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        <header className="flex justify-between items-center p-6 border-b bg-white rounded-t-lg">
           <h2 className="text-2xl font-bold text-gray-900">Editar Projeto</h2>
           <div className="flex gap-4">
             <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">Cancelar</button>
@@ -132,10 +126,10 @@ export default function EditProjectModal({ isOpen, onClose, project, onSuccess }
         <form className="p-6 space-y-6 overflow-y-auto">
             <FormSection title="Informações Básicas" icon={Info}>
                 <FormField label="Nome do Projeto" fullWidth><Input {...register('name')} /></FormField>
-                <FormField label="Cliente"><Select {...register('client_id')} defaultValue={project?.client?.id}><option>Selecione</option>{clients.map(c => <option key={c.id} value={c.id}>{c.company_name}</option>)}</Select></FormField>
-                <FormField label="Gerente de Projeto"><Select {...register('manager_id')} defaultValue={project?.manager?.id}><option>Selecione</option>{teamMembers.map(m => <option key={m.id} value={m.id}>{m.full_name}</option>)}</Select></FormField>
-                <FormField label="Tipo"><Select {...register('project_type')}><option>MVP</option><option>PoC</option><option>Implementação</option></Select></FormField>
-                <FormField label="Status"><Select {...register('status')}><option>Executando</option><option>Pausado</option><option>Concluído</option></Select></FormField>
+                <FormField label="Cliente"><Input value={project.client?.company_name || 'N/A'} readOnly className="bg-gray-100" /></FormField>
+                <FormField label="Gerente de Projeto"><Select {...register('manager_id')}><option value="">Selecione</option>{teamMembers.map(m => <option key={m.id} value={m.id}>{m.full_name}</option>)}</Select></FormField>
+                <FormField label="Tipo"><Select {...register('project_type')}><option>MVP</option><option>PoC</option><option>Implementação</option><option>Consultoria</option></Select></FormField>
+                <FormField label="Status"><Select {...register('status')}><option>Planejamento</option><option>Executando</option><option>Pausado</option><option>Concluído</option><option>Cancelado</option></Select></FormField>
                 <FormField label="Saúde"><Select {...register('health')}><option>Excelente</option><option>Bom</option><option>Crítico</option></Select></FormField>
                 <FormField label="Risco"><Select {...register('risk_level')}><option>Baixo</option><option>Médio</option><option>Alto</option></Select></FormField>
             </FormSection>
@@ -145,12 +139,13 @@ export default function EditProjectModal({ isOpen, onClose, project, onSuccess }
                  <FormField label="Previsão Fim"><Input type="date" {...register('estimated_end_date')} /></FormField>
                  <FormField label="Progresso (%)"><Input type="number" {...register('progress_percentage', { valueAsNumber: true })} /></FormField>
                  <FormField label="Próximo Marco"><Input {...register('next_milestone')} /></FormField>
-                 <FormField label="Orçamento (R$)"><Input type="number" {...register('total_budget', { valueAsNumber: true })} /></FormField>
-                 <FormField label="Valor Usado (R$)"><Input type="number" {...register('used_budget', { valueAsNumber: true })} /></FormField>
+                 <FormField label="Orçamento (R$)"><Input type="number" step="0.01" {...register('total_budget', { valueAsNumber: true })} /></FormField>
+                 <FormField label="Valor Usado (R$)"><Input type="number" step="0.01" {...register('used_budget', { valueAsNumber: true })} /></FormField>
             </FormSection>
 
              <FormSection title="Detalhes do Projeto" icon={FileText}>
                 <FormField label="Objetivo" fullWidth><TextArea {...register('description')} /></FormField>
+                {/* Campos de Escopo e Tecnologia serão adicionados em uma próxima fase para não complexificar a edição inicial */}
             </FormSection>
         </form>
       </div>
