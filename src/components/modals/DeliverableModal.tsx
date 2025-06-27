@@ -6,7 +6,6 @@ import { useForm, SubmitHandler } from 'react-hook-form'
 import { supabase } from '@/lib/supabase'
 import { X, Save } from 'lucide-react'
 
-// Tipos para os dados do formulário
 type FormValues = {
   title: string;
   type: string;
@@ -20,7 +19,7 @@ interface DeliverableModalProps {
   isOpen: boolean;
   onClose: () => void;
   projectId: string;
-  deliverable?: any; // Entregável para edição
+  deliverable?: any;
   onSuccess: () => void;
 }
 
@@ -32,7 +31,6 @@ export default function DeliverableModal({ isOpen, onClose, projectId, deliverab
   useEffect(() => {
     if (isOpen) {
       if (isEditing && deliverable) {
-        // Popula o formulário para edição
         setValue('title', deliverable.title || '');
         setValue('type', deliverable.type || 'Documento');
         setValue('status', deliverable.status || 'Rascunho');
@@ -40,14 +38,9 @@ export default function DeliverableModal({ isOpen, onClose, projectId, deliverab
         setValue('due_date', deliverable.due_date ? new Date(deliverable.due_date).toISOString().split('T')[0] : '');
         setValue('description', deliverable.description || '');
       } else {
-        // Reseta o formulário para um novo entregável
         reset({
-          title: '',
-          type: 'Documento',
-          status: 'Rascunho',
-          version: 'v1.0',
-          due_date: '',
-          description: ''
+          title: '', type: 'Documento', status: 'Rascunho',
+          version: 'v1.0', due_date: '', description: ''
         });
       }
     }
@@ -64,39 +57,32 @@ export default function DeliverableModal({ isOpen, onClose, projectId, deliverab
         version: data.version,
         due_date: data.due_date || null,
         description: data.description || null,
-        updated_at: new Date().toISOString()
       };
 
-      let error;
+      let response;
 
       if (isEditing) {
-        const { error: updateError } = await supabase
+        response = await supabase
           .from('project_deliverables')
-          .update(payload)
+          .update({ ...payload, updated_at: new Date().toISOString() })
           .eq('id', deliverable.id);
-        error = updateError;
       } else {
-        // **CORREÇÃO APLICADA AQUI**
-        // A função 'insert' do Supabase espera um array de objetos.
-        // Envolvemos o 'payload' em colchetes para criar um array.
-        const { error: insertError } = await supabase
+        response = await supabase
           .from('project_deliverables')
-          .insert([payload]); // <- A CORREÇÃO ESTÁ AQUI
-        error = insertError;
+          .insert([payload]);
       }
 
-      if (error) {
-        console.error("Erro do Supabase:", error);
-        throw error;
+      if (response.error) {
+        throw response.error;
       }
 
       alert(`Entregável ${isEditing ? 'atualizado' : 'criado'} com sucesso!`);
       onSuccess();
       onClose();
 
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Erro ao salvar entregável:`, error);
-      alert(`Falha ao salvar o entregável. Verifique o console para mais detalhes.`);
+      alert(`Falha ao salvar o entregável: ${error.message}`);
     } finally {
       setIsSubmitting(false);
     }
