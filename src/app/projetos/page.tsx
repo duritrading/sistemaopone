@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@supabase/supabase-js'
+import { useRouter } from 'next/navigation'
 import { 
   Search, Download, Filter, Eye, MoreHorizontal, Edit, FileText, Copy, Archive
 } from 'lucide-react'
@@ -43,6 +44,7 @@ interface SimpleMetrics {
 }
 
 export default function ProjectsPage() {
+  const router = useRouter()
   const [projects, setProjects] = useState<SimpleProject[]>([])
   const [metrics, setMetrics] = useState<SimpleMetrics | null>(null)
   const [loading, setLoading] = useState(true)
@@ -205,7 +207,17 @@ export default function ProjectsPage() {
   }
 
   const handleProjectClick = (projectId: string) => {
-    window.location.href = `/projetos/${projectId}`
+    router.push(`/projetos/${projectId}`)
+  }
+
+  const handleEditProject = (projectId: string) => {
+    // Implementar modal de edição ou página de edição
+    console.log('Editar projeto:', projectId)
+  }
+
+  const handleMoreOptions = (projectId: string) => {
+    // Implementar dropdown de opções
+    console.log('Mais opções para projeto:', projectId)
   }
 
   // Não renderizar até montar para evitar hidratação
@@ -283,7 +295,7 @@ export default function ProjectsPage() {
                 🔄 Tentar Novamente
               </button>
               <a 
-                href="/debug"
+                href="/test"
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
               >
                 🔍 Página de Debug
@@ -452,10 +464,18 @@ export default function ProjectsPage() {
                     >
                       <Eye className="w-4 h-4" />
                     </button>
-                    <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors">
+                    <button 
+                      onClick={() => handleEditProject(project.id)}
+                      className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+                      title="Editar"
+                    >
                       <Edit className="w-4 h-4" />
                     </button>
-                    <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors">
+                    <button 
+                      onClick={() => handleMoreOptions(project.id)}
+                      className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+                      title="Mais opções"
+                    >
                       <MoreHorizontal className="w-4 h-4" />
                     </button>
                   </div>
