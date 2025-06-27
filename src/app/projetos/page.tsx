@@ -1,291 +1,385 @@
-// src/app/projetos/page.tsx - VERSÃO ESTÁVEL SEM LOOPS
+// src/app/projetos/page.tsx
 'use client'
 
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import DashboardLayout from '@/components/layout/DashboardLayout'
 import { 
-  Search, Download, Plus, AlertTriangle, CheckCircle, DollarSign, BarChart3
+  BarChart3, 
+  CheckCircle, 
+  AlertTriangle, 
+  DollarSign,
+  RefreshCw,
+  Plus,
+  Search,
+  Filter,
+  AlertCircle,
+  Loader2
 } from 'lucide-react'
 
-export default function ProjectsPage() {
-  const [mounted, setMounted] = useState(false)
-  const [projects, setProjects] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [searchTerm, setSearchTerm] = useState('')
+interface Project {
+  id: string
+  name: string
+  status: string
+  health: string
+  progress_percentage: number
+  total_budget: number
+  used_budget: number
+  client?: { company_name: string }
+  manager?: { full_name: string }
+}
 
-  // Evitar hidratação
-  useEffect(() => {
-    setMounted(true)
-  }, [])
+interface ProjectMetrics {
+  active_projects: number
+  critical_projects: number
+  total_value: number
+  average_progress: number
+}
 
-  // Função simples para carregar projetos - SEM CACHE
-  const handleLoadProjects = async () => {
-    if (loading) return // Prevenir múltiplas calls
-    
-    try {
-      setLoading(true)
-      setError('')
-      
-      console.log('🔍 Carregando projetos...')
+// Componentes otimizados
+const MetricCard = ({ title, value, icon: Icon, colorClass, trend }: {
+  title: string
+  value: string | number
+  icon: any
+  colorClass: string
+  trend?: string
+}) => (
+  <div className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow">
+    <div className="flex items-center justify-between">
+      <div className="flex items-center space-x-3">
+        <div className={`p-3 rounded-lg ${colorClass}`}>
+          <Icon className="w-6 h-6 text-white" />
+        </div>
+        <div>
+          <p className="text-sm font-medium text-gray-600">{title}</p>
+          <p className="text-2xl font-bold text-gray-900">{value}</p>
+          {trend && (
+            <p className="text-xs text-gray-500 mt-1">{trend}</p>
+          )}
+        </div>
+      </div>
+    </div>
+  </div>
+)
 
-      const { data, error: supabaseError } = await supabase
-        .from('projects')
-        .select(`
-          id, name, description, status, health, progress_percentage,
-          total_budget, used_budget, project_type,
-          client:clients(company_name),
-          manager:team_members(full_name)
-        `)
-        .eq('is_active', true)
-        .order('name')
-        .limit(50)
-
-      if (supabaseError) {
-        throw new Error(supabaseError.message)
-      }
-
-      setProjects(data || [])
-      console.log(`✅ ${data?.length || 0} projetos carregados`)
-
-    } catch (err) {
-      console.error('❌ Erro:', err)
-      setError(err.message || 'Erro ao carregar projetos')
-    } finally {
-      setLoading(false)
+const ProjectCard = ({ project }: { project: Project }) => {
+  const getHealthColor = (health: string) => {
+    switch (health.toLowerCase()) {
+      case 'excelente': return 'bg-green-100 text-green-800 border-green-200'
+      case 'bom': return 'bg-blue-100 text-blue-800 border-blue-200'
+      case 'crítico': return 'bg-red-100 text-red-800 border-red-200'
+      default: return 'bg-gray-100 text-gray-800 border-gray-200'
     }
   }
 
-  // Filtrar projetos localmente
-  const filteredProjects = projects.filter(project =>
-    project.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    project.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    project.client?.company_name?.toLowerCase().includes(searchTerm.toLowerCase())
-  )
-
-  // Calcular métricas simples
-  const metrics = {
-    total: projects.length,
-    active: projects.filter(p => p.status === 'Executando').length,
-    critical: projects.filter(p => p.health === 'critical').length,
-    avgProgress: projects.length > 0 
-      ? Math.round(projects.reduce((sum, p) => sum + (p.progress_percentage || 0), 0) / projects.length)
-      : 0
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'executando': return 'bg-green-100 text-green-800'
+      case 'planejamento': return 'bg-yellow-100 text-yellow-800'
+      case 'pausado': return 'bg-orange-100 text-orange-800'
+      case 'concluído': return 'bg-blue-100 text-blue-800'
+      default: return 'bg-gray-100 text-gray-800'
+    }
   }
 
-  if (!mounted) {
-    return (
-      <DashboardLayout>
-        <div className="p-6">
-          <div className="h-8 bg-gray-200 rounded w-1/3 animate-pulse"></div>
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', { 
+      style: 'currency', 
+      currency: 'BRL',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(value)
+  }
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-all cursor-pointer">
+      <div className="flex justify-between items-start mb-4">
+        <div className="flex-1">
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">{project.name}</h3>
+          <div className="flex items-center space-x-4 text-sm text-gray-600">
+            <span>Cliente: {project.client?.company_name || 'N/A'}</span>
+            <span>PM: {project.manager?.full_name || 'N/A'}</span>
+          </div>
         </div>
-      </DashboardLayout>
+        <div className="flex flex-col space-y-2">
+          <span className={`px-3 py-1 rounded-full text-xs font-medium ${getHealthColor(project.health)}`}>
+            {project.health}
+          </span>
+          <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(project.status)}`}>
+            {project.status}
+          </span>
+        </div>
+      </div>
+      
+      <div className="space-y-3">
+        <div className="flex justify-between items-center">
+          <span className="text-sm text-gray-600">Progresso</span>
+          <span className="text-sm font-medium text-gray-900">{project.progress_percentage}%</span>
+        </div>
+        <div className="w-full bg-gray-200 rounded-full h-2">
+          <div 
+            className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+            style={{ width: `${project.progress_percentage}%` }}
+          />
+        </div>
+        
+        <div className="flex justify-between items-center pt-2 border-t border-gray-100">
+          <div className="text-sm">
+            <span className="text-gray-600">Orçamento: </span>
+            <span className="font-medium text-gray-900">{formatCurrency(project.total_budget)}</span>
+          </div>
+          <div className="text-sm">
+            <span className="text-gray-600">Usado: </span>
+            <span className="font-medium text-gray-900">{formatCurrency(project.used_budget)}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const LoadingState = () => (
+  <div className="flex items-center justify-center py-12">
+    <div className="flex items-center space-x-3 text-gray-600">
+      <Loader2 className="w-6 h-6 animate-spin" />
+      <span className="text-lg font-medium">Carregando projetos...</span>
+    </div>
+  </div>
+)
+
+const ErrorState = ({ error, onRetry }: { error: string, onRetry: () => void }) => (
+  <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+    <div className="flex items-center space-x-3 mb-4">
+      <AlertCircle className="w-6 h-6 text-red-600" />
+      <h3 className="text-lg font-semibold text-red-800">Erro ao Carregar Projetos</h3>
+    </div>
+    <div className="bg-red-100 border border-red-200 rounded p-4 mb-4">
+      <pre className="text-red-700 text-sm whitespace-pre-wrap">{error}</pre>
+    </div>
+    <button 
+      onClick={onRetry}
+      className="flex items-center space-x-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+    >
+      <RefreshCw className="w-4 h-4" />
+      <span>Tentar Novamente</span>
+    </button>
+  </div>
+)
+
+const EmptyState = () => (
+  <div className="text-center py-12">
+    <AlertTriangle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+    <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum projeto encontrado</h3>
+    <p className="text-gray-600 mb-6">Crie seu primeiro projeto para começar.</p>
+    <button className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors mx-auto">
+      <Plus className="w-4 h-4" />
+      <span>Novo Projeto</span>
+    </button>
+  </div>
+)
+
+export default function ProjectsPage() {
+  const [projects, setProjects] = useState<Project[]>([])
+  const [metrics, setMetrics] = useState<ProjectMetrics | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [filterStatus, setFilterStatus] = useState('todos')
+
+  // Auto-carregamento na inicialização
+  useEffect(() => {
+    loadProjectsAndMetrics()
+  }, [])
+
+  const loadProjectsAndMetrics = async () => {
+    try {
+      setIsLoading(true)
+      setError(null)
+      
+      // Buscar projetos com relacionamentos
+      const { data: projectsData, error: projectsError } = await supabase
+        .from('projects')
+        .select(`
+          id, name, status, health, progress_percentage, total_budget, used_budget,
+          client:clients(company_name),
+          manager:team_members(full_name)
+        `)
+        .order('created_at', { ascending: false })
+
+      if (projectsError) throw projectsError
+
+      // Calcular métricas
+      const activeProjects = projectsData?.filter(p => p.status === 'Executando')?.length || 0
+      const criticalProjects = projectsData?.filter(p => p.health === 'Crítico')?.length || 0
+      const totalValue = projectsData?.reduce((sum, p) => sum + (p.total_budget || 0), 0) || 0
+      const avgProgress = projectsData?.length > 0 
+        ? Math.round(projectsData.reduce((sum, p) => sum + (p.progress_percentage || 0), 0) / projectsData.length)
+        : 0
+
+      setProjects(projectsData || [])
+      setMetrics({
+        active_projects: activeProjects,
+        critical_projects: criticalProjects,
+        total_value: totalValue,
+        average_progress: avgProgress
+      })
+    } catch (err: any) {
+      console.error('Erro ao carregar dados:', err)
+      setError(err.message || 'Erro desconhecido')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', { 
+      style: 'currency', 
+      currency: 'BRL',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(value)
+  }
+
+  // Filtros aplicados
+  const filteredProjects = projects.filter(project => {
+    const matchesSearch = project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         project.client?.company_name?.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesStatus = filterStatus === 'todos' || project.status === filterStatus
+    return matchesSearch && matchesStatus
+  })
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="max-w-7xl mx-auto">
+          <ErrorState error={error} onRetry={loadProjectsAndMetrics} />
+        </div>
+      </div>
     )
   }
 
   return (
-    <DashboardLayout>
-      <div className="p-6">
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-7xl mx-auto space-y-6">
+        
         {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">📊 Gestão de Projetos</h1>
-          <p className="text-gray-600">Gerencie seus projetos de forma eficiente</p>
-        </div>
-
-        {/* Métricas Simples */}
-        {projects.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <div className="bg-white p-4 rounded-lg border flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
-                <BarChart3 className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <p className="text-xl font-bold">{metrics.total}</p>
-                <p className="text-sm text-gray-600">Total</p>
-              </div>
-            </div>
-            
-            <div className="bg-white p-4 rounded-lg border flex items-center gap-3">
-              <div className="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center">
-                <CheckCircle className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <p className="text-xl font-bold">{metrics.active}</p>
-                <p className="text-sm text-gray-600">Ativos</p>
-              </div>
-            </div>
-            
-            <div className="bg-white p-4 rounded-lg border flex items-center gap-3">
-              <div className="w-10 h-10 bg-red-500 rounded-lg flex items-center justify-center">
-                <AlertTriangle className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <p className="text-xl font-bold">{metrics.critical}</p>
-                <p className="text-sm text-gray-600">Críticos</p>
-              </div>
-            </div>
-            
-            <div className="bg-white p-4 rounded-lg border flex items-center gap-3">
-              <div className="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center">
-                <DollarSign className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <p className="text-xl font-bold">{metrics.avgProgress}%</p>
-                <p className="text-sm text-gray-600">Progresso Médio</p>
-              </div>
-            </div>
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Gestão de Projetos</h1>
+            <p className="text-gray-600 mt-1">Acompanhe o progresso e saúde dos seus projetos</p>
           </div>
-        )}
-
-        {/* Controles */}
-        <div className="bg-white rounded-lg border p-4 mb-6">
-          <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-            {/* Busca */}
-            <div className="flex-1 max-w-md">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <input
-                  type="text"
-                  placeholder="Buscar projetos..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                />
-              </div>
-            </div>
-            
-            {/* Botões */}
-            <div className="flex gap-2">
-              <button
-                onClick={handleLoadProjects}
-                disabled={loading}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm font-medium"
-              >
-                {loading ? 'Carregando...' : '🔄 Carregar Projetos'}
-              </button>
-              
-              <button className="border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 text-sm font-medium flex items-center gap-2">
-                <Download className="w-4 h-4" />
-                Exportar
-              </button>
-              
-              <button className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm font-medium flex items-center gap-2">
-                <Plus className="w-4 h-4" />
-                Novo
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Status */}
-        <div className="mb-4">
-          <p className="text-sm text-gray-600">
-            Status: {loading ? 'Carregando...' : `${filteredProjects.length} de ${projects.length} projetos`}
-            {searchTerm && ` • Busca: "${searchTerm}"`}
-          </p>
-        </div>
-
-        {/* Conteúdo Principal */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-            <h3 className="font-medium text-red-800 mb-2">Erro ao carregar projetos</h3>
-            <p className="text-red-600 text-sm mb-3">{error}</p>
+          <div className="flex items-center space-x-3">
             <button 
-              onClick={handleLoadProjects}
-              className="bg-red-600 text-white px-3 py-1.5 rounded text-sm hover:bg-red-700"
+              onClick={loadProjectsAndMetrics}
+              disabled={isLoading}
+              className="flex items-center space-x-2 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50"
             >
-              Tentar Novamente
+              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+              <span>Atualizar</span>
+            </button>
+            <button className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+              <Plus className="w-4 h-4" />
+              <span>Novo Projeto</span>
             </button>
           </div>
+        </div>
+
+        {/* Métricas */}
+        {metrics && !isLoading && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <MetricCard 
+              title="Projetos Ativos" 
+              value={metrics.active_projects} 
+              icon={CheckCircle} 
+              colorClass="bg-blue-500"
+              trend="Em execução"
+            />
+            <MetricCard 
+              title="Projetos Críticos" 
+              value={metrics.critical_projects} 
+              icon={AlertTriangle} 
+              colorClass="bg-red-500"
+              trend="Requer atenção"
+            />
+            <MetricCard 
+              title="Valor Total" 
+              value={formatCurrency(metrics.total_value)} 
+              icon={DollarSign} 
+              colorClass="bg-green-500"
+              trend="Portfolio total"
+            />
+            <MetricCard 
+              title="Progresso Médio" 
+              value={`${metrics.average_progress}%`} 
+              icon={BarChart3} 
+              colorClass="bg-orange-500"
+              trend="Média geral"
+            />
+          </div>
         )}
 
-        {loading && projects.length === 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {Array.from({ length: 6 }, (_, i) => (
-              <div key={i} className="bg-white border rounded-lg p-4 animate-pulse">
-                <div className="h-5 bg-gray-200 rounded mb-2"></div>
-                <div className="h-4 bg-gray-200 rounded w-2/3 mb-3"></div>
-                <div className="flex justify-between">
-                  <div className="h-4 bg-gray-200 rounded w-16"></div>
-                  <div className="h-4 bg-gray-200 rounded w-12"></div>
+        {/* Filtros e Busca */}
+        {!isLoading && projects.length > 0 && (
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
+              <div className="flex items-center space-x-4 flex-1">
+                <div className="relative flex-1 max-w-md">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Buscar projetos ou clientes..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Filter className="w-4 h-4 text-gray-400" />
+                  <select
+                    value={filterStatus}
+                    onChange={(e) => setFilterStatus(e.target.value)}
+                    className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="todos">Todos os Status</option>
+                    <option value="Planejamento">Planejamento</option>
+                    <option value="Executando">Executando</option>
+                    <option value="Pausado">Pausado</option>
+                    <option value="Concluído">Concluído</option>
+                  </select>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-
-        {!loading && projects.length === 0 && !error && (
-          <div className="text-center py-12">
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              👆 Clique em "Carregar Projetos" para começar
-            </h3>
-            <p className="text-gray-600">
-              Os projetos serão carregados do banco de dados
-            </p>
-          </div>
-        )}
-
-        {!loading && filteredProjects.length === 0 && projects.length > 0 && (
-          <div className="text-center py-12">
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              Nenhum projeto encontrado
-            </h3>
-            <p className="text-gray-600">
-              Tente ajustar o termo de busca
-            </p>
-          </div>
-        )}
-
-        {filteredProjects.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredProjects.map((project) => (
-              <div 
-                key={project.id}
-                className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
-                onClick={() => window.location.href = `/projetos/${project.id}`}
-              >
-                <div className="flex justify-between items-start mb-3">
-                  <h3 className="font-semibold text-gray-900 truncate flex-1">
-                    {project.name}
-                  </h3>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ml-2 ${
-                    project.health === 'critical' ? 'bg-red-100 text-red-800' :
-                    project.health === 'warning' ? 'bg-yellow-100 text-yellow-800' :
-                    'bg-green-100 text-green-800'
-                  }`}>
-                    {project.health === 'critical' ? 'Crítico' :
-                     project.health === 'warning' ? 'Atenção' : 'Saudável'}
-                  </span>
-                </div>
-                
-                <p className="text-sm text-gray-600 mb-3 truncate">
-                  {project.client?.company_name || 'Cliente não definido'}
-                </p>
-                
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Progresso:</span>
-                    <span className="font-medium">{project.progress_percentage || 0}%</span>
-                  </div>
-                  
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div 
-                      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${project.progress_percentage || 0}%` }}
-                    />
-                  </div>
-                  
-                  <div className="flex justify-between text-sm pt-2">
-                    <span className="text-gray-600">{project.status}</span>
-                    <span className="text-gray-600">{project.project_type}</span>
-                  </div>
-                </div>
+              <div className="text-sm text-gray-600">
+                {filteredProjects.length} de {projects.length} projetos
               </div>
-            ))}
+            </div>
           </div>
         )}
+
+        {/* Lista de Projetos */}
+        <div className="bg-white rounded-lg border border-gray-200">
+          <div className="p-6 border-b border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900">Lista de Projetos</h2>
+          </div>
+          
+          <div className="p-6">
+            {isLoading ? (
+              <LoadingState />
+            ) : filteredProjects.length === 0 ? (
+              projects.length === 0 ? <EmptyState /> : (
+                <div className="text-center py-8">
+                  <AlertTriangle className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                  <p className="text-gray-600">Nenhum projeto encontrado com os filtros aplicados.</p>
+                </div>
+              )
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                {filteredProjects.map(project => (
+                  <ProjectCard key={project.id} project={project} />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
-    </DashboardLayout>
+    </div>
   )
 }
