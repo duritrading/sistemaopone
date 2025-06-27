@@ -1,184 +1,132 @@
-// src/app/projetos/page.tsx
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createClient } from '@supabase/supabase-js'
-import { 
-  Search, Download, Filter, Eye, MoreHorizontal, Edit, FileText, Copy, Archive
-} from 'lucide-react'
-import { Project, ProjectMetrics, ProjectStatus, ProjectType, ProjectHealth } from '@/types/projects'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { Search, Filter, Plus, Calendar, DollarSign, TrendingUp, AlertTriangle } from 'lucide-react'
+import { Project } from '@/types/projects'
 
-export default function ProjectsPage() {
+type ProjectMetrics = {
+  totalActive: number
+  totalCritical: number
+  totalValue: number
+  averageProgress: number
+}
+
+export default function ProjetosPage() {
   const [projects, setProjects] = useState<Project[]>([])
-  const [metrics, setMetrics] = useState<ProjectMetrics | null>(null)
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'all'>('all')
-  const [typeFilter, setTypeFilter] = useState<ProjectType | 'all'>('all')
-  const [healthFilter, setHealthFilter] = useState<ProjectHealth | 'all'>('all')
-  const [showMoreFilters, setShowMoreFilters] = useState(false)
-  const [expandedProject, setExpandedProject] = useState<string | null>(null)
+  const [statusFilter, setStatusFilter] = useState<string>('todos')
+  const [healthFilter, setHealthFilter] = useState<string>('todos')
+  const [metrics, setMetrics] = useState<ProjectMetrics>({
+    totalActive: 0,
+    totalCritical: 0,
+    totalValue: 0,
+    averageProgress: 0
+  })
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
-
-  useEffect(() => {
-    loadProjects()
-    loadMetrics()
-  }, [])
+  const supabase = createClientComponentClient()
 
   const loadProjects = async () => {
     try {
-      const { data, error } = await supabase
+      setLoading(true)
+      console.log('Iniciando carregamento de projetos...')
+
+      // Query mais simples para debug
+      const { data: projectsData, error: projectsError } = await supabase
         .from('projects')
         .select(`
           *,
-          client:clients(id, company_name, logo_url),
-          manager:team_members(id, full_name, avatar_url, email),
-          team_members:project_team_members(
+          client:clients(
             id,
-            role,
-            allocation_percentage,
-            user:team_members(id, full_name, avatar_url)
-          ),
-          scope_items:project_scope_items(id, item_name, is_completed),
-          technologies:project_technologies(id, technology_name)
+            name,
+            company_name
+          )
         `)
-        .eq('is_active', true)
         .order('created_at', { ascending: false })
 
-      if (error) throw error
+      console.log('Resposta da query:', { projectsData, projectsError })
 
-      // Processar dados para formato esperado
-      const processedProjects: Project[] = (data || []).map(project => ({
-        ...project,
-        health_status: project.health as ProjectHealth,
-        remaining_budget: project.total_budget - project.used_budget,
-        budget_percentage: project.total_budget > 0 ? Math.round((project.used_budget / project.total_budget) * 100) : 0,
-        completed_milestones: project.scope_items?.filter((item: any) => item.is_completed).length || 0,
-        total_milestones: project.scope_items?.length || 0,
-        next_milestone: project.next_milestone ? {
-          id: '1',
-          name: project.next_milestone,
-          due_date: project.next_milestone_date,
-          is_overdue: project.next_milestone_date ? new Date(project.next_milestone_date) < new Date() : false
-        } : undefined,
-        days_remaining: project.estimated_end_date ? 
-          Math.ceil((new Date(project.estimated_end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 0,
-        is_overdue: project.estimated_end_date ? new Date(project.estimated_end_date) < new Date() : false,
-        is_near_deadline: project.estimated_end_date ? 
-          Math.ceil((new Date(project.estimated_end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) <= 15 : false,
-        comments_count: 0,
-        attachments_count: 0,
-        team_members_count: project.team_members?.length || 0,
-        scope_items: project.scope_items?.map((item: any) => item.item_name) || [],
-        technologies: project.technologies?.map((tech: any) => tech.technology_name) || []
-      }))
+      if (projectsError) {
+        console.error('Erro na query de projetos:', projectsError)
+        throw projectsError
+      }
 
-      setProjects(processedProjects)
+      if (!projectsData) {
+        console.log('Nenhum projeto encontrado')
+        setProjects([])
+        return
+      }
+
+      console.log(`${projectsData.length} projetos carregados`)
+      setProjects(projectsData as Project[])
+
+      // Calcular métricas
+      calculateMetrics(projectsData as Project[])
+
     } catch (error) {
       console.error('Erro ao carregar projetos:', error)
+      // Em caso de erro, não quebrar a página
+      setProjects([])
     } finally {
       setLoading(false)
     }
   }
 
-  const loadMetrics = async () => {
-    try {
-      const { data: projectsData, error } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('is_active', true)
+  const calculateMetrics = (projectsList: Project[]) => {
+    const totalActive = projectsList.filter(p => p.status === 'active').length
+    const totalCritical = projectsList.filter(p => p.health === 'critical').length
+    const totalValue = projectsList.reduce((sum, p) => sum + (p.budget || 0), 0)
+    const averageProgress = projectsList.length > 0 
+      ? Math.round(projectsList.reduce((sum, p) => sum + (p.progress || 0), 0) / projectsList.length)
+      : 0
 
-      if (error) throw error
+    setMetrics({
+      totalActive,
+      totalCritical,
+      totalValue,
+      averageProgress
+    })
+  }
 
-      const totalProjects = projectsData?.length || 0
-      const activeProjects = projectsData?.filter(p => p.status === 'Executando').length || 0
-      const criticalProjects = projectsData?.filter(p => p.health === 'Crítico').length || 0
-      const totalValue = projectsData?.reduce((sum, p) => sum + (p.total_budget || 0), 0) || 0
-      const totalProgress = projectsData?.reduce((sum, p) => sum + (p.progress_percentage || 0), 0) || 0
-      const averageProgress = totalProjects > 0 ? Math.round(totalProgress / totalProjects) : 0
+  useEffect(() => {
+    loadProjects()
+  }, [])
 
-      const metrics: ProjectMetrics = {
-        total_projects: totalProjects,
-        active_projects: activeProjects,
-        completed_projects: projectsData?.filter(p => p.status === 'Concluído').length || 0,
-        overdue_projects: projectsData?.filter(p => p.estimated_end_date && new Date(p.estimated_end_date) < new Date()).length || 0,
-        critical_projects: criticalProjects,
-        
-        projects_by_status: {
-          'Rascunho': projectsData?.filter(p => p.status === 'Rascunho').length || 0,
-          'Proposta': projectsData?.filter(p => p.status === 'Proposta').length || 0,
-          'Aprovado': projectsData?.filter(p => p.status === 'Aprovado').length || 0,
-          'Executando': activeProjects,
-          'Pausado': projectsData?.filter(p => p.status === 'Pausado').length || 0,
-          'Concluído': projectsData?.filter(p => p.status === 'Concluído').length || 0,
-          'Cancelado': projectsData?.filter(p => p.status === 'Cancelado').length || 0,
-          'Crítico': criticalProjects
-        },
-        
-        projects_by_health: {
-          'Excelente': projectsData?.filter(p => p.health === 'Excelente').length || 0,
-          'Bom': projectsData?.filter(p => p.health === 'Bom').length || 0,
-          'Crítico': criticalProjects
-        },
-        
-        projects_by_type: {
-          'MVP': projectsData?.filter(p => p.project_type === 'MVP').length || 0,
-          'PoC': projectsData?.filter(p => p.project_type === 'PoC').length || 0,
-          'Implementação': projectsData?.filter(p => p.project_type === 'Implementação').length || 0,
-          'Consultoria': projectsData?.filter(p => p.project_type === 'Consultoria').length || 0,
-          'Suporte': projectsData?.filter(p => p.project_type === 'Suporte').length || 0
-        },
-        
-        projects_by_risk: {
-          'Baixo': projectsData?.filter(p => p.risk_level === 'Baixo').length || 0,
-          'Médio': projectsData?.filter(p => p.risk_level === 'Médio').length || 0,
-          'Alto': projectsData?.filter(p => p.risk_level === 'Alto').length || 0,
-          'Crítico': projectsData?.filter(p => p.risk_level === 'Crítico').length || 0
-        },
-        
-        total_budget: projectsData?.reduce((sum, p) => sum + (p.total_budget || 0), 0) || 0,
-        used_budget: projectsData?.reduce((sum, p) => sum + (p.used_budget || 0), 0) || 0,
-        remaining_budget: projectsData?.reduce((sum, p) => sum + ((p.total_budget || 0) - (p.used_budget || 0)), 0) || 0,
-        average_health_score: 0,
-        
-        completion_rate: averageProgress,
-        on_time_delivery_rate: 0,
-        budget_efficiency: 0,
-        
-        upcoming_deadlines: 0,
-        overdue_milestones: 0,
-        
-        // Métricas específicas do OpOne
-        total_value: totalValue,
-        average_progress: averageProgress
-      }
+  // Filtros
+  const filteredProjects = projects.filter(project => {
+    const matchesSearch = project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         project.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         project.client?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         project.client?.company_name?.toLowerCase().includes(searchTerm.toLowerCase())
+    
+    const matchesStatus = statusFilter === 'todos' || project.status === statusFilter
+    const matchesHealth = healthFilter === 'todos' || project.health === healthFilter
+    
+    return matchesSearch && matchesStatus && matchesHealth
+  })
 
-      setMetrics(metrics)
-    } catch (error) {
-      console.error('Erro ao carregar métricas:', error)
+  const getHealthColor = (health: string) => {
+    switch (health) {
+      case 'healthy': return 'bg-green-100 text-green-700 border-green-200'
+      case 'warning': return 'bg-yellow-100 text-yellow-700 border-yellow-200'
+      case 'critical': return 'bg-red-100 text-red-700 border-red-200'
+      default: return 'bg-gray-100 text-gray-700 border-gray-200'
     }
   }
 
-  const filteredProjects = projects.filter(project => {
-    const matchesSearch = !searchTerm || 
-      project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      project.client?.company_name.toLowerCase().includes(searchTerm.toLowerCase())
-
-    const matchesStatus = statusFilter === 'all' || project.status === statusFilter
-    const matchesType = typeFilter === 'all' || project.project_type === typeFilter
-    const matchesHealth = healthFilter === 'all' || project.health_status === healthFilter
-
-    return matchesSearch && matchesStatus && matchesType && matchesHealth
-  })
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'active': return 'bg-blue-100 text-blue-700 border-blue-200'
+      case 'planning': return 'bg-purple-100 text-purple-700 border-purple-200'
+      case 'completed': return 'bg-green-100 text-green-700 border-green-200'
+      case 'paused': return 'bg-orange-100 text-orange-700 border-orange-200'
+      case 'cancelled': return 'bg-red-100 text-red-700 border-red-200'
+      default: return 'bg-gray-100 text-gray-700 border-gray-200'
+    }
+  }
 
   const formatCurrency = (value: number) => {
-    if (value >= 1000000) {
-      return `R$ ${(value / 1000000).toFixed(1)}M`
-    }
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL'
@@ -189,55 +137,16 @@ export default function ProjectsPage() {
     return new Date(dateString).toLocaleDateString('pt-BR')
   }
 
-  const getStatusColor = (status: ProjectStatus) => {
-    switch (status) {
-      case 'Crítico': return 'w-2 h-2 bg-red-500 rounded-full'
-      case 'Executando': return 'w-2 h-2 bg-blue-500 rounded-full'
-      case 'Pausado': return 'w-2 h-2 bg-yellow-500 rounded-full'
-      case 'Concluído': return 'w-2 h-2 bg-green-500 rounded-full'
-      case 'Aprovado': return 'w-2 h-2 bg-green-400 rounded-full'
-      default: return 'w-2 h-2 bg-gray-500 rounded-full'
-    }
-  }
-
-  const getStatusBadgeColor = (status: ProjectStatus) => {
-    switch (status) {
-      case 'Crítico': return 'bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs font-medium'
-      case 'Executando': return 'bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium'
-      case 'Pausado': return 'bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium'
-      case 'Concluído': return 'bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium'
-      case 'Aprovado': return 'bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-medium'
-      default: return 'bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-xs font-medium'
-    }
-  }
-
-  const getRiskBadgeColor = (risk: string) => {
-    switch (risk) {
-      case 'Alto': return 'bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs font-medium'
-      case 'Médio': return 'bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium'
-      case 'Baixo': return 'bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium'
-      case 'Crítico': return 'bg-red-100 text-red-900 px-2 py-1 rounded-full text-xs font-medium'
-      default: return 'bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-xs font-medium'
-    }
-  }
-
-  const handleProjectClick = (projectId: string) => {
-    // Navegar para página de detalhes do projeto
-    window.location.href = `/projetos/${projectId}`
-  }
-
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="animate-pulse">
-            <div className="h-8 bg-gray-200 rounded w-64 mb-2"></div>
-            <div className="h-5 bg-gray-200 rounded w-96 mb-8"></div>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-              {[1, 2, 3, 4].map(i => (
-                <div key={i} className="h-24 bg-gray-200 rounded-lg"></div>
-              ))}
-            </div>
+      <div className="p-8">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded mb-2 w-64"></div>
+          <div className="h-4 bg-gray-200 rounded mb-8 w-96"></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {[1,2,3,4].map(i => (
+              <div key={i} className="bg-white p-6 rounded-lg shadow h-24"></div>
+            ))}
           </div>
         </div>
       </div>
@@ -245,273 +154,190 @@ export default function ProjectsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Gestão de Projetos</h1>
-          <p className="text-gray-600">Acompanhe o progresso e saúde dos seus projetos</p>
+    <div className="p-8">
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Gestão de Projetos</h1>
+        <p className="text-gray-600">Acompanhe o progresso e saúde dos seus projetos</p>
+      </div>
+
+      {/* Métricas */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="bg-white p-6 rounded-lg shadow">
+          <div className="flex items-center">
+            <div className="p-2 bg-blue-100 rounded-lg mr-3">
+              <TrendingUp className="h-6 w-6 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-900">{metrics.totalActive}</p>
+              <p className="text-sm text-gray-600">Projetos Ativos</p>
+            </div>
+          </div>
         </div>
 
-        {/* Métricas - Layout exato do OpOne */}
-        {metrics && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            {/* Projetos Ativos */}
-            <div className="bg-white rounded-lg p-6 border border-gray-200">
-              <div className="flex items-center">
-                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
-                  <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-gray-900">{metrics.active_projects}</div>
-                  <div className="text-sm text-gray-600">Projetos Ativos</div>
-                </div>
-              </div>
+        <div className="bg-white p-6 rounded-lg shadow">
+          <div className="flex items-center">
+            <div className="p-2 bg-red-100 rounded-lg mr-3">
+              <AlertTriangle className="h-6 w-6 text-red-600" />
             </div>
-
-            {/* Críticos */}
-            <div className="bg-white rounded-lg p-6 border border-gray-200">
-              <div className="flex items-center">
-                <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center mr-4">
-                  <div className="w-2 h-2 bg-red-600 rounded-full"></div>
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-gray-900">{metrics.critical_projects}</div>
-                  <div className="text-sm text-gray-600">Críticos</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Valor Total */}
-            <div className="bg-white rounded-lg p-6 border border-gray-200">
-              <div className="flex items-center">
-                <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mr-4">
-                  <div className="text-green-600 font-bold text-sm">R$</div>
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-gray-900">{formatCurrency(metrics.total_value)}</div>
-                  <div className="text-sm text-gray-600">Valor Total</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Média Progresso */}
-            <div className="bg-white rounded-lg p-6 border border-gray-200">
-              <div className="flex items-center">
-                <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center mr-4">
-                  <div className="text-orange-600 font-bold text-sm">%</div>
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-gray-900">{metrics.average_progress}%</div>
-                  <div className="text-sm text-gray-600">Média Progresso</div>
-                </div>
-              </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-900">{metrics.totalCritical}</p>
+              <p className="text-sm text-gray-600">Críticos</p>
             </div>
           </div>
-        )}
+        </div>
 
-        {/* Lista de Projetos */}
-        <div className="bg-white rounded-lg border border-gray-200">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Lista de Projetos</h2>
-            
-            {/* Barra de Busca e Filtros - Layout exato do OpOne */}
-            <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-              <div className="flex flex-col lg:flex-row gap-3 items-start lg:items-center flex-1">
-                {/* Busca */}
-                <div className="relative w-full lg:w-80">
-                  <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
-                  <input
-                    type="text"
-                    placeholder="Buscar projetos..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                  />
-                </div>
-
-                {/* Filtros - Layout exato */}
-                <div className="flex gap-3">
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value as ProjectStatus | 'all')}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white min-w-0"
-                  >
-                    <option value="all">Todos os Status</option>
-                    <option value="Rascunho">Rascunho</option>
-                    <option value="Proposta">Proposta</option>
-                    <option value="Aprovado">Aprovado</option>
-                    <option value="Executando">Executando</option>
-                    <option value="Pausado">Pausado</option>
-                    <option value="Concluído">Concluído</option>
-                    <option value="Cancelado">Cancelado</option>
-                    <option value="Crítico">Crítico</option>
-                  </select>
-
-                  <select
-                    value={typeFilter}
-                    onChange={(e) => setTypeFilter(e.target.value as ProjectType | 'all')}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white"
-                  >
-                    <option value="all">Todos os Tipos</option>
-                    <option value="MVP">MVP</option>
-                    <option value="PoC">PoC</option>
-                    <option value="Implementação">Implementação</option>
-                    <option value="Consultoria">Consultoria</option>
-                    <option value="Suporte">Suporte</option>
-                  </select>
-
-                  <select
-                    value={healthFilter}
-                    onChange={(e) => setHealthFilter(e.target.value as ProjectHealth | 'all')}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white"
-                  >
-                    <option value="all">Todas as Saúdes</option>
-                    <option value="Excelente">Excelente</option>
-                    <option value="Bom">Bom</option>
-                    <option value="Crítico">Crítico</option>
-                  </select>
-
-                  <button 
-                    onClick={() => setShowMoreFilters(!showMoreFilters)}
-                    className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm flex items-center gap-2"
-                  >
-                    <Filter className="w-4 h-4" />
-                    Mais Filtros
-                  </button>
-                </div>
-              </div>
-
-              {/* Botão Exportar */}
-              <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm flex items-center gap-2">
-                <Download className="w-4 h-4" />
-                Exportar
-              </button>
+        <div className="bg-white p-6 rounded-lg shadow">
+          <div className="flex items-center">
+            <div className="p-2 bg-green-100 rounded-lg mr-3">
+              <DollarSign className="h-6 w-6 text-green-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-900">{formatCurrency(metrics.totalValue)}</p>
+              <p className="text-sm text-gray-600">Valor Total</p>
             </div>
           </div>
+        </div>
 
-          {/* Lista de Projetos - Cards horizontais como no OpOne */}
-          <div className="divide-y divide-gray-200">
-            {filteredProjects.map(project => (
-              <div key={project.id} className="p-6 hover:bg-gray-50 transition-colors">
-                {/* Header do Card */}
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className={getStatusColor(project.status)}></div>
-                    <h3 className="font-semibold text-gray-900 text-lg">{project.name}</h3>
-                    <span className={getStatusBadgeColor(project.project_type)}>
-                      {project.project_type}
-                    </span>
-                    <span className={getStatusBadgeColor(project.status)}>
-                      {project.status}
-                    </span>
-                    <span className={getRiskBadgeColor(project.risk_level)}>
-                      Risco {project.risk_level.toLowerCase()}
-                    </span>
-                  </div>
-                  
-                  {/* Ações */}
-                  <div className="flex items-center gap-2">
-                    <button 
-                      onClick={() => handleProjectClick(project.id)}
-                      className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                      title="Ver Detalhes"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </button>
-                    <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors">
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors">
-                      <FileText className="w-4 h-4" />
-                    </button>
-                    <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors">
-                      <Copy className="w-4 h-4" />
-                    </button>
-                    <button className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                      <Archive className="w-4 h-4" />
-                    </button>
-                    <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors">
-                      <MoreHorizontal className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
+        <div className="bg-white p-6 rounded-lg shadow">
+          <div className="flex items-center">
+            <div className="p-2 bg-orange-100 rounded-lg mr-3">
+              <div className="h-6 w-6 flex items-center justify-center text-orange-600 font-bold">%</div>
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-900">{metrics.averageProgress}%</p>
+              <p className="text-sm text-gray-600">Média Progresso</p>
+            </div>
+          </div>
+        </div>
+      </div>
 
-                {/* Informações do Projeto - Layout como no OpOne */}
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-6 mb-4">
-                  <div>
-                    <div className="text-sm text-gray-600 mb-1">Cliente</div>
-                    <div className="font-medium text-gray-900">{project.client?.company_name}</div>
-                  </div>
-                  
-                  <div>
-                    <div className="text-sm text-gray-600 mb-1">Gerente</div>
-                    <div className="font-medium text-gray-900">{project.manager?.full_name || 'Não atribuído'}</div>
-                  </div>
-                  
-                  <div>
-                    <div className="text-sm text-gray-600 mb-1">Previsão Fim</div>
-                    <div className="font-medium text-gray-900">{formatDate(project.estimated_end_date || '')}</div>
-                    {project.is_overdue && (
-                      <div className="text-xs text-red-600">{Math.abs(project.days_remaining)} dias atrasado</div>
-                    )}
-                  </div>
-                  
-                  <div>
-                    <div className="text-sm text-gray-600 mb-1">Próximo Marco</div>
-                    <div className="font-medium text-gray-900">{project.next_milestone?.name || 'Não definido'}</div>
-                  </div>
-                  
-                  <div>
-                    <div className="text-sm text-gray-600 mb-1">Equipe</div>
-                    <div className="font-medium text-gray-900">{project.team_members_count} pessoas</div>
-                  </div>
-                </div>
-
-                {/* Progresso e Financeiro */}
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-4 mb-2">
-                      <span className="text-sm font-medium text-gray-900">Progresso: {project.progress_percentage}%</span>
-                      <span className="text-sm text-gray-600">Saldo: {formatCurrency(project.remaining_budget)}</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2 mb-1">
-                      <div 
-                        className="bg-gray-900 h-2 rounded-full transition-all duration-300" 
-                        style={{ width: `${project.progress_percentage}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                  
-                  <div className="text-right ml-6">
-                    <div className="text-lg font-bold text-gray-900">
-                      {formatCurrency(project.used_budget)} / {formatCurrency(project.total_budget)}
-                    </div>
-                    <div className={`text-sm font-medium ${project.budget_percentage > 100 ? 'text-red-600' : project.budget_percentage > 80 ? 'text-orange-600' : 'text-green-600'}`}>
-                      ({project.budget_percentage}% usado)
-                    </div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      Início: {formatDate(project.start_date || '')}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
+      {/* Lista de Projetos */}
+      <div className="bg-white rounded-lg shadow">
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-gray-900">Lista de Projetos</h2>
+            <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center gap-2 transition-colors">
+              <Plus className="h-4 w-4" />
+              Novo Projeto
+            </button>
           </div>
 
-          {/* Estado vazio */}
-          {filteredProjects.length === 0 && (
-            <div className="p-12 text-center">
-              <div className="text-gray-400 mb-4">
-                <FileText className="w-12 h-12 mx-auto" />
+          {/* Filtros */}
+          <div className="flex flex-wrap gap-4">
+            <div className="flex-1 min-w-64">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <input
+                  type="text"
+                  placeholder="Buscar projetos..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum projeto encontrado</h3>
-              <p className="text-gray-600 mb-4">
-                {searchTerm || statusFilter !== 'all' || typeFilter !== 'all' || healthFilter !== 'all'
-                  ? 'Tente ajustar os filtros para encontrar projetos.'
-                  : 'Comece criando seu primeiro projeto.'
+            </div>
+
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="todos">Todos Status</option>
+              <option value="active">Ativo</option>
+              <option value="planning">Planejamento</option>
+              <option value="completed">Concluído</option>
+              <option value="paused">Pausado</option>
+              <option value="cancelled">Cancelado</option>
+            </select>
+
+            <select
+              value={healthFilter}
+              onChange={(e) => setHealthFilter(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="todos">Todas Saúdes</option>
+              <option value="healthy">Saudável</option>
+              <option value="warning">Atenção</option>
+              <option value="critical">Crítico</option>
+            </select>
+
+            <button className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 flex items-center gap-2">
+              <Filter className="h-4 w-4" />
+              Mais Filtros
+            </button>
+          </div>
+        </div>
+
+        <div className="p-6">
+          {filteredProjects.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                <Calendar className="h-8 w-8 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                {projects.length === 0 ? 'Nenhum projeto encontrado' : 'Nenhum projeto corresponde aos filtros'}
+              </h3>
+              <p className="text-gray-600">
+                {projects.length === 0 
+                  ? 'Comece criando seu primeiro projeto.' 
+                  : 'Tente ajustar os filtros para encontrar o que procura.'
                 }
               </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredProjects.map((project) => (
+                <div
+                  key={project.id}
+                  className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow cursor-pointer"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center space-x-4">
+                      <h3 className="text-lg font-semibold text-gray-900">{project.name}</h3>
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(project.status)}`}>
+                        {project.status === 'active' && 'Ativo'}
+                        {project.status === 'planning' && 'Planejamento'}
+                        {project.status === 'completed' && 'Concluído'}
+                        {project.status === 'paused' && 'Pausado'}
+                        {project.status === 'cancelled' && 'Cancelado'}
+                      </span>
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getHealthColor(project.health)}`}>
+                        {project.health === 'healthy' && 'Saudável'}
+                        {project.health === 'warning' && 'Atenção'}
+                        {project.health === 'critical' && 'Crítico'}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-semibold text-gray-900">
+                        {project.budget ? formatCurrency(project.budget) : 'Não definido'}
+                      </p>
+                      <p className="text-sm text-gray-600">Orçamento</p>
+                    </div>
+                  </div>
+
+                  <p className="text-gray-600 mb-4">{project.description}</p>
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-6 text-sm text-gray-600">
+                      <span>Cliente: {project.client?.company_name || project.client?.name || 'Não definido'}</span>
+                      <span>Início: {project.start_date ? formatDate(project.start_date) : 'Não definido'}</span>
+                      <span>Fim: {project.end_date ? formatDate(project.end_date) : 'Não definido'}</span>
+                    </div>
+                    <div className="flex items-center space-x-4">
+                      <div className="text-right">
+                        <p className="text-sm font-medium text-gray-900">{project.progress || 0}%</p>
+                        <div className="w-24 bg-gray-200 rounded-full h-2 mt-1">
+                          <div
+                            className="bg-blue-600 h-2 rounded-full"
+                            style={{ width: `${project.progress || 0}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
