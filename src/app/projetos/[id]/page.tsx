@@ -44,7 +44,7 @@ interface ProjectMilestone {
   id: string;
   title: string;
   due_date?: string;
-  start_date?: string; // Adicionado para o Gantt
+  start_date?: string;
   status: string;
   progress_percentage: number;
   team_member?: { full_name: string };
@@ -53,7 +53,7 @@ interface ProjectMilestone {
 // --- Componentes de UI ---
 const KPI_Card = ({ title, value, icon: Icon, colorClass, subtitle }) => (
     <div className={`p-4 rounded-lg flex items-center gap-4 ${colorClass}`}>
-        <Icon className="w-6 h-6" />
+        {Icon && <Icon className="w-6 h-6" />}
         <div>
             <p className="text-sm font-medium">{title}</p>
             <p className="text-2xl font-bold">{value}</p>
@@ -66,7 +66,7 @@ const InfoCard = ({ title, icon: Icon, children }) => (
     <div className="bg-white rounded-lg border border-gray-200 p-6">
         <div className="flex items-center gap-3 mb-4">
             <div className="w-8 h-8 bg-gray-100 rounded-md flex items-center justify-center">
-                <Icon className="w-5 h-5 text-gray-600" />
+                {Icon && <Icon className="w-5 h-5 text-gray-600" />}
             </div>
             <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
         </div>
@@ -143,8 +143,7 @@ export default function ProjectDetailPage() {
       setLoading(false);
     }
   };
-
-  // --- Funções de Formatação e Helpers ---
+  
   const formatDate = (dateString?: string) => dateString ? new Date(dateString).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : 'N/D';
   const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
   
@@ -158,26 +157,22 @@ export default function ProjectDetailPage() {
   const healthConfig = project ? getHealthConfig(project.health) : null;
   const daysRemaining = project?.estimated_end_date ? Math.ceil((new Date(project.estimated_end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : null;
 
-  // --- Transformar marcos para o Gráfico de Gantt ---
   const ganttTasks: Task[] = milestones.map(m => ({
     start: m.start_date ? new Date(m.start_date) : (m.due_date ? new Date(new Date(m.due_date).setDate(new Date(m.due_date).getDate() - 7)) : new Date()),
     end: m.due_date ? new Date(m.due_date) : new Date(),
-    name: m.title,
-    id: m.id,
-    type: 'task',
-    progress: m.progress_percentage,
+    name: m.title, 
+    id: m.id, 
+    type: 'task', 
+    progress: m.progress_percentage, 
     isDisabled: m.status === 'Concluído',
-    styles: { progressColor: '#3b82f6', progressSelectedColor: '#2563eb' }
   }));
 
-  // --- Métricas do Cronograma ---
   const timelineMetrics = {
       concluidos: milestones.filter(m => m.status === 'Concluído').length,
       emAndamento: milestones.filter(m => m.status === 'Em Andamento').length,
       atrasados: milestones.filter(m => m.status === 'Atrasado').length,
   };
 
-  // --- Renderização ---
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -305,24 +300,35 @@ export default function ProjectDetailPage() {
         {activeTab === 'timeline' && (
           <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div className="bg-white p-4 rounded-lg border flex items-center gap-3"><CheckSquare className="text-green-500" /> <div><p className="text-xl font-bold">{timelineMetrics.concluidos}</p><p className="text-sm text-gray-500">Concluídos</p></div></div>
-                  <div className="bg-white p-4 rounded-lg border flex items-center gap-3"><Loader className="text-blue-500" /> <div><p className="text-xl font-bold">{timelineMetrics.emAndamento}</p><p className="text-sm text-gray-500">Em Andamento</p></div></div>
-                  <div className="bg-white p-4 rounded-lg border flex items-center gap-3"><Clock className="text-gray-500" /> <div><p className="text-xl font-bold">{daysRemaining ?? '--'}</p><p className="text-sm text-gray-500">Dias Restantes</p></div></div>
-                  <div className="bg-white p-4 rounded-lg border flex items-center gap-3"><XSquare className="text-red-500" /> <div><p className="text-xl font-bold">{timelineMetrics.atrasados}</p><p className="text-sm text-gray-500">Atrasados</p></div></div>
+                  <div className="bg-white p-4 rounded-lg border flex items-center gap-3"><CheckSquare className="text-green-500 w-5 h-5" /> <div><p className="text-xl font-bold">{timelineMetrics.concluidos}</p><p className="text-sm text-gray-500">Concluídos</p></div></div>
+                  <div className="bg-white p-4 rounded-lg border flex items-center gap-3"><Loader className="text-blue-500 w-5 h-5" /> <div><p className="text-xl font-bold">{timelineMetrics.emAndamento}</p><p className="text-sm text-gray-500">Em Andamento</p></div></div>
+                  <div className="bg-white p-4 rounded-lg border flex items-center gap-3"><Clock className="text-gray-500 w-5 h-5" /> <div><p className="text-xl font-bold">{daysRemaining ?? '--'}</p><p className="text-sm text-gray-500">Dias Restantes</p></div></div>
+                  <div className="bg-white p-4 rounded-lg border flex items-center gap-3"><XSquare className="text-red-500 w-5 h-5" /> <div><p className="text-xl font-bold">{timelineMetrics.atrasados}</p><p className="text-sm text-gray-500">Atrasados</p></div></div>
               </div>
               
-              <div className="bg-white p-4 rounded-lg border">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-4">Gráfico de Gantt</h3>
+              <InfoCard title="Gráfico de Gantt" icon={Calendar}>
                   {ganttTasks.length > 0 ? (
-                      <Gantt tasks={ganttTasks} viewMode={ViewMode.Month} />
+                      <Gantt
+                        tasks={ganttTasks}
+                        viewMode={ViewMode.Month}
+                        listCellWidth="" 
+                        rowHeight={50}
+                        columnWidth={75}
+                        barBackgroundColor="#e4e4e7"
+                        barProgressColor="#3b82f6"
+                        barProgressSelectedColor="#2563eb"
+                        arrowColor="gray"
+                        todayColor="rgba(239, 68, 68, 0.2)"
+                        fontFamily="inherit"
+                        fontSize="14px"
+                      />
                   ) : <p className="text-gray-500 py-8 text-center">Nenhum marco cadastrado para este projeto.</p>}
-              </div>
+              </InfoCard>
 
-              <div className="bg-white p-6 rounded-lg border">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-4">Marcos e Entregas</h3>
+              <InfoCard title="Marcos e Entregas" icon={CheckSquare}>
                   <div className="space-y-4">
                       {milestones.length > 0 ? milestones.map(milestone => (
-                          <div key={milestone.id} className="p-4 border rounded-lg hover:bg-gray-50">
+                          <div key={milestone.id} className="p-4 border rounded-lg hover:bg-gray-50/50 transition-colors">
                               <div className="flex justify-between items-center mb-2">
                                   <p className="font-medium text-gray-800">{milestone.title}</p>
                                   <span className="text-sm text-gray-500">{formatDate(milestone.due_date)}</span>
@@ -340,7 +346,7 @@ export default function ProjectDetailPage() {
                           </div>
                       )) : <p className="text-gray-500 py-8 text-center">Nenhum marco cadastrado.</p>}
                   </div>
-              </div>
+              </InfoCard>
           </div>
         )}
 

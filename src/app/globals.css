@@ -24,3 +24,27 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+.gantt-container {
+  @apply font-sans; /* Garante que o gráfico use a mesma fonte do resto do site */
+}
+
+.gantt-container .grid-header {
+  @apply bg-gray-50; /* Cor de fundo para o cabeçalho dos meses */
+}
+
+.gantt-container .grid-header-text {
+  @apply text-gray-600 font-semibold text-sm; /* Estilo do texto dos meses */
+}
+
+.gantt-container .grid-row-cell {
+  @apply text-gray-500; /* Cor do texto da lista de tarefas */
+}
+
+.gantt-container .task-list-header {
+  @apply bg-gray-50 text-gray-700 font-semibold; /* Cabeçalho da lista de tarefas à esquerda */
+}
+
+.gantt-container .task-list-table .task-list-row {
+  @apply hover:bg-gray-100 transition-colors;
+}
