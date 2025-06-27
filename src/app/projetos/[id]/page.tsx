@@ -29,7 +29,7 @@ interface ProjectDetails {
   next_milestone?: string;
   client?: { company_name: string };
   manager?: { full_name: string };
-  technologies: { name: string }[];
+  technologies: { id: string, name: string }[]; // Adicionado 'id' para a chave
   team_members: {
     role_in_project: string;
     team_member: {
@@ -52,12 +52,12 @@ interface ProjectMilestone {
 
 // --- Componentes de UI ---
 const KPI_Card = ({ title, value, icon: Icon, colorClass, subtitle }) => (
-    <div className={`p-4 rounded-lg flex items-center gap-4 ${colorClass}`}>
-        {Icon && <Icon className="w-6 h-6" />}
+    <div className={`p-4 rounded-lg flex items-center gap-4 bg-white border border-gray-200 ${colorClass}`}>
+        {Icon && <Icon className="w-6 h-6 text-gray-700" />}
         <div>
-            <p className="text-sm font-medium">{title}</p>
-            <p className="text-2xl font-bold">{value}</p>
-            {subtitle && <p className="text-xs opacity-80">{subtitle}</p>}
+            <p className="text-sm font-medium text-gray-500">{title}</p>
+            <p className="text-2xl font-bold text-gray-900">{value}</p>
+            {subtitle && <p className="text-xs text-gray-500">{subtitle}</p>}
         </div>
     </div>
 );
@@ -94,8 +94,10 @@ export default function ProjectDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
+  const [isClient, setIsClient] = useState(false); // Estado para resolver erro de Hydration
 
   useEffect(() => {
+    setIsClient(true); // Garante que o código do lado do cliente seja executado após a montagem
     if (projectId) {
       loadProjectDetails();
     }
@@ -110,7 +112,7 @@ export default function ProjectDetailPage() {
           *, 
           client:clients(company_name), 
           manager:team_members(full_name),
-          technologies:project_technologies(name), 
+          technologies:project_technologies(id, name), 
           scope_items:project_scope(id, title, status),
           team_members:project_team_members(
             role_in_project,
@@ -122,7 +124,7 @@ export default function ProjectDetailPage() {
       
       const milestonesPromise = supabase
         .from('project_milestones')
-        .select(`*, team_member:team_members(full_name)`)
+        .select(`*, team_member:team_members(full_name), start_date`)
         .eq('project_id', projectId)
         .order('due_date');
 
@@ -150,10 +152,11 @@ export default function ProjectDetailPage() {
   const getHealthConfig = (health: string) => {
       switch (health) {
           case 'Crítico': return { text: 'Crítico', color: 'bg-red-100 text-red-700', icon: AlertTriangle };
-          case 'Bom': return { text: 'Bom', color: 'bg-blue-100 text-blue-700', icon: CheckCircle };
+          case 'Bom': return { text: 'Bom', color: 'bg-yellow-100 text-yellow-700', icon: AlertTriangle };
           default: return { text: 'Excelente', color: 'bg-green-100 text-green-700', icon: CheckCircle };
       }
   };
+  
   const healthConfig = project ? getHealthConfig(project.health) : null;
   const daysRemaining = project?.estimated_end_date ? Math.ceil((new Date(project.estimated_end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : null;
 
@@ -220,10 +223,10 @@ export default function ProjectDetailPage() {
           <h1 className="text-3xl font-bold text-gray-900">{project.name}</h1>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
-            <KPI_Card title="Saúde" value={healthConfig?.text} icon={healthConfig?.icon} colorClass="bg-white border border-gray-200" />
-            <KPI_Card title="Progresso" value={`${project.progress_percentage}%`} icon={BarChart3} colorClass="bg-white border border-gray-200" />
-            <KPI_Card title="Dias Restantes" value={daysRemaining ?? '--'} icon={Clock} colorClass="bg-white border border-gray-200" />
-            <KPI_Card title="Orçamento Usado" value={formatCurrency(project.used_budget)} icon={DollarSign} colorClass="bg-white border border-gray-200" subtitle={`de ${formatCurrency(project.total_budget)}`} />
+            <KPI_Card title="Saúde" value={healthConfig?.text} icon={healthConfig?.icon} />
+            <KPI_Card title="Progresso" value={`${project.progress_percentage}%`} icon={BarChart3} />
+            {isClient && <KPI_Card title="Dias Restantes" value={daysRemaining ?? '--'} icon={Clock} />}
+            <KPI_Card title="Orçamento Usado" value={formatCurrency(project.used_budget)} icon={DollarSign} subtitle={`de ${formatCurrency(project.total_budget)}`} />
           </div>
         </div>
       </div>
@@ -264,8 +267,8 @@ export default function ProjectDetailPage() {
               </InfoCard>
               <InfoCard title="Tecnologias" icon={Code}>
                   <div className="flex flex-wrap gap-2">
-                      {project.technologies.map(tech => (
-                          <span key={tech.name} className="px-3 py-1 bg-gray-200 text-gray-800 text-sm font-medium rounded-full">{tech.name}</span>
+                      {project.technologies.filter(tech => tech.name).map(tech => (
+                          <span key={tech.id} className="px-3 py-1 bg-gray-200 text-gray-800 text-sm font-medium rounded-full">{tech.name}</span>
                       ))}
                   </div>
               </InfoCard>
@@ -300,18 +303,19 @@ export default function ProjectDetailPage() {
         {activeTab === 'timeline' && (
           <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div className="bg-white p-4 rounded-lg border flex items-center gap-3"><CheckSquare className="text-green-500 w-5 h-5" /> <div><p className="text-xl font-bold">{timelineMetrics.concluidos}</p><p className="text-sm text-gray-500">Concluídos</p></div></div>
-                  <div className="bg-white p-4 rounded-lg border flex items-center gap-3"><Loader className="text-blue-500 w-5 h-5" /> <div><p className="text-xl font-bold">{timelineMetrics.emAndamento}</p><p className="text-sm text-gray-500">Em Andamento</p></div></div>
-                  <div className="bg-white p-4 rounded-lg border flex items-center gap-3"><Clock className="text-gray-500 w-5 h-5" /> <div><p className="text-xl font-bold">{daysRemaining ?? '--'}</p><p className="text-sm text-gray-500">Dias Restantes</p></div></div>
-                  <div className="bg-white p-4 rounded-lg border flex items-center gap-3"><XSquare className="text-red-500 w-5 h-5" /> <div><p className="text-xl font-bold">{timelineMetrics.atrasados}</p><p className="text-sm text-gray-500">Atrasados</p></div></div>
+                  <KPI_Card title="Concluídos" value={timelineMetrics.concluidos} icon={CheckSquare} />
+                  <KPI_Card title="Em Andamento" value={timelineMetrics.emAndamento} icon={Loader} />
+                  {isClient && <KPI_Card title="Dias Restantes" value={daysRemaining ?? '--'} icon={Clock} />}
+                  <KPI_Card title="Atrasados" value={timelineMetrics.atrasados} icon={XSquare} />
               </div>
               
               <InfoCard title="Gráfico de Gantt" icon={Calendar}>
-                  {ganttTasks.length > 0 ? (
+                  {isClient && ganttTasks.length > 0 ? (
                       <Gantt
                         tasks={ganttTasks}
                         viewMode={ViewMode.Month}
                         listCellWidth="" 
+                        ganttHeight={300}
                         rowHeight={50}
                         columnWidth={75}
                         barBackgroundColor="#e4e4e7"
