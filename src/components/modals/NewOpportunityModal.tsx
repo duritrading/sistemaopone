@@ -114,6 +114,19 @@ export default function NewOpportunityModal({ isOpen, onClose, onSuccess }: NewO
     }
   }
 
+  // Função para formatar CNPJ
+  const formatCNPJ = (value: string) => {
+    const cleanValue = value.replace(/\D/g, '')
+    if (cleanValue.length <= 14) {
+      return cleanValue
+        .replace(/^(\d{2})(\d)/, '$1.$2')
+        .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+        .replace(/\.(\d{3})(\d)/, '.$1/$2')
+        .replace(/(\d{4})(\d)/, '$1-$2')
+    }
+    return value
+  }
+
   const onSubmit = async (data: NewOpportunityForm) => {
     setIsSubmitting(true)
     
@@ -157,41 +170,6 @@ export default function NewOpportunityModal({ isOpen, onClose, onSuccess }: NewO
     onClose()
   }
 
-  // Watch para atualizar probabilidade baseada no stage
-  const selectedStage = watch('stage')
-  
-  // Função para formatar CNPJ
-  const formatCNPJ = (value: string) => {
-    const cleanValue = value.replace(/\D/g, '')
-    if (cleanValue.length <= 14) {
-      return cleanValue
-        .replace(/^(\d{2})(\d)/, '$1.$2')
-        .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
-        .replace(/\.(\d{3})(\d)/, '.$1/$2')
-        .replace(/(\d{4})(\d)/, '$1-$2')
-    }
-    return value
-  }
-  
-  useEffect(() => {
-    const stageProbabilities: Record<SalesStage, number> = {
-      'Lead Qualificado': 20,
-      'Proposta Enviada': 40,
-      'Negociação': 60,
-      'Proposta Aceita': 80,
-      'Contrato Assinado': 100,
-      'Perdido': 0
-    }
-    
-    if (selectedStage && stageProbabilities[selectedStage] !== undefined) {
-      // Não override se o usuário já modificou manualmente
-      const form = document.getElementById('probability_percentage') as HTMLInputElement
-      if (form && parseInt(form.value) === stageProbabilities[selectedStage as keyof typeof stageProbabilities]) {
-        return
-      }
-    }
-  }, [selectedStage])
-
   if (!isOpen) return null
 
   return (
@@ -226,81 +204,86 @@ export default function NewOpportunityModal({ isOpen, onClose, onSuccess }: NewO
                   <Building className="h-4 w-4 mr-2" />
                   Informações da Empresa
                 </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Nome da Empresa */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Nome da Empresa
-                    </label>
-                    <input
-                      type="text"
-                      {...register('company_name')}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Ex: TechCorp Ltda"
-                    />
-                    {errors.company_name && (
-                      <p className="mt-1 text-sm text-red-600">{errors.company_name.message}</p>
-                    )}
+                <div className="space-y-4">
+                  {/* Nome da Empresa e CNPJ */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Nome da Empresa */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Nome da Empresa
+                      </label>
+                      <input
+                        type="text"
+                        {...register('company_name')}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Ex: TechCorp Ltda"
+                      />
+                      {errors.company_name && (
+                        <p className="mt-1 text-sm text-red-600">{errors.company_name.message}</p>
+                      )}
+                    </div>
+
+                    {/* CNPJ */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        CNPJ (opcional)
+                      </label>
+                      <input
+                        type="text"
+                        {...register('company_cnpj')}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="00.000.000/0000-00"
+                        maxLength={18}
+                        onChange={(e) => {
+                          const formatted = formatCNPJ(e.target.value)
+                          e.target.value = formatted
+                        }}
+                      />
+                      {errors.company_cnpj && (
+                        <p className="mt-1 text-sm text-red-600">{errors.company_cnpj.message}</p>
+                      )}
+                    </div>
                   </div>
 
-                  {/* CNPJ */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      CNPJ (opcional)
-                    </label>
-                    <input
-                      type="text"
-                      {...register('company_cnpj')}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="00.000.000/0000-00"
-                      maxLength={18}
-                      onChange={(e) => {
-                        const formatted = formatCNPJ(e.target.value)
-                        e.target.value = formatted
-                      }}
-                    />
-                    {errors.company_cnpj && (
-                      <p className="mt-1 text-sm text-red-600">{errors.company_cnpj.message}</p>
-                    )}
-                  </div>
-                </div>
+                  {/* Dados de Contato */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Nome do Contato */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <User className="h-4 w-4 inline mr-1" />
+                        Nome do Contato
+                      </label>
+                      <input
+                        type="text"
+                        {...register('contact_name')}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Ex: João Silva"
+                      />
+                      {errors.contact_name && (
+                        <p className="mt-1 text-sm text-red-600">{errors.contact_name.message}</p>
+                      )}
+                    </div>
 
-                  {/* Nome do Contato */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      <User className="h-4 w-4 inline mr-1" />
-                      Nome do Contato
-                    </label>
-                    <input
-                      type="text"
-                      {...register('contact_name')}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Ex: João Silva"
-                    />
-                    {errors.contact_name && (
-                      <p className="mt-1 text-sm text-red-600">{errors.contact_name.message}</p>
-                    )}
-                  </div>
-
-                  {/* Email do Contato */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      <Mail className="h-4 w-4 inline mr-1" />
-                      Email do Contato
-                    </label>
-                    <input
-                      type="email"
-                      {...register('contact_email')}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="joao@techcorp.com"
-                    />
-                    {errors.contact_email && (
-                      <p className="mt-1 text-sm text-red-600">{errors.contact_email.message}</p>
-                    )}
+                    {/* Email do Contato */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <Mail className="h-4 w-4 inline mr-1" />
+                        Email do Contato
+                      </label>
+                      <input
+                        type="email"
+                        {...register('contact_email')}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="joao@techcorp.com"
+                      />
+                      {errors.contact_email && (
+                        <p className="mt-1 text-sm text-red-600">{errors.contact_email.message}</p>
+                      )}
+                    </div>
                   </div>
 
                   {/* Telefone */}
-                  <div className="md:col-span-2">
+                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       <Phone className="h-4 w-4 inline mr-1" />
                       Telefone
