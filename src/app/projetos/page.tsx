@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@supabase/supabase-js'
-import ProjectListItem from '@/components/projects/ProjectListItem' // Importando o novo componente
+import ProjectListItem from '@/components/projects/ProjectListItem'
 import { 
   Search, Download, Filter, FolderOpen, AlertTriangle, 
   CheckCircle, DollarSign, BarChart3, FileText, Plus
@@ -133,7 +133,8 @@ export default function ProjectsPage() {
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white min-w-0"
+      // <-- MUDANÇA AQUI: Adicionamos text-gray-700 para escurecer o texto
+      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white min-w-0 text-gray-700 font-medium"
     >
       <option value="all">{placeholder}</option>
       {options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
@@ -194,7 +195,8 @@ export default function ProjectsPage() {
                     placeholder="Buscar projetos..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                     // <-- MUDANÇA AQUI: Adicionamos a classe para o placeholder
+                    className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 placeholder:text-gray-500"
                   />
                 </div>
                 <div className="flex gap-3">
@@ -204,7 +206,7 @@ export default function ProjectsPage() {
                 </div>
               </div>
               <div className="flex gap-3">
-                  <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm flex items-center gap-2">
+                  <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm flex items-center gap-2 text-gray-700 font-medium"> 
                       <Download className="w-4 h-4" /> Exportar
                   </button>
               </div>
