@@ -11,6 +11,7 @@ import {
 import { Client, ClientMetrics, RelationshipStatus, AccountHealth } from '@/types/clients'
 import NewClientModal from '@/components/modals/NewClientModal'
 import ClientDetailsModal from '@/components/modals/ClientDetailsModal'
+import EditClientModal from '@/components/modals/EditClientModal'
 
 export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([])
@@ -21,7 +22,9 @@ export default function ClientsPage() {
   const [healthFilter, setHealthFilter] = useState<AccountHealth | 'all'>('all')
   const [showNewClientModal, setShowNewClientModal] = useState(false)
   const [showDetailsModal, setShowDetailsModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null)
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null)
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -174,15 +177,32 @@ export default function ClientsPage() {
     loadMetrics()
   }
 
+  const handleClientUpdated = () => {
+    loadClients()
+    loadMetrics()
+  }
+
   const handleViewClient = (clientId: string) => {
     setSelectedClientId(clientId)
     setShowDetailsModal(true)
   }
 
   const handleEditClient = (client: Client) => {
-    // Função para modal de edição (implementaremos depois)
-    console.log('Editar cliente:', client)
+    setSelectedClient(client)
+    setShowEditModal(true)
     setShowDetailsModal(false)
+  }
+
+  const handleEditClientDirect = (clientId: string) => {
+    const client = clients.find(c => c.id === clientId)
+    if (client) {
+      setSelectedClient(client)
+      setShowEditModal(true)
+    }
+  }
+
+  const getPrimaryContact = (contacts?: any[]) => {
+    return contacts?.find(contact => contact.is_primary) || contacts?.[0]
   }
 
   const getPrimaryContact = (contacts?: any[]) => {
@@ -365,7 +385,10 @@ export default function ClientsPage() {
                     >
                       <Eye className="w-4 h-4" />
                     </button>
-                    <button className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors">
+                    <button 
+                      onClick={() => handleEditClientDirect(client.id)}
+                      className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                    >
                       <Edit2 className="w-4 h-4" />
                     </button>
                     <button className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
@@ -479,6 +502,14 @@ export default function ClientsPage() {
         onClose={() => setShowDetailsModal(false)}
         clientId={selectedClientId}
         onEditClient={handleEditClient}
+      />
+
+      {/* Modal Editar Cliente */}
+      <EditClientModal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        client={selectedClient}
+        onClientUpdated={handleClientUpdated}
       />
     </div>
   )
