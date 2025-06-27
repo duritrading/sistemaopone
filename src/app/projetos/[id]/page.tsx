@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabase'
 import { 
   ArrowLeft, Edit, AlertTriangle, Calendar, Users, DollarSign, 
   Target, BarChart3, CheckCircle, FileText, Code, Clock,
-  CheckSquare, Loader, XSquare 
+  CheckSquare, Loader, XSquare, Download, Trash2, BookOpen
 } from 'lucide-react'
 import { Gantt, Task, ViewMode } from 'gantt-task-react'
 import "gantt-task-react/dist/index.css"
@@ -47,6 +47,17 @@ interface ProjectMilestone {
   start_date?: string;
   status: string;
   progress_percentage: number;
+  team_member?: { full_name: string };
+}
+
+interface ProjectDeliverable {
+  id: string;
+  title: string;
+  description?: string;
+  type: string;
+  version: string;
+  status: string;
+  due_date?: string;
   team_member?: { full_name: string };
 }
 
@@ -101,6 +112,7 @@ export default function ProjectDetailPage() {
   
   const [project, setProject] = useState<ProjectDetails | null>(null);
   const [milestones, setMilestones] = useState<ProjectMilestone[]>([]);
+  const [deliverables, setDeliverables] = useState<ProjectDeliverable[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
@@ -118,21 +130,45 @@ export default function ProjectDetailPage() {
       setLoading(true);
       const projectPromise = supabase
         .from('projects')
-        .select(`*, client:clients(company_name), manager:team_members(full_name), technologies:project_technologies(id, name), scope_items:project_scope(id, title, status), team_members:project_team_members(role_in_project, team_member:team_members(full_name, primary_specialization))`)
-        .eq('id', projectId).single();
+        .select(`
+          *, 
+          client:clients(company_name), 
+          manager:team_members(full_name),
+          technologies:project_technologies(id, name), 
+          scope_items:project_scope(id, title, status),
+          team_members:project_team_members(
+            role_in_project,
+            team_member:team_members(full_name, primary_specialization)
+          )
+        `)
+        .eq('id', projectId)
+        .single();
       
       const milestonesPromise = supabase
         .from('project_milestones')
         .select(`*, team_member:team_members(full_name), start_date`)
-        .eq('project_id', projectId).order('due_date');
+        .eq('project_id', projectId)
+        .order('due_date');
 
-      const [{ data: projectData, error: projectError }, { data: milestonesData, error: milestonesError }] = await Promise.all([projectPromise, milestonesPromise]);
+      const deliverablesPromise = supabase
+        .from('project_deliverables')
+        .select(`*, team_member:team_members(full_name)`)
+        .eq('project_id', projectId)
+        .order('created_at');
+
+      const [
+          { data: projectData, error: projectError }, 
+          { data: milestonesData, error: milestonesError },
+          { data: deliverablesData, error: deliverablesError }
+      ] = await Promise.all([projectPromise, milestonesPromise, deliverablesPromise]);
 
       if (projectError) throw projectError;
       if (milestonesError) throw milestonesError;
+      if (deliverablesError) throw deliverablesError;
       
       setProject(projectData);
       setMilestones(milestonesData || []);
+      setDeliverables(deliverablesData || []);
 
     } catch (err: any) {
       setError(err.message);
@@ -152,19 +188,39 @@ export default function ProjectDetailPage() {
       }
   };
   
+  const getDeliverableStatusColor = (status: string) => {
+    switch (status) {
+        case 'Aprovado': return 'bg-green-100 text-green-800';
+        case 'Revisão': return 'bg-yellow-100 text-yellow-800';
+        case 'Rejeitado': return 'bg-red-100 text-red-800';
+        default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+  
   const healthConfig = project ? getHealthConfig(project.health) : null;
   const daysRemaining = project?.estimated_end_date ? Math.ceil((new Date(project.estimated_end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : null;
 
   const ganttTasks: Task[] = milestones.map(m => ({
     start: m.start_date ? new Date(m.start_date) : (m.due_date ? new Date(new Date(m.due_date).setDate(new Date(m.due_date).getDate() - 7)) : new Date()),
     end: m.due_date ? new Date(m.due_date) : new Date(),
-    name: m.title, id: m.id, type: 'task', progress: m.progress_percentage, isDisabled: m.status === 'Concluído',
+    name: m.title, 
+    id: m.id, 
+    type: 'task', 
+    progress: m.progress_percentage, 
+    isDisabled: m.status === 'Concluído',
   }));
 
   const timelineMetrics = {
       concluidos: milestones.filter(m => m.status === 'Concluído').length,
       emAndamento: milestones.filter(m => m.status === 'Em Andamento').length,
       atrasados: milestones.filter(m => m.status === 'Atrasado').length,
+  };
+
+  const deliverableMetrics = {
+      aprovados: deliverables.filter(d => d.status === 'Aprovado').length,
+      emRevisao: deliverables.filter(d => d.status === 'Revisão').length,
+      rascunhos: deliverables.filter(d => d.status === 'Rascunho').length,
+      total: deliverables.length,
   };
 
   if (loading) {
@@ -203,8 +259,9 @@ export default function ProjectDetailPage() {
           <nav className="flex space-x-8">
             <button onClick={() => setActiveTab('overview')} className={`py-4 px-1 border-b-2 font-medium ${activeTab === 'overview' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>Visão Geral</button>
             <button onClick={() => setActiveTab('timeline')} className={`py-4 px-1 border-b-2 font-medium ${activeTab === 'timeline' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>Cronograma</button>
-            <button onClick={() => setActiveTab('risks')} className={`py-4 px-1 border-b-2 font-medium ${activeTab === 'risks' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>Riscos</button>
             <button onClick={() => setActiveTab('deliverables')} className={`py-4 px-1 border-b-2 font-medium ${activeTab === 'deliverables' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>Entregáveis</button>
+            <button onClick={() => setActiveTab('risks')} className={`py-4 px-1 border-b-2 font-medium ${activeTab === 'risks' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>Riscos</button>
+            <button onClick={() => setActiveTab('communication')} className={`py-4 px-1 border-b-2 font-medium ${activeTab === 'communication' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>Comunicação</button>
           </nav>
         </div>
 
@@ -230,13 +287,11 @@ export default function ProjectDetailPage() {
                   {isClient && <TimelineKPI_Card title="Dias Restantes" value={daysRemaining ?? '--'} icon={Clock} iconColor="text-gray-500" />}
                   <TimelineKPI_Card title="Atrasados" value={timelineMetrics.atrasados} icon={XSquare} iconColor="text-red-500" />
               </div>
-              
               <InfoCard title="Gráfico de Gantt" icon={Calendar}>
                   {isClient && ganttTasks.length > 0 ? (
                       <Gantt tasks={ganttTasks} viewMode={ViewMode.Month} listCellWidth="" ganttHeight={300} rowHeight={50} columnWidth={75} barBackgroundColor="#e4e4e7" barProgressColor="#3b82f6" barProgressSelectedColor="#2563eb" arrowColor="gray" todayColor="rgba(239, 68, 68, 0.2)" fontFamily="inherit" fontSize="14px" />
                   ) : <p className="text-gray-500 py-8 text-center">Nenhum marco cadastrado para este projeto.</p>}
               </InfoCard>
-
               <InfoCard title="Marcos e Entregas" icon={CheckSquare}>
                   <div className="space-y-4">
                       {milestones.length > 0 ? milestones.map(milestone => (
@@ -254,7 +309,46 @@ export default function ProjectDetailPage() {
           </div>
         )}
 
-        {(activeTab === 'risks' || activeTab === 'deliverables') && (
+        {activeTab === 'deliverables' && (
+            <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <TimelineKPI_Card title="Aprovados" value={deliverableMetrics.aprovados} icon={CheckCircle} iconColor="text-green-500" />
+                    <TimelineKPI_Card title="Em Revisão" value={deliverableMetrics.emRevisao} icon={Loader} iconColor="text-yellow-500" />
+                    <TimelineKPI_Card title="Rascunhos" value={deliverableMetrics.rascunhos} icon={FileText} iconColor="text-gray-500" />
+                    <TimelineKPI_Card title="Total" value={deliverableMetrics.total} icon={BookOpen} iconColor="text-blue-500" />
+                </div>
+
+                <InfoCard title="Gerenciador de Entregáveis" icon={FileText}>
+                    <div className="space-y-4">
+                        {deliverables.length > 0 ? deliverables.map(item => (
+                            <div key={item.id} className="p-4 border rounded-lg flex justify-between items-center hover:bg-gray-50/50 transition-colors">
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-3 mb-2">
+                                        <h4 className="font-medium text-gray-800">{item.title}</h4>
+                                        <span className="px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">{item.type}</span>
+                                        <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${getDeliverableStatusColor(item.status)}`}>{item.status}</span>
+                                    </div>
+                                    <div className="text-sm text-gray-500 space-x-4">
+                                        <span>Versão: <span className="font-medium text-gray-700">{item.version}</span></span>
+                                        <span>Entrega: <span className="font-medium text-gray-700">{formatDate(item.due_date)}</span></span>
+                                        <span>Responsável: <span className="font-medium text-gray-700">{item.team_member?.full_name || 'N/A'}</span></span>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <button className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md" title="Download"><Download className="w-4 h-4" /></button>
+                                    <button className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-md" title="Editar"><Edit className="w-4 h-4" /></button>
+                                    <button className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md" title="Excluir"><Trash2 className="w-4 h-4" /></button>
+                                </div>
+                            </div>
+                        )) : (
+                            <p className="text-gray-500 py-8 text-center">Nenhum entregável cadastrado para este projeto.</p>
+                        )}
+                    </div>
+                </InfoCard>
+            </div>
+        )}
+
+        {(activeTab === 'risks' || activeTab === 'communication') && (
           <div className="text-center py-16 bg-white rounded-lg border"><h2 className="text-xl font-semibold">Em Desenvolvimento</h2><p className="text-gray-600 mt-2">A aba de "{activeTab}" será implementada em breve.</p></div>
         )}
       </div>
