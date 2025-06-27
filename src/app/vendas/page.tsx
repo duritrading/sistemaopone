@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import NewOpportunityModal from '@/components/modals/NewOpportunityModal'
 import OpportunityDetailsModal from '@/components/modals/OpportunityDetailsModal'
+import EditOpportunityModal from '@/components/modals/EditOpportunityModal'
 import { supabase } from '@/lib/supabase'
 import { SalesOpportunity, SalesStage, SalesPipelineStats } from '@/types/sales'
 import { 
@@ -39,6 +40,7 @@ export default function VendasPage() {
   const [stats, setStats] = useState<SalesPipelineStats | null>(null)
   const [showNewOpportunityModal, setShowNewOpportunityModal] = useState(false)
   const [showDetailsModal, setShowDetailsModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
   const [selectedOpportunity, setSelectedOpportunity] = useState<SalesOpportunity | null>(null)
   const [draggedItem, setDraggedItem] = useState<string | null>(null)
   const [dragOverStage, setDragOverStage] = useState<SalesStage | null>(null)
@@ -263,9 +265,15 @@ export default function VendasPage() {
   }
 
   const handleEditOpportunity = (opportunity: SalesOpportunity) => {
-    // TODO: Implementar modal de edição
-    console.log('Editar oportunidade:', opportunity.opportunity_title)
-    setShowDetailsModal(false)
+    setSelectedOpportunity(opportunity)
+    setShowDetailsModal(false) // Fechar modal de detalhes se estiver aberto
+    setShowEditModal(true)
+  }
+
+  const handleEditFromCard = (e: React.MouseEvent, opportunity: SalesOpportunity) => {
+    e.stopPropagation()
+    setSelectedOpportunity(opportunity)
+    setShowEditModal(true)
   }
 
   if (loading) {
@@ -424,13 +432,21 @@ export default function VendasPage() {
                                   handleViewDetails(opportunity)
                                 }}
                                 className="p-1 text-gray-400 hover:text-blue-500 rounded"
+                                title="Ver detalhes"
                               >
                                 <Eye className="h-4 w-4" />
                               </button>
-                              <button className="p-1 text-gray-400 hover:text-blue-500 rounded">
+                              <button 
+                                onClick={(e) => handleEditFromCard(e, opportunity)}
+                                className="p-1 text-gray-400 hover:text-blue-500 rounded"
+                                title="Editar oportunidade"
+                              >
                                 <Edit2 className="h-4 w-4" />
                               </button>
-                              <button className="p-1 text-gray-400 hover:text-red-500 rounded">
+                              <button 
+                                className="p-1 text-gray-400 hover:text-red-500 rounded"
+                                title="Excluir oportunidade"
+                              >
                                 <Trash2 className="h-4 w-4" />
                               </button>
                             </div>
@@ -514,6 +530,20 @@ export default function VendasPage() {
           setSelectedOpportunity(null)
         }}
         onEdit={handleEditOpportunity}
+        onSuccess={() => {
+          fetchOpportunities() // Refresh opportunities
+          fetchStats() // Refresh stats
+        }}
+      />
+
+      {/* Edit Opportunity Modal */}
+      <EditOpportunityModal 
+        isOpen={showEditModal}
+        opportunity={selectedOpportunity}
+        onClose={() => {
+          setShowEditModal(false)
+          setSelectedOpportunity(null)
+        }}
         onSuccess={() => {
           fetchOpportunities() // Refresh opportunities
           fetchStats() // Refresh stats
