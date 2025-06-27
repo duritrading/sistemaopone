@@ -3,6 +3,8 @@
 
 import { useState, useEffect } from 'react'
 import DashboardLayout from '@/components/layout/DashboardLayout'
+import NewMemberModal from '@/components/modals/NewMemberModal'
+import EditMemberModal from '@/components/modals/EditMemberModal'
 import { supabase } from '@/lib/supabase'
 import { 
   Plus, 
@@ -12,7 +14,10 @@ import {
   MapPin,
   Clock,
   FolderOpen,
-  User
+  User,
+  Edit2,
+  Trash2,
+  MoreVertical
 } from 'lucide-react'
 
 // Types
@@ -68,6 +73,10 @@ export default function EquipePage() {
   const [filteredMembers, setFilteredMembers] = useState<TeamMember[]>([])
   const [loading, setLoading] = useState(true)
   const [showFilters, setShowFilters] = useState(false)
+  const [showNewMemberModal, setShowNewMemberModal] = useState(false)
+  const [showEditMemberModal, setShowEditMemberModal] = useState(false)
+  const [editingMember, setEditingMember] = useState<TeamMember | null>(null)
+  const [deletingMember, setDeletingMember] = useState<string | null>(null)
   const [filters, setFilters] = useState<Filters>({
     seniority: [],
     specialization: [],
@@ -194,6 +203,34 @@ export default function EquipePage() {
     return new Date(dateString).toLocaleDateString('pt-BR')
   }
 
+  const handleEditMember = (member: TeamMember) => {
+    setEditingMember(member)
+    setShowEditMemberModal(true)
+  }
+
+  const handleDeleteMember = async (memberId: string) => {
+    if (!confirm('Tem certeza que deseja excluir este membro?')) return
+    
+    setDeletingMember(memberId)
+    
+    try {
+      const { error } = await supabase
+        .from('team_members')
+        .update({ is_active: false })
+        .eq('id', memberId)
+
+      if (error) throw error
+      
+      // Refresh the list
+      fetchTeamMembers()
+    } catch (error) {
+      console.error('Erro ao excluir membro:', error)
+      alert('Erro ao excluir membro. Tente novamente.')
+    } finally {
+      setDeletingMember(null)
+    }
+  }
+
   if (loading) {
     return (
       <DashboardLayout>
@@ -218,6 +255,7 @@ export default function EquipePage() {
           <div className="mt-4 sm:mt-0">
             <button
               type="button"
+              onClick={() => setShowNewMemberModal(true)}
               className="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
             >
               <Plus className="h-4 w-4 mr-2" />
@@ -359,6 +397,29 @@ export default function EquipePage() {
                     <p className="text-sm text-gray-600 truncate">{member.email}</p>
                   </div>
                 </div>
+
+                {/* Actions */}
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => handleEditMember(member)}
+                    className="p-2 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-md transition-colors"
+                    title="Editar membro"
+                  >
+                    <Edit2 className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteMember(member.id)}
+                    disabled={deletingMember === member.id}
+                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50"
+                    title="Excluir membro"
+                  >
+                    {deletingMember === member.id ? (
+                      <div className="h-4 w-4 animate-spin border-2 border-red-500 border-t-transparent rounded-full"></div>
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
               </div>
 
               {/* Details */}
@@ -425,6 +486,28 @@ export default function EquipePage() {
           </div>
         )}
       </div>
+
+      {/* New Member Modal */}
+      <NewMemberModal 
+        isOpen={showNewMemberModal}
+        onClose={() => setShowNewMemberModal(false)}
+        onSuccess={() => {
+          fetchTeamMembers() // Refresh list
+        }}
+      />
+
+      {/* Edit Member Modal */}
+      <EditMemberModal 
+        isOpen={showEditMemberModal}
+        member={editingMember}
+        onClose={() => {
+          setShowEditMemberModal(false)
+          setEditingMember(null)
+        }}
+        onSuccess={() => {
+          fetchTeamMembers() // Refresh list
+        }}
+      />
     </DashboardLayout>
   )
 }
