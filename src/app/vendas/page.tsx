@@ -149,24 +149,16 @@ export default function VendasPage() {
 
   // Drag & Drop Functions
   const handleDragStart = (e: React.DragEvent, opportunityId: string) => {
+    console.log('🔄 Drag Start:', opportunityId)
     setDraggedItem(opportunityId)
     e.dataTransfer.effectAllowed = 'move'
-    e.dataTransfer.setData('text/html', opportunityId)
-    
-    // Add visual feedback to dragged item
-    setTimeout(() => {
-      const draggedElement = e.target as HTMLElement
-      draggedElement.style.opacity = '0.5'
-    }, 0)
+    e.dataTransfer.setData('text/plain', opportunityId)
   }
 
   const handleDragEnd = (e: React.DragEvent) => {
+    console.log('🔄 Drag End')
     setDraggedItem(null)
     setDragOverStage(null)
-    
-    // Remove visual feedback
-    const draggedElement = e.target as HTMLElement
-    draggedElement.style.opacity = '1'
   }
 
   const handleDragOver = (e: React.DragEvent, stage: SalesStage) => {
@@ -176,7 +168,6 @@ export default function VendasPage() {
   }
 
   const handleDragLeave = (e: React.DragEvent) => {
-    // Only clear if we're leaving the entire drop zone
     const relatedTarget = e.relatedTarget as HTMLElement
     const currentTarget = e.currentTarget as HTMLElement
     
@@ -187,64 +178,77 @@ export default function VendasPage() {
 
   const handleDrop = async (e: React.DragEvent, newStage: SalesStage) => {
     e.preventDefault()
+    console.log('🎯 Drop event triggered for stage:', newStage)
+    
     setDragOverStage(null)
     
-    const opportunityId = e.dataTransfer.getData('text/html')
-    if (!opportunityId || !draggedItem) return
+    const opportunityId = e.dataTransfer.getData('text/plain') || draggedItem
+    console.log('📦 Opportunity ID from drop:', opportunityId)
+    
+    if (!opportunityId) {
+      console.log('❌ No opportunity ID found')
+      return
+    }
 
     // Find the opportunity being moved
     const opportunity = opportunities.find(opp => opp.id === opportunityId)
-    if (!opportunity || opportunity.stage === newStage) {
+    console.log('🔍 Found opportunity:', opportunity?.opportunity_title, 'Current stage:', opportunity?.stage)
+    
+    if (!opportunity) {
+      console.log('❌ Opportunity not found')
       setDraggedItem(null)
       return
     }
 
-    // Optimistic update - update local state immediately
-    setOpportunities(prev => 
-      prev.map(opp => 
-        opp.id === opportunityId 
-          ? { ...opp, stage: newStage }
-          : opp
-      )
-    )
+    if (opportunity.stage === newStage) {
+      console.log('⚠️ Same stage, no move needed')
+      setDraggedItem(null)
+      return
+    }
 
-    // Update database
+    console.log(`🚀 Moving "${opportunity.opportunity_title}" from "${opportunity.stage}" to "${newStage}"`)
+
+    // Update database directly (no optimistic update for now)
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('sales_opportunities')
         .update({ 
           stage: newStage,
           updated_at: new Date().toISOString()
         })
         .eq('id', opportunityId)
+        .select()
 
-      if (error) throw error
+      if (error) {
+        console.error('❌ Supabase error:', error)
+        throw error
+      }
+
+      console.log('✅ Database updated successfully:', data)
 
       // Add activity log
-      await supabase
+      const { error: activityError } = await supabase
         .from('sales_activities')
         .insert([{
           opportunity_id: opportunityId,
           activity_type: 'Mudança de Stage',
           title: `Movido para ${newStage}`,
-          description: `Oportunidade movida de "${opportunity.stage}" para "${newStage}" via drag & drop`,
-          created_by: null // We could get current user here
+          description: `Oportunidade movida de "${opportunity.stage}" para "${newStage}" via drag & drop`
         }])
 
-      // Refresh stats
+      if (activityError) {
+        console.log('⚠️ Activity log error (not critical):', activityError)
+      }
+
+      // Refresh data
+      console.log('🔄 Refreshing data...')
+      await fetchOpportunities()
       await fetchStats()
+      console.log('✅ Data refreshed')
       
     } catch (error) {
-      console.error('Erro ao mover oportunidade:', error)
-      // Revert optimistic update on error
-      setOpportunities(prev => 
-        prev.map(opp => 
-          opp.id === opportunityId 
-            ? { ...opp, stage: opportunity.stage }
-            : opp
-        )
-      )
-      alert('Erro ao mover oportunidade. Tente novamente.')
+      console.error('❌ Error moving opportunity:', error)
+      alert(`Erro ao mover oportunidade: ${error.message || 'Erro desconhecido'}`)
     }
 
     setDraggedItem(null)
