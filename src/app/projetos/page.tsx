@@ -1,10 +1,9 @@
-// src/app/projetos/page.tsx - VERSÃO MÍNIMA PARA TESTE
 export default function ProjectsPage() {
   return (
-    <div>
-      <h1>Teste - Página Funcionando</h1>
-      <p>Se você está vendo isto, a página carregou com sucesso!</p>
-      <p>Hora atual: {new Date().toLocaleTimeString()}</p>
+    <div style={{ padding: '20px' }}>
+      <h1>✅ Projetos - Funcionando!</h1>
+      <p>Página carregada com sucesso</p>
+      <p>Timestamp: {new Date().toISOString()}</p>
     </div>
   )
-}
+}t
