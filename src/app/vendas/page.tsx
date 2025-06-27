@@ -19,7 +19,8 @@ import {
   MoreVertical,
   Edit2,
   Trash2,
-  Eye
+  Eye,
+  GripVertical
 } from 'lucide-react'
 
 const PIPELINE_STAGES: { stage: SalesStage; color: string; bgColor: string }[] = [
@@ -36,6 +37,8 @@ export default function VendasPage() {
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState<SalesPipelineStats | null>(null)
   const [showNewOpportunityModal, setShowNewOpportunityModal] = useState(false)
+  const [draggedItem, setDraggedItem] = useState<string | null>(null)
+  const [dragOverStage, setDragOverStage] = useState<SalesStage | null>(null)
 
   useEffect(() => {
     fetchOpportunities()
@@ -144,6 +147,109 @@ export default function VendasPage() {
     }
   }
 
+  // Drag & Drop Functions
+  const handleDragStart = (e: React.DragEvent, opportunityId: string) => {
+    setDraggedItem(opportunityId)
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/html', opportunityId)
+    
+    // Add visual feedback to dragged item
+    setTimeout(() => {
+      const draggedElement = e.target as HTMLElement
+      draggedElement.style.opacity = '0.5'
+    }, 0)
+  }
+
+  const handleDragEnd = (e: React.DragEvent) => {
+    setDraggedItem(null)
+    setDragOverStage(null)
+    
+    // Remove visual feedback
+    const draggedElement = e.target as HTMLElement
+    draggedElement.style.opacity = '1'
+  }
+
+  const handleDragOver = (e: React.DragEvent, stage: SalesStage) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    setDragOverStage(stage)
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    // Only clear if we're leaving the entire drop zone
+    const relatedTarget = e.relatedTarget as HTMLElement
+    const currentTarget = e.currentTarget as HTMLElement
+    
+    if (!currentTarget.contains(relatedTarget)) {
+      setDragOverStage(null)
+    }
+  }
+
+  const handleDrop = async (e: React.DragEvent, newStage: SalesStage) => {
+    e.preventDefault()
+    setDragOverStage(null)
+    
+    const opportunityId = e.dataTransfer.getData('text/html')
+    if (!opportunityId || !draggedItem) return
+
+    // Find the opportunity being moved
+    const opportunity = opportunities.find(opp => opp.id === opportunityId)
+    if (!opportunity || opportunity.stage === newStage) {
+      setDraggedItem(null)
+      return
+    }
+
+    // Optimistic update - update local state immediately
+    setOpportunities(prev => 
+      prev.map(opp => 
+        opp.id === opportunityId 
+          ? { ...opp, stage: newStage }
+          : opp
+      )
+    )
+
+    // Update database
+    try {
+      const { error } = await supabase
+        .from('sales_opportunities')
+        .update({ 
+          stage: newStage,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', opportunityId)
+
+      if (error) throw error
+
+      // Add activity log
+      await supabase
+        .from('sales_activities')
+        .insert([{
+          opportunity_id: opportunityId,
+          activity_type: 'Mudança de Stage',
+          title: `Movido para ${newStage}`,
+          description: `Oportunidade movida de "${opportunity.stage}" para "${newStage}" via drag & drop`,
+          created_by: null // We could get current user here
+        }])
+
+      // Refresh stats
+      await fetchStats()
+      
+    } catch (error) {
+      console.error('Erro ao mover oportunidade:', error)
+      // Revert optimistic update on error
+      setOpportunities(prev => 
+        prev.map(opp => 
+          opp.id === opportunityId 
+            ? { ...opp, stage: opportunity.stage }
+            : opp
+        )
+      )
+      alert('Erro ao mover oportunidade. Tente novamente.')
+    }
+
+    setDraggedItem(null)
+  }
+
   if (loading) {
     return (
       <DashboardLayout>
@@ -241,9 +347,17 @@ export default function VendasPage() {
                 const stageValue = stageOpportunities.reduce((sum, opp) => sum + opp.estimated_value, 0)
                 
                 return (
-                  <div key={stage} className="flex-shrink-0 w-80">
+                  <div 
+                    key={stage} 
+                    className="flex-shrink-0 w-80"
+                    onDragOver={(e) => handleDragOver(e, stage)}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => handleDrop(e, stage)}
+                  >
                     {/* Stage Header */}
-                    <div className={`${bgColor} rounded-lg p-4 mb-4`}>
+                    <div className={`${bgColor} rounded-lg p-4 mb-4 transition-all duration-200 ${
+                      dragOverStage === stage ? 'ring-2 ring-blue-400 ring-opacity-75 scale-105' : ''
+                    }`}>
                       <div className="flex items-center justify-between">
                         <h3 className={`font-medium ${color}`}>{stage}</h3>
                         <span className={`text-sm font-semibold ${color} bg-white px-2 py-1 rounded`}>
@@ -253,6 +367,11 @@ export default function VendasPage() {
                       <p className="text-sm text-gray-600 mt-1">
                         {formatCurrency(stageValue)}
                       </p>
+                      {dragOverStage === stage && (
+                        <p className="text-xs text-blue-600 mt-2 font-medium">
+                          Solte aqui para mover
+                        </p>
+                      )}
                     </div>
 
                     {/* Opportunities */}
@@ -260,13 +379,26 @@ export default function VendasPage() {
                       {stageOpportunities.map((opportunity) => (
                         <div
                           key={opportunity.id}
-                          className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, opportunity.id)}
+                          onDragEnd={handleDragEnd}
+                          className={`bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all duration-200 cursor-move ${
+                            draggedItem === opportunity.id ? 'opacity-50 scale-95' : 'hover:scale-105'
+                          }`}
                         >
                           {/* Opportunity Header */}
                           <div className="flex items-start justify-between mb-3">
-                            <h4 className="font-medium text-gray-900 text-sm leading-tight">
-                              {opportunity.opportunity_title}
-                            </h4>
+                            <div className="flex items-start space-x-2 flex-1">
+                              {/* Drag Handle */}
+                              <div className="flex items-center justify-center w-4 h-4 mt-1 text-gray-400 cursor-grab active:cursor-grabbing">
+                                <GripVertical className="h-3 w-3" />
+                              </div>
+                              
+                              <h4 className="font-medium text-gray-900 text-sm leading-tight flex-1">
+                                {opportunity.opportunity_title}
+                              </h4>
+                            </div>
+                            
                             <div className="flex items-center space-x-1">
                               <button className="p-1 text-gray-400 hover:text-blue-500 rounded">
                                 <Eye className="h-4 w-4" />
@@ -322,19 +454,11 @@ export default function VendasPage() {
                             </div>
                           )}
 
-                          {/* Stage Actions */}
+                          {/* Drag Instructions */}
                           <div className="mt-3 pt-3 border-t border-gray-100">
-                            <select
-                              value={opportunity.stage}
-                              onChange={(e) => handleStageChange(opportunity.id, e.target.value as SalesStage)}
-                              className="w-full text-sm border border-gray-300 rounded px-2 py-1 focus:ring-blue-500 focus:border-blue-500"
-                            >
-                              {PIPELINE_STAGES.map(({ stage }) => (
-                                <option key={stage} value={stage}>
-                                  {stage}
-                                </option>
-                              ))}
-                            </select>
+                            <p className="text-xs text-gray-500 text-center">
+                              Arraste para mover entre etapas
+                            </p>
                           </div>
                         </div>
                       ))}
