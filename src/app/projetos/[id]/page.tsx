@@ -32,11 +32,9 @@ interface Project {
   is_active: boolean
   created_at: string
   updated_at: string
-  // Relacionamentos
   client?: {
     id: string
     company_name: string
-    contact_name?: string
   }
   manager?: {
     id: string
@@ -54,8 +52,10 @@ export default function ProjectDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState('overview')
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+    setMounted(true)
     if (projectId) {
       loadProject()
     }
@@ -70,7 +70,7 @@ export default function ProjectDetailPage() {
         .from('projects')
         .select(`
           *,
-          client:clients(id, company_name, contact_name),
+          client:clients(id, company_name),
           manager:team_members(id, full_name, email)
         `)
         .eq('id', projectId)
@@ -130,7 +130,7 @@ export default function ProjectDetailPage() {
     }
   }
 
-  if (loading) {
+  if (!mounted || loading) {
     return (
       <div className="min-h-screen bg-gray-50 p-6">
         <div className="max-w-7xl mx-auto">
@@ -339,9 +339,6 @@ export default function ProjectDetailPage() {
                   <div>
                     <div className="text-sm text-gray-600 mb-1">Cliente</div>
                     <div className="font-medium text-gray-900">{project.client?.company_name || 'Não definido'}</div>
-                    {project.client?.contact_name && (
-                      <div className="text-sm text-gray-500">{project.client.contact_name}</div>
-                    )}
                   </div>
                   
                   <div>
