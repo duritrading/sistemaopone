@@ -55,7 +55,6 @@ export default function EditProjectModal({ isOpen, onClose, project, onSuccess }
             setValue(key, project[key]);
         }
       });
-      // Assegura que os IDs dos relacionamentos são definidos corretamente.
       setValue('client_id', project.client?.id || '');
       setValue('manager_id', project.manager?.id || '');
     }
@@ -64,9 +63,6 @@ export default function EditProjectModal({ isOpen, onClose, project, onSuccess }
   const onSubmit = async (data) => {
     setIsSubmitting(true);
     try {
-      // **CORREÇÃO APLICADA**
-      // Construímos o objeto de atualização manualmente para garantir tipos e valores corretos.
-      // Campos vazios são convertidos para `null` e números são garantidos.
       const updateData = {
         name: data.name,
         description: data.description || null,
@@ -74,7 +70,7 @@ export default function EditProjectModal({ isOpen, onClose, project, onSuccess }
         health: data.health,
         risk_level: data.risk_level,
         project_type: data.project_type,
-        manager_id: data.manager_id || null, // Garante que um gerente não selecionado seja `null`
+        manager_id: data.manager_id || null,
         start_date: data.start_date || null,
         estimated_end_date: data.estimated_end_date || null,
         progress_percentage: Number(data.progress_percentage) || 0,
@@ -126,9 +122,10 @@ export default function EditProjectModal({ isOpen, onClose, project, onSuccess }
     </div>
   );
 
-  const Input = (props) => <input {...props} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm" />;
-  const Select = (props) => <select {...props} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm bg-white" />;
-  const TextArea = (props) => <textarea {...props} rows={4} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm" />;
+  // **CORREÇÃO VISUAL APLICADA AQUI**
+  const Input = (props) => <input {...props} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900 placeholder:text-gray-400" />;
+  const Select = (props) => <select {...props} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm bg-white text-gray-900" />;
+  const TextArea = (props) => <textarea {...props} rows={4} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900 placeholder:text-gray-400" />;
 
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={onClose}>
@@ -145,9 +142,9 @@ export default function EditProjectModal({ isOpen, onClose, project, onSuccess }
 
         <form className="p-6 space-y-6 overflow-y-auto">
             <FormSection title="Informações Básicas" icon={Info}>
-                <FormField label="Nome do Projeto" fullWidth><Input {...register('name')} /></FormField>
+                <FormField label="Nome do Projeto" fullWidth><Input {...register('name')} placeholder="Digite o nome do projeto..." /></FormField>
                 <FormField label="Cliente"><Input value={project.client?.company_name || 'N/A'} readOnly className="bg-gray-100 cursor-not-allowed" /></FormField>
-                <FormField label="Gerente de Projeto"><Select {...register('manager_id')}><option value="">Selecione</option>{teamMembers.map(m => <option key={m.id} value={m.id}>{m.full_name}</option>)}</Select></FormField>
+                <FormField label="Gerente de Projeto"><Select {...register('manager_id')}><option value="">Selecione um gerente</option>{teamMembers.map(m => <option key={m.id} value={m.id}>{m.full_name}</option>)}</Select></FormField>
                 <FormField label="Tipo"><Select {...register('project_type')}><option>MVP</option><option>PoC</option><option>Implementação</option><option>Consultoria</option></Select></FormField>
                 <FormField label="Status"><Select {...register('status')}><option>Planejamento</option><option>Executando</option><option>Pausado</option><option>Concluído</option><option>Cancelado</option></Select></FormField>
                 <FormField label="Saúde"><Select {...register('health')}><option>Excelente</option><option>Bom</option><option>Crítico</option></Select></FormField>
@@ -157,14 +154,14 @@ export default function EditProjectModal({ isOpen, onClose, project, onSuccess }
             <FormSection title="Cronograma e Orçamento" icon={Calendar}>
                  <FormField label="Data Início"><Input type="date" {...register('start_date')} /></FormField>
                  <FormField label="Previsão Fim"><Input type="date" {...register('estimated_end_date')} /></FormField>
-                 <FormField label="Progresso (%)"><Input type="number" {...register('progress_percentage', { valueAsNumber: true })} /></FormField>
-                 <FormField label="Próximo Marco"><Input {...register('next_milestone')} /></FormField>
-                 <FormField label="Orçamento (R$)"><Input type="number" step="0.01" {...register('total_budget', { valueAsNumber: true })} /></FormField>
-                 <FormField label="Valor Usado (R$)"><Input type="number" step="0.01" {...register('used_budget', { valueAsNumber: true })} /></FormField>
+                 <FormField label="Progresso (%)"><Input type="number" {...register('progress_percentage', { valueAsNumber: true })} placeholder="Ex: 65" /></FormField>
+                 <FormField label="Próximo Marco"><Input {...register('next_milestone')} placeholder="Ex: Deploy em produção" /></FormField>
+                 <FormField label="Orçamento (R$)"><Input type="number" step="0.01" {...register('total_budget', { valueAsNumber: true })} placeholder="Ex: 150000.00" /></FormField>
+                 <FormField label="Valor Usado (R$)"><Input type="number" step="0.01" {...register('used_budget', { valueAsNumber: true })} placeholder="Ex: 97500.00" /></FormField>
             </FormSection>
 
              <FormSection title="Detalhes do Projeto" icon={FileText}>
-                <FormField label="Objetivo" fullWidth><TextArea {...register('description')} /></FormField>
+                <FormField label="Objetivo" fullWidth><TextArea {...register('description')} placeholder="Descreva o objetivo principal do projeto..." /></FormField>
             </FormSection>
         </form>
       </div>
