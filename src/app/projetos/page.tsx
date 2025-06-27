@@ -1,4 +1,4 @@
-// src/app/projetos/page.tsx - PADRÃO DAS PÁGINAS QUE FUNCIONAM
+// src/app/projetos/page.tsx
 import DashboardLayout from '@/components/layout/DashboardLayout'
 
 export default function ProjectsPage() {
