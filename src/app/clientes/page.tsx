@@ -131,6 +131,39 @@ export default function ClientsPage() {
     }
   }
 
+  const handleClientCreated = () => {
+    loadClients()
+    loadMetrics()
+  }
+
+  const handleClientUpdated = () => {
+    loadClients()
+    loadMetrics()
+  }
+
+  const handleViewClient = (clientId: string) => {
+    setSelectedClientId(clientId)
+    setShowDetailsModal(true)
+  }
+
+  const handleEditClient = (client: Client) => {
+    setSelectedClient(client)
+    setShowEditModal(true)
+    setShowDetailsModal(false)
+  }
+
+  const handleEditClientDirect = (clientId: string) => {
+    const client = clients.find(c => c.id === clientId)
+    if (client) {
+      setSelectedClient(client)
+      setShowEditModal(true)
+    }
+  }
+
+  const getPrimaryContact = (contacts?: any[]) => {
+    return contacts?.find(contact => contact.is_primary) || contacts?.[0]
+  }
+
   const filteredClients = clients.filter(client => {
     const matchesSearch = client.company_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          client.industry?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -170,43 +203,6 @@ export default function ClientsPage() {
       style: 'currency',
       currency: 'BRL'
     }).format(value)
-  }
-
-  const getPrimaryContact = (contacts?: any[]) => {
-    return contacts?.find(contact => contact.is_primary) || contacts?.[0]
-  }
-
-  const handleClientCreated = () => {
-    loadClients()
-    loadMetrics()
-  }
-
-  const handleClientUpdated = () => {
-    loadClients()
-    loadMetrics()
-  }
-
-  const handleViewClient = (clientId: string) => {
-    setSelectedClientId(clientId)
-    setShowDetailsModal(true)
-  }
-
-  const handleEditClient = (client: Client) => {
-    setSelectedClient(client)
-    setShowEditModal(true)
-    setShowDetailsModal(false)
-  }
-
-  const handleEditClientDirect = (clientId: string) => {
-    const client = clients.find(c => c.id === clientId)
-    if (client) {
-      setSelectedClient(client)
-      setShowEditModal(true)
-    }
-  }
-
-  const getPrimaryContact = (contacts?: any[]) => {
-    return contacts?.find(contact => contact.is_primary) || contacts?.[0]
   }
 
   if (loading) {
