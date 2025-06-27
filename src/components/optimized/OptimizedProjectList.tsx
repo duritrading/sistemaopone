@@ -8,7 +8,6 @@ import React, { memo, useCallback, useMemo, Suspense, lazy } from 'react'
 import { FixedSizeList as List } from 'react-window'
 import InfiniteLoader from 'react-window-infinite-loader'
 import { useOptimizedProjects } from '@/hooks/useOptimizedProjects'
-import { useIntersectionObserver } from '@/hooks/useIntersectionObserver'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 
 // Lazy load de componentes pesados
@@ -312,31 +311,5 @@ export default function OptimizedProjectList({
   )
 }
 
-/**
- * Hook para intersection observer
- */
-function useIntersectionObserver(
-  elementRef: React.RefObject<Element>,
-  callback: () => void,
-  options: IntersectionObserverInit = {}
-) {
-  React.useEffect(() => {
-    const element = elementRef.current
-    if (!element) return
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          callback()
-        }
-      },
-      {
-        threshold: 0.1,
-        ...options
-      }
-    )
-
-    observer.observe(element)
-    return () => observer.disconnect()
-  }, [callback, options])
-}
+// Hook useIntersectionObserver removido para evitar conflitos
+// Se precisar, crie em um arquivo separado: src/hooks/useIntersectionObserver.ts
