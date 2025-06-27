@@ -1,7 +1,7 @@
 // src/components/modals/DeliverableModal.tsx
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm, SubmitHandler } from 'react-hook-form'
 import { supabase } from '@/lib/supabase'
 import { X, Save } from 'lucide-react'
@@ -26,6 +26,7 @@ interface DeliverableModalProps {
 
 export default function DeliverableModal({ isOpen, onClose, projectId, deliverable, onSuccess }: DeliverableModalProps) {
   const { register, handleSubmit, setValue, reset, formState: { errors } } = useForm<FormValues>();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const isEditing = !!deliverable;
 
   useEffect(() => {
@@ -53,16 +54,15 @@ export default function DeliverableModal({ isOpen, onClose, projectId, deliverab
   }, [deliverable, isOpen, setValue, reset, isEditing]);
 
   const onSubmit: SubmitHandler<FormValues> = async (data) => {
+    setIsSubmitting(true);
     try {
-      // **CORREÇÃO APLICADA AQUI**
-      // Objeto de dados limpo para garantir que valores vazios sejam enviados como null.
       const payload = {
         project_id: projectId,
         title: data.title,
         type: data.type,
         status: data.status,
         version: data.version,
-        due_date: data.due_date || null,
+        due_date: data.due_date || null, // Garante que data vazia seja enviada como null
         description: data.description || null,
         updated_at: new Date().toISOString()
       };
@@ -70,14 +70,12 @@ export default function DeliverableModal({ isOpen, onClose, projectId, deliverab
       let error;
 
       if (isEditing) {
-        // Atualiza um entregável existente
         const { error: updateError } = await supabase
           .from('project_deliverables')
           .update(payload)
           .eq('id', deliverable.id);
         error = updateError;
       } else {
-        // Cria um novo entregável
         const { error: insertError } = await supabase
           .from('project_deliverables')
           .insert(payload);
@@ -96,15 +94,17 @@ export default function DeliverableModal({ isOpen, onClose, projectId, deliverab
     } catch (error) {
       console.error(`Erro ao salvar entregável:`, error);
       alert(`Falha ao salvar o entregável. Verifique o console para mais detalhes.`);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   if (!isOpen) return null;
   
-  // Componentes de formulário com estilo corrigido
-  const Input = (props) => <input {...props} className={`w-full px-3 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900 placeholder:text-gray-400 ${props.className || ''}`} />;
+  // Componentes de formulário com estilo de texto corrigido
+  const Input = (props) => <input {...props} className={`w-full px-3 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900 placeholder:text-gray-500 ${props.className || ''}`} />;
   const Select = (props) => <select {...props} className={`w-full px-3 py-2 border rounded-md bg-white focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900 ${props.className || ''}`} />;
-  const TextArea = (props) => <textarea {...props} rows={4} className={`w-full px-3 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900 placeholder:text-gray-400 ${props.className || ''}`} />;
+  const TextArea = (props) => <textarea {...props} rows={4} className={`w-full px-3 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900 placeholder:text-gray-500 ${props.className || ''}`} />;
 
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={onClose}>
@@ -158,7 +158,9 @@ export default function DeliverableModal({ isOpen, onClose, projectId, deliverab
           </div>
           <footer className="px-6 py-4 bg-gray-50 border-t flex justify-end gap-3 rounded-b-lg">
             <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">Cancelar</button>
-            <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700">Salvar</button>
+            <button type="submit" disabled={isSubmitting} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 disabled:opacity-50">
+                {isSubmitting ? 'Salvando...' : 'Salvar'}
+            </button>
           </footer>
         </form>
       </div>
