@@ -55,31 +55,32 @@ export default function EditProjectModal({ isOpen, onClose, project, onSuccess }
             setValue(key, project[key]);
         }
       });
-      setValue('client_id', project.client?.id);
-      setValue('manager_id', project.manager?.id);
+      // Assegura que os IDs dos relacionamentos são definidos corretamente.
+      setValue('client_id', project.client?.id || '');
+      setValue('manager_id', project.manager?.id || '');
     }
   }, [project, isOpen, setValue]);
   
   const onSubmit = async (data) => {
     setIsSubmitting(true);
     try {
-      // **CORREÇÃO PRINCIPAL AQUI**
-      // Construímos o objeto de atualização manualmente para garantir que apenas
-      // os campos corretos da tabela 'projects' sejam enviados.
+      // **CORREÇÃO APLICADA**
+      // Construímos o objeto de atualização manualmente para garantir tipos e valores corretos.
+      // Campos vazios são convertidos para `null` e números são garantidos.
       const updateData = {
         name: data.name,
-        description: data.description,
+        description: data.description || null,
         status: data.status,
         health: data.health,
         risk_level: data.risk_level,
         project_type: data.project_type,
-        manager_id: data.manager_id,
+        manager_id: data.manager_id || null, // Garante que um gerente não selecionado seja `null`
         start_date: data.start_date || null,
         estimated_end_date: data.estimated_end_date || null,
-        progress_percentage: data.progress_percentage,
-        next_milestone: data.next_milestone,
-        total_budget: data.total_budget,
-        used_budget: data.used_budget,
+        progress_percentage: Number(data.progress_percentage) || 0,
+        next_milestone: data.next_milestone || null,
+        total_budget: Number(data.total_budget) || 0,
+        used_budget: Number(data.used_budget) || 0,
         updated_at: new Date().toISOString(),
       };
 
