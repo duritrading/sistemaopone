@@ -107,9 +107,12 @@ const ProjectCard = ({ project }: { project: Project }) => {
     <div 
       className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-all cursor-pointer hover:border-blue-300 group"
       onClick={handleCardClick}
+    >
       <div className="flex justify-between items-start mb-4">
         <div className="flex-1">
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">{project.name}</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
+            {project.name}
+          </h3>
           <div className="flex items-center space-x-4 text-sm text-gray-600">
             <span>Cliente: {project.client?.company_name || 'N/A'}</span>
             <span>PM: {project.manager?.full_name || 'N/A'}</span>
