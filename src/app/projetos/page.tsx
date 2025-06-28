@@ -2,6 +2,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { 
   BarChart3, 
@@ -13,7 +14,9 @@ import {
   Search,
   Filter,
   AlertCircle,
-  Loader2
+  Loader2,
+  ChevronRight,
+  Eye
 } from 'lucide-react'
 
 interface Project {
@@ -62,6 +65,8 @@ const MetricCard = ({ title, value, icon: Icon, colorClass, trend }: {
 )
 
 const ProjectCard = ({ project }: { project: Project }) => {
+  const router = useRouter()
+
   const getHealthColor = (health: string) => {
     switch (health.toLowerCase()) {
       case 'excelente': return 'bg-green-100 text-green-800 border-green-200'
@@ -90,8 +95,18 @@ const ProjectCard = ({ project }: { project: Project }) => {
     }).format(value)
   }
 
+  const handleCardClick = () => {
+    try {
+      router.push(`/projetos/${project.id}`)
+    } catch (error) {
+      console.error('Erro ao navegar para projeto:', error)
+    }
+  }
+
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-all cursor-pointer">
+    <div 
+      className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-all cursor-pointer hover:border-blue-300 group"
+      onClick={handleCardClick}
       <div className="flex justify-between items-start mb-4">
         <div className="flex-1">
           <h3 className="text-lg font-semibold text-gray-900 mb-2">{project.name}</h3>
@@ -127,9 +142,16 @@ const ProjectCard = ({ project }: { project: Project }) => {
             <span className="text-gray-600">Orçamento: </span>
             <span className="font-medium text-gray-900">{formatCurrency(project.total_budget)}</span>
           </div>
-          <div className="text-sm">
-            <span className="text-gray-600">Usado: </span>
-            <span className="font-medium text-gray-900">{formatCurrency(project.used_budget)}</span>
+          <div className="flex items-center space-x-3">
+            <div className="text-sm">
+              <span className="text-gray-600">Usado: </span>
+              <span className="font-medium text-gray-900">{formatCurrency(project.used_budget)}</span>
+            </div>
+            <div className="flex items-center space-x-1 text-gray-400 group-hover:text-blue-600 transition-colors">
+              <Eye className="w-4 h-4" />
+              <span className="text-xs font-medium">Ver detalhes</span>
+              <ChevronRight className="w-3 h-3" />
+            </div>
           </div>
         </div>
       </div>
@@ -165,19 +187,27 @@ const ErrorState = ({ error, onRetry }: { error: string, onRetry: () => void }) 
   </div>
 )
 
-const EmptyState = () => (
-  <div className="text-center py-12">
-    <AlertTriangle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-    <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum projeto encontrado</h3>
-    <p className="text-gray-600 mb-6">Crie seu primeiro projeto para começar.</p>
-    <button className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors mx-auto">
-      <Plus className="w-4 h-4" />
-      <span>Novo Projeto</span>
-    </button>
-  </div>
-)
+const EmptyState = () => {
+  const router = useRouter()
+  
+  return (
+    <div className="text-center py-12">
+      <AlertTriangle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+      <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum projeto encontrado</h3>
+      <p className="text-gray-600 mb-6">Crie seu primeiro projeto para começar.</p>
+      <button 
+        onClick={() => router.push('/projetos/novo')}
+        className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors mx-auto"
+      >
+        <Plus className="w-4 h-4" />
+        <span>Novo Projeto</span>
+      </button>
+    </div>
+  )
+}
 
 export default function ProjectsPage() {
+  const router = useRouter()
   const [projects, setProjects] = useState<Project[]>([])
   const [metrics, setMetrics] = useState<ProjectMetrics | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -276,7 +306,10 @@ export default function ProjectsPage() {
               <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
               <span>Atualizar</span>
             </button>
-            <button className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+            <button 
+              onClick={() => router.push('/projetos/novo')}
+              className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            >
               <Plus className="w-4 h-4" />
               <span>Novo Projeto</span>
             </button>
