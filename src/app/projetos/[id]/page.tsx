@@ -1,15 +1,14 @@
 // src/app/projetos/[id]/page.tsx
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { 
   ArrowLeft, Edit, AlertTriangle, Calendar, Users, DollarSign, 
   Target, BarChart3, CheckCircle, FileText, Clock,
-  CheckSquare, Loader2, XSquare, Plus, AlertCircle,
-  ShieldAlert, ShieldCheck, ShieldOff, MessageSquare,
-  Eye, TrendingUp, Activity
+  CheckSquare, Loader2, AlertCircle,
+  ShieldAlert, MessageSquare, Activity, TrendingUp, Eye
 } from 'lucide-react'
 
 // === INTERFACES ===
@@ -29,53 +28,6 @@ interface ProjectDetails {
   next_milestone?: string
   client?: { id: string; company_name: string }
   manager?: { id: string; full_name: string }
-  technologies: { id: string; name: string }[]
-  team_members: { 
-    role_in_project: string
-    team_member: { full_name: string; primary_specialization: string }
-  }[]
-  scope_items: { id: string; title: string; status: string }[]
-}
-
-interface ProjectMilestone {
-  id: string
-  title: string
-  due_date?: string
-  start_date?: string
-  status: string
-  progress_percentage: number
-  team_member?: { full_name: string }
-}
-
-interface ProjectDeliverable {
-  id: string
-  title: string
-  description?: string
-  type: string
-  version: string
-  status: string
-  due_date?: string
-  team_member?: { full_name: string }
-}
-
-interface ProjectRisk {
-  id: string
-  title: string
-  probability: 'Baixa' | 'Média' | 'Alta'
-  impact: 'Baixo' | 'Médio' | 'Alto' | 'Crítico'
-  status: string
-  team_member?: { full_name: string }
-}
-
-interface ProjectCommunication {
-  id: string
-  type: string
-  title: string
-  created_at: string
-  participants: string[]
-  content?: string
-  sentiment?: string
-  creator?: { full_name: string }
 }
 
 // === COMPONENTES DE UI ===
@@ -197,10 +149,6 @@ export default function ProjectDetailPage() {
 
   // Estados
   const [project, setProject] = useState<ProjectDetails | null>(null)
-  const [milestones, setMilestones] = useState<ProjectMilestone[]>([])
-  const [deliverables, setDeliverables] = useState<ProjectDeliverable[]>([])
-  const [risks, setRisks] = useState<ProjectRisk[]>([])
-  const [communications, setCommunications] = useState<ProjectCommunication[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState('overview')
@@ -208,7 +156,7 @@ export default function ProjectDetailPage() {
   // Effects
   useEffect(() => {
     if (projectId) {
-      loadAllData()
+      loadProjectData()
     }
   }, [projectId])
 
@@ -240,66 +188,35 @@ export default function ProjectDetailPage() {
     }
   }
 
-  // Carregamento de dados otimizado
-  const loadAllData = async () => {
+  // Carregamento de dados
+  const loadProjectData = async () => {
     try {
       setLoading(true)
       setError(null)
 
-      // Consulta otimizada com Promise.all para paralelização
-      const [projectResult, milestonesResult, deliverablesResult, risksResult, commsResult] = await Promise.all([
-        supabase
-          .from('projects')
-          .select(`
-            *,
-            client:clients(id, company_name),
-            manager:team_members(id, full_name),
-            technologies:project_technologies(id, name),
-            scope_items:project_scope(id, title, status),
-            team_members:project_team_members(role_in_project, team_member:team_members(full_name, primary_specialization))
-          `)
-          .eq('id', projectId)
-          .single(),
+      console.log('Carregando projeto com ID:', projectId)
 
-        supabase
-          .from('project_milestones')
-          .select('*, team_member:team_members(full_name)')
-          .eq('project_id', projectId)
-          .order('due_date'),
+      const { data: projectData, error: projectError } = await supabase
+        .from('projects')
+        .select(`
+          *,
+          client:clients(id, company_name),
+          manager:team_members(id, full_name)
+        `)
+        .eq('id', projectId)
+        .single()
 
-        supabase
-          .from('project_deliverables')
-          .select('*, team_member:team_members(full_name)')
-          .eq('project_id', projectId)
-          .order('created_at'),
-
-        supabase
-          .from('project_risks')
-          .select('*, team_member:team_members(full_name)')
-          .eq('project_id', projectId)
-          .order('created_at'),
-
-        supabase
-          .from('project_communications')
-          .select('*, creator:team_members(full_name)')
-          .eq('project_id', projectId)
-          .order('created_at', { ascending: false })
-      ])
-
-      // Verificação de erros
-      const errors = [projectResult.error, milestonesResult.error, deliverablesResult.error, risksResult.error, commsResult.error]
-        .filter(Boolean)
-      
-      if (errors.length > 0) {
-        throw new Error(errors.map(e => e?.message).join(', '))
+      if (projectError) {
+        console.error('Erro ao buscar projeto:', projectError)
+        throw new Error(projectError.message)
       }
 
-      // Configuração dos estados
-      setProject(projectResult.data)
-      setMilestones(milestonesResult.data || [])
-      setDeliverables(deliverablesResult.data || [])
-      setRisks(risksResult.data || [])
-      setCommunications(commsResult.data || [])
+      if (!projectData) {
+        throw new Error('Projeto não encontrado')
+      }
+
+      console.log('Projeto carregado:', projectData)
+      setProject(projectData)
 
     } catch (err: any) {
       console.error('Erro ao carregar dados do projeto:', err)
@@ -315,38 +232,11 @@ export default function ProjectDetailPage() {
     ? Math.ceil((new Date(project.estimated_end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
     : null
 
-  const actualProgress = useMemo(() => {
-    if (!deliverables || deliverables.length === 0) return project?.progress_percentage || 0
-    const approvedCount = deliverables.filter(d => d.status === 'Aprovado').length
-    return Math.round((approvedCount / deliverables.length) * 100)
-  }, [deliverables, project])
-
   const budgetUsed = project ? (project.used_budget / project.total_budget) * 100 : 0
-
-  // Métricas calculadas
-  const projectMetrics = {
-    milestones: {
-      completed: milestones.filter(m => m.status === 'Concluído').length,
-      inProgress: milestones.filter(m => m.status === 'Em Andamento').length,
-      overdue: milestones.filter(m => m.status === 'Atrasado').length,
-      total: milestones.length
-    },
-    deliverables: {
-      approved: deliverables.filter(d => d.status === 'Aprovado').length,
-      inReview: deliverables.filter(d => d.status === 'Revisão').length,
-      draft: deliverables.filter(d => d.status === 'Rascunho').length,
-      total: deliverables.length
-    },
-    risks: {
-      active: risks.filter(r => r.status === 'Ativo').length,
-      mitigated: risks.filter(r => r.status === 'Mitigado').length,
-      total: risks.length
-    }
-  }
 
   // Estados de carregamento e erro
   if (loading) return <LoadingState />
-  if (error || !project) return <ErrorState error={error || 'Projeto não encontrado'} onRetry={loadAllData} />
+  if (error || !project) return <ErrorState error={error || 'Projeto não encontrado'} onRetry={loadProjectData} />
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -376,7 +266,7 @@ export default function ProjectDetailPage() {
           <div className="space-y-4">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">{project.name}</h1>
-              <p className="text-gray-600 mt-1">{project.description}</p>
+              <p className="text-gray-600 mt-1">{project.description || 'Sem descrição disponível'}</p>
             </div>
             
             {/* KPIs principais */}
@@ -389,9 +279,9 @@ export default function ProjectDetailPage() {
               />
               <KPI_Card 
                 title="Progresso" 
-                value={`${actualProgress}%`} 
+                value={`${project.progress_percentage}%`} 
                 icon={BarChart3}
-                subtitle={`${projectMetrics.deliverables.approved}/${projectMetrics.deliverables.total} entregáveis`}
+                subtitle="Progresso geral"
               />
               <KPI_Card 
                 title="Dias Restantes" 
@@ -452,71 +342,79 @@ export default function ProjectDetailPage() {
                   <InfoPair label="Data de Início" value={formatDate(project.start_date)} />
                   <InfoPair label="Previsão de Fim" value={formatDate(project.estimated_end_date)} />
                   <InfoPair label="Próximo Marco" value={project.next_milestone} />
-                  <InfoPair label="Tecnologias" value={project.technologies?.map(t => t.name).join(', ')} />
+                  <InfoPair label="Status" value={project.status} />
                 </div>
               </InfoCard>
 
-              <InfoCard title="Escopo do Projeto" icon={CheckSquare}>
-                <div className="space-y-3">
-                  {project.scope_items?.length > 0 ? (
-                    project.scope_items.map(item => (
-                      <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <span className="font-medium text-gray-800">{item.title}</span>
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                          item.status === 'Concluído' ? 'bg-green-100 text-green-800' :
-                          item.status === 'Em Andamento' ? 'bg-blue-100 text-blue-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {item.status}
-                        </span>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-gray-500 text-center py-4">Nenhum item de escopo definido</p>
-                  )}
+              <InfoCard title="Progresso Financeiro" icon={DollarSign}>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Orçamento Total</span>
+                    <span className="font-semibold text-gray-900">{formatCurrency(project.total_budget)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Valor Usado</span>
+                    <span className="font-semibold text-gray-900">{formatCurrency(project.used_budget)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Restante</span>
+                    <span className="font-semibold text-gray-900">{formatCurrency(project.total_budget - project.used_budget)}</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-3">
+                    <div 
+                      className={`h-3 rounded-full transition-all duration-300 ${
+                        budgetUsed > 90 ? 'bg-red-500' : 
+                        budgetUsed > 75 ? 'bg-yellow-500' : 'bg-green-500'
+                      }`}
+                      style={{ width: `${Math.min(budgetUsed, 100)}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 text-center">
+                    {Math.round(budgetUsed)}% do orçamento utilizado
+                  </p>
                 </div>
               </InfoCard>
             </div>
 
             <div className="space-y-6">
-              <InfoCard title="Equipe do Projeto" icon={Users}>
-                <div className="space-y-3">
-                  {project.team_members?.length > 0 ? (
-                    project.team_members.map((member, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <div>
-                          <p className="font-medium text-gray-800">{member.team_member.full_name}</p>
-                          <p className="text-sm text-gray-600">{member.team_member.primary_specialization}</p>
-                        </div>
-                        <span className="text-xs font-medium text-gray-500 bg-white px-2 py-1 rounded">
-                          {member.role_in_project}
-                        </span>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-gray-500 text-center py-4">Nenhum membro atribuído</p>
-                  )}
+              <InfoCard title="Status Geral" icon={Activity}>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Saúde</span>
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${healthConfig?.color}`}>
+                      {healthConfig?.text}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Progresso</span>
+                    <span className="font-semibold">{project.progress_percentage}%</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Dias Restantes</span>
+                    <span className={`font-semibold ${
+                      daysRemaining !== null && daysRemaining < 0 ? 'text-red-600' :
+                      daysRemaining !== null && daysRemaining < 30 ? 'text-yellow-600' : 'text-green-600'
+                    }`}>
+                      {daysRemaining !== null ? (daysRemaining > 0 ? `${daysRemaining} dias` : 'Atrasado') : 'N/D'}
+                    </span>
+                  </div>
                 </div>
               </InfoCard>
 
-              <InfoCard title="Resumo de Atividades" icon={Activity}>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Marcos</span>
-                    <span className="font-semibold">{projectMetrics.milestones.completed}/{projectMetrics.milestones.total}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Entregáveis</span>
-                    <span className="font-semibold">{projectMetrics.deliverables.approved}/{projectMetrics.deliverables.total}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Riscos Ativos</span>
-                    <span className="font-semibold text-red-600">{projectMetrics.risks.active}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Comunicações</span>
-                    <span className="font-semibold">{communications.length}</span>
-                  </div>
+              <InfoCard title="Ações Rápidas" icon={Activity}>
+                <div className="space-y-3">
+                  <button className="w-full flex items-center justify-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                    <Edit className="w-4 h-4" />
+                    <span>Editar Projeto</span>
+                  </button>
+                  <button className="w-full flex items-center justify-center space-x-2 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors">
+                    <FileText className="w-4 h-4" />
+                    <span>Relatório</span>
+                  </button>
+                  <button className="w-full flex items-center justify-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">
+                    <Users className="w-4 h-4" />
+                    <span>Gerenciar Equipe</span>
+                  </button>
                 </div>
               </InfoCard>
             </div>
