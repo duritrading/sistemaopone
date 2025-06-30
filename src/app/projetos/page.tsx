@@ -156,7 +156,7 @@ const ProjectRow = ({ project, onEdit, onArchive }: {
   const budgetUsedPercentage = project.total_budget > 0 ? (project.used_budget / project.total_budget) * 100 : 0
 
   const handleArchive = async () => {
-    if (confirm('Tem certeza que deseja arquivar este projeto?')) {
+    if (confirm('Tem certeza que deseja pausar este projeto?')) {
       onArchive(project.id)
     }
     setShowActions(false)
@@ -278,7 +278,7 @@ const ProjectRow = ({ project, onEdit, onArchive }: {
                       className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50"
                     >
                       <Archive className="w-4 h-4" />
-                      <span>Arquivar</span>
+                      <span>Pausar Projeto</span>
                     </button>
                   </div>
                 </div>
@@ -421,7 +421,8 @@ const EditProjectModal = ({ project, isOpen, onClose, onSave }: {
                   type="text"
                   value={formData.name}
                   onChange={(e) => handleInputChange('name', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-500"
+                  placeholder="Digite o nome do projeto"
                 />
               </div>
 
@@ -431,7 +432,7 @@ const EditProjectModal = ({ project, isOpen, onClose, onSave }: {
                   <select
                     value={formData.project_type}
                     onChange={(e) => handleInputChange('project_type', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                   >
                     <option value="MVP">MVP</option>
                     <option value="PoC">PoC</option>
@@ -444,7 +445,7 @@ const EditProjectModal = ({ project, isOpen, onClose, onSave }: {
                   <select
                     value={formData.status}
                     onChange={(e) => handleInputChange('status', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                   >
                     <option value="Planejamento">Planejamento</option>
                     <option value="Executando">Executando</option>
@@ -460,7 +461,7 @@ const EditProjectModal = ({ project, isOpen, onClose, onSave }: {
                   <select
                     value={formData.health}
                     onChange={(e) => handleInputChange('health', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                   >
                     <option value="Excelente">Excelente</option>
                     <option value="Bom">Bom</option>
@@ -472,7 +473,7 @@ const EditProjectModal = ({ project, isOpen, onClose, onSave }: {
                   <select
                     value={formData.risk_level}
                     onChange={(e) => handleInputChange('risk_level', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                   >
                     <option value="Baixo">Baixo</option>
                     <option value="Médio">Médio</option>
@@ -487,7 +488,8 @@ const EditProjectModal = ({ project, isOpen, onClose, onSave }: {
                   value={formData.description}
                   onChange={(e) => handleInputChange('description', e.target.value)}
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-500"
+                  placeholder="Descreva o objetivo do projeto"
                 />
               </div>
             </div>
@@ -503,7 +505,7 @@ const EditProjectModal = ({ project, isOpen, onClose, onSave }: {
                     type="date"
                     value={formData.start_date}
                     onChange={(e) => handleInputChange('start_date', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                   />
                 </div>
                 <div>
@@ -512,7 +514,7 @@ const EditProjectModal = ({ project, isOpen, onClose, onSave }: {
                     type="date"
                     value={formData.estimated_end_date}
                     onChange={(e) => handleInputChange('estimated_end_date', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                   />
                 </div>
               </div>
@@ -525,7 +527,8 @@ const EditProjectModal = ({ project, isOpen, onClose, onSave }: {
                   max="100"
                   value={formData.progress_percentage}
                   onChange={(e) => handleInputChange('progress_percentage', parseInt(e.target.value) || 0)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-500"
+                  placeholder="0-100"
                 />
               </div>
 
@@ -536,7 +539,8 @@ const EditProjectModal = ({ project, isOpen, onClose, onSave }: {
                     type="number"
                     value={formData.total_budget}
                     onChange={(e) => handleInputChange('total_budget', parseFloat(e.target.value) || 0)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-500"
+                    placeholder="300000"
                   />
                 </div>
                 <div>
@@ -545,7 +549,8 @@ const EditProjectModal = ({ project, isOpen, onClose, onSave }: {
                     type="number"
                     value={formData.used_budget}
                     onChange={(e) => handleInputChange('used_budget', parseFloat(e.target.value) || 0)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-500"
+                    placeholder="180000"
                   />
                 </div>
               </div>
@@ -556,7 +561,8 @@ const EditProjectModal = ({ project, isOpen, onClose, onSave }: {
                   type="text"
                   value={formData.next_milestone}
                   onChange={(e) => handleInputChange('next_milestone', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-500"
+                  placeholder="Integração com GPG"
                 />
               </div>
             </div>
@@ -607,18 +613,27 @@ export default function ProjectsPage() {
 
   const handleArchiveProject = async (projectId: string) => {
     try {
+      // Como "Arquivado" não está permitido no constraint do banco,
+      // usamos "Pausado" como alternativa funcional
       const { error } = await supabase
         .from('projects')
-        .update({ status: 'Arquivado' })
+        .update({ 
+          status: 'Pausado'
+          // Futuramente pode ser adicionado um campo "archived: true"
+        })
         .eq('id', projectId)
 
       if (error) throw error
 
       // Recarregar dados
       loadProjectsAndMetrics()
+      
+      // Feedback positivo
+      alert('Projeto pausado com sucesso!')
+      
     } catch (err: any) {
-      console.error('Erro ao arquivar projeto:', err)
-      alert('Erro ao arquivar projeto: ' + err.message)
+      console.error('Erro ao pausar projeto:', err)
+      alert('Erro ao pausar projeto: ' + err.message)
     }
   }
 
