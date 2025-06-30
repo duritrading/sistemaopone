@@ -19,10 +19,8 @@ import {
   MoreHorizontal,
   Eye,
   Edit,
-  Copy,
-  FileText,
   Archive,
-  ChevronDown
+  X
 } from 'lucide-react'
 
 interface Project {
@@ -111,445 +109,6 @@ const StatusBadge = ({ status, type = 'status' }: { status: string; type?: 'stat
       {status}
     </span>
   )
-}
-
-// Modal de Edição do Projeto
-const EditProjectModal = ({ project, isOpen, onClose, onSave }: {
-  project: Project | null
-  isOpen: boolean
-  onClose: () => void
-  onSave: (updatedProject: any) => void
-}) => {
-  const [formData, setFormData] = useState({
-    name: '',
-    client_id: '',
-    manager_id: '',
-    project_type: 'MVP',
-    status: 'Planejamento',
-    health: 'Bom',
-    risk_level: 'Médio',
-    start_date: '',
-    estimated_end_date: '',
-    progress_percentage: 0,
-    total_budget: 0,
-    used_budget: 0,
-    next_milestone: '',
-    description: ''
-  })
-  const [scopeItems, setScopeItems] = useState<string[]>([])
-  const [technologies, setTechnologies] = useState<string[]>([])
-  const [newScopeItem, setNewScopeItem] = useState('')
-  const [newTechnology, setNewTechnology] = useState('')
-  const [teamMembers, setTeamMembers] = useState<any[]>([])
-
-  useEffect(() => {
-    if (project && isOpen) {
-      setFormData({
-        name: project.name || '',
-        client_id: project.client?.id || '',
-        manager_id: project.manager?.id || '',
-        project_type: project.project_type || 'MVP',
-        status: project.status || 'Planejamento',
-        health: project.health || 'Bom',
-        risk_level: project.risk_level || 'Médio',
-        start_date: project.start_date || '',
-        estimated_end_date: project.estimated_end_date || '',
-        progress_percentage: project.progress_percentage || 0,
-        total_budget: project.total_budget || 0,
-        used_budget: project.used_budget || 0,
-        next_milestone: project.next_milestone || '',
-        description: project.description || ''
-      })
-      
-      // Dados fictícios para demonstração
-      setScopeItems(['Análise de dados', 'Desenvolvimento do modelo', 'Integração API', 'Testes'])
-      setTechnologies(['Python', 'TensorFlow', 'FastAPI', 'Docker'])
-    }
-  }, [project, isOpen])
-
-  const handleInputChange = (field: string, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }))
-  }
-
-  const addScopeItem = () => {
-    if (newScopeItem.trim()) {
-      setScopeItems([...scopeItems, newScopeItem.trim()])
-      setNewScopeItem('')
-    }
-  }
-
-  const removeScopeItem = (index: number) => {
-    setScopeItems(scopeItems.filter((_, i) => i !== index))
-  }
-
-  const addTechnology = () => {
-    if (newTechnology.trim()) {
-      setTechnologies([...technologies, newTechnology.trim()])
-      setNewTechnology('')
-    }
-  }
-
-  const removeTechnology = (index: number) => {
-    setTechnologies(technologies.filter((_, i) => i !== index))
-  }
-
-  const handleSave = async () => {
-    try {
-      // Aqui você implementaria a lógica de salvamento
-      onSave(formData)
-      onClose()
-    } catch (error) {
-      console.error('Erro ao salvar projeto:', error)
-    }
-  }
-
-  if (!isOpen) return null
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden">
-        {/* Header */}
-        <div className="flex justify-between items-center p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">Editar Projeto</h2>
-          <button 
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
-          >
-            <span className="text-gray-500">Cancelar</span>
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="grid grid-cols-2 gap-8 p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
-          {/* Coluna Esquerda */}
-          <div className="space-y-6">
-            {/* Informações Básicas */}
-            <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Informações Básicas</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Nome do Projeto</label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => handleInputChange('name', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Sistema de Recomendação - Fintech Corp"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
-                  <input
-                    type="text"
-                    value="Fintech Corp"
-                    disabled
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Gerente do Projeto</label>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs">
-                      JS
-                    </div>
-                    <span className="text-gray-900">João Silva</span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
-                    <select
-                      value={formData.project_type}
-                      onChange={(e) => handleInputChange('project_type', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      <option value="MVP">MVP</option>
-                      <option value="PoC">PoC</option>
-                      <option value="Implementação">Implementação</option>
-                      <option value="Consultoria">Consultoria</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                    <select
-                      value={formData.status}
-                      onChange={(e) => handleInputChange('status', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      <option value="Planejamento">Planejamento</option>
-                      <option value="Executando">Executando</option>
-                      <option value="Pausado">Pausado</option>
-                      <option value="Concluído">Concluído</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Saúde</label>
-                    <select
-                      value={formData.health}
-                      onChange={(e) => handleInputChange('health', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      <option value="Excelente">Excelente</option>
-                      <option value="Bom">Bom</option>
-                      <option value="Crítico">Crítico</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Risco</label>
-                    <select
-                      value={formData.risk_level}
-                      onChange={(e) => handleInputChange('risk_level', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      <option value="Baixo">Baixo</option>
-                      <option value="Médio">Médio</option>
-                      <option value="Alto">Alto</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Detalhes do Projeto */}
-            <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Detalhes do Projeto</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Objetivo</label>
-                  <textarea
-                    value={formData.description}
-                    onChange={(e) => handleInputChange('description', e.target.value)}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Desenvolver sistema de recomendação para produtos financeiros usando ML"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Escopo</label>
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap gap-2">
-                      {scopeItems.map((item, index) => (
-                        <span
-                          key={index}
-                          className="inline-flex items-center px-2 py-1 bg-gray-100 text-gray-700 text-sm rounded"
-                        >
-                          {item}
-                          <button
-                            onClick={() => removeScopeItem(index)}
-                            className="ml-1 text-gray-500 hover:text-gray-700"
-                          >
-                            ×
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                    <div className="flex space-x-2">
-                      <input
-                        type="text"
-                        value={newScopeItem}
-                        onChange={(e) => setNewScopeItem(e.target.value)}
-                        placeholder="Adicionar item do escopo"
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                        onKeyPress={(e) => e.key === 'Enter' && addScopeItem()}
-                      />
-                      <button
-                        onClick={addScopeItem}
-                        className="px-3 py-2 bg-gray-900 text-white rounded-md hover:bg-gray-800"
-                      >
-                        Adicionar
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Tecnologias</label>
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap gap-2">
-                      {technologies.map((tech, index) => (
-                        <span
-                          key={index}
-                          className="inline-flex items-center px-2 py-1 bg-gray-100 text-gray-700 text-sm rounded"
-                        >
-                          {tech}
-                          <button
-                            onClick={() => removeTechnology(index)}
-                            className="ml-1 text-gray-500 hover:text-gray-700 text-base leading-none"
-                          >
-                            ×
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                    <div className="flex space-x-2">
-                      <input
-                        type="text"
-                        value={newTechnology}
-                        onChange={(e) => setNewTechnology(e.target.value)}
-                        placeholder="Adicionar tecnologia"
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                        onKeyPress={(e) => e.key === 'Enter' && addTechnology()}
-                      />
-                      <button
-                        onClick={addTechnology}
-                        className="px-3 py-2 bg-gray-900 text-white rounded-md hover:bg-gray-800"
-                      >
-                        Adicionar
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Seção de Equipe */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Outro (deixar nome)</label>
-                  <div className="border border-gray-300 rounded-md p-3 bg-gray-50">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center text-white text-xs">
-                        MS
-                      </div>
-                      <span className="text-gray-700">Maria Santos</span>
-                      <span className="text-gray-500 text-sm">outros</span>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 grid grid-cols-4 gap-2">
-                    <select className="px-3 py-2 border border-gray-300 rounded-md text-sm">
-                      <option>Consultor</option>
-                    </select>
-                    <input
-                      type="text"
-                      placeholder="Nome"
-                      className="px-3 py-2 border border-gray-300 rounded-md text-sm"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Papel"
-                      className="px-3 py-2 border border-gray-300 rounded-md text-sm"
-                    />
-                    <input
-                      type="number"
-                      placeholder="100"
-                      className="px-3 py-2 border border-gray-300 rounded-md text-sm"
-                    />
-                  </div>
-
-                  <div className="mt-2 flex items-center space-x-2">
-                    <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs">
-                      JS
-                    </div>
-                    <span className="text-gray-700">João Silva</span>
-                    <span className="text-gray-500 text-sm">sênior</span>
-                    <span className="text-gray-500 text-sm">Gerente - 50% - ml.g - R$ 180h</span>
-                  </div>
-
-                  <button className="mt-4 w-full bg-gray-900 text-white py-2 rounded-md hover:bg-gray-800">
-                    Adicionar
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Coluna Direita */}
-          <div className="space-y-6">
-            {/* Cronograma e Orçamento */}
-            <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Cronograma e Orçamento</h3>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Data Início</label>
-                    <input
-                      type="date"
-                      value={formData.start_date}
-                      onChange={(e) => handleInputChange('start_date', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Previsão Fim</label>
-                    <input
-                      type="date"
-                      value={formData.estimated_end_date}
-                      onChange={(e) => handleInputChange('estimated_end_date', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Progresso (%)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={formData.progress_percentage}
-                    onChange={(e) => handleInputChange('progress_percentage', parseInt(e.target.value) || 0)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Orçamento (R$)</label>
-                    <input
-                      type="number"
-                      value={formData.total_budget}
-                      onChange={(e) => handleInputChange('total_budget', parseFloat(e.target.value) || 0)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Valor Usado (R$)</label>
-                    <input
-                      type="number"
-                      value={formData.used_budget}
-                      onChange={(e) => handleInputChange('used_budget', parseFloat(e.target.value) || 0)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Próximo Marco</label>
-                  <input
-                    type="text"
-                    value={formData.next_milestone}
-                    onChange={(e) => handleInputChange('next_milestone', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Deploy MVP"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="flex justify-end space-x-3 p-6 border-t border-gray-200">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50"
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={handleSave}
-            className="px-6 py-2 bg-gray-900 text-white rounded-md hover:bg-gray-800"
-          >
-            Salvar
-          </button>
-        </div>
-      </div>
-    </div>
 }
 
 const ProjectRow = ({ project, onEdit, onArchive }: { 
@@ -728,21 +287,6 @@ const ProjectRow = ({ project, onEdit, onArchive }: {
           </div>
         </div>
       </div>
-
-      {/* Modal de Edição */}
-      <EditProjectModal
-        project={editingProject}
-        isOpen={isEditModalOpen}
-        onClose={() => {
-          setIsEditModalOpen(false)
-          setEditingProject(null)
-        }}
-        onSave={(updatedProject) => {
-          // Aqui você implementaria a lógica de salvamento
-          console.log('Projeto atualizado:', updatedProject)
-          loadProjectsAndMetrics() // Recarregar lista
-        }}
-      />
     </div>
   )
 }
@@ -790,6 +334,251 @@ const EmptyState = () => {
         <Plus className="w-4 h-4" />
         <span>Novo Projeto</span>
       </button>
+    </div>
+  )
+}
+
+// Modal de Edição Simples
+const EditProjectModal = ({ project, isOpen, onClose, onSave }: {
+  project: Project | null
+  isOpen: boolean
+  onClose: () => void
+  onSave: (updatedProject: any) => void
+}) => {
+  const [formData, setFormData] = useState({
+    name: '',
+    project_type: 'MVP',
+    status: 'Planejamento',
+    health: 'Bom',
+    risk_level: 'Médio',
+    start_date: '',
+    estimated_end_date: '',
+    progress_percentage: 0,
+    total_budget: 0,
+    used_budget: 0,
+    next_milestone: '',
+    description: ''
+  })
+
+  useEffect(() => {
+    if (project && isOpen) {
+      setFormData({
+        name: project.name || '',
+        project_type: project.project_type || 'MVP',
+        status: project.status || 'Planejamento',
+        health: project.health || 'Bom',
+        risk_level: project.risk_level || 'Médio',
+        start_date: project.start_date || '',
+        estimated_end_date: project.estimated_end_date || '',
+        progress_percentage: project.progress_percentage || 0,
+        total_budget: project.total_budget || 0,
+        used_budget: project.used_budget || 0,
+        next_milestone: project.next_milestone || '',
+        description: project.description || ''
+      })
+    }
+  }, [project, isOpen])
+
+  const handleInputChange = (field: string, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }))
+  }
+
+  const handleSave = async () => {
+    try {
+      onSave(formData)
+      onClose()
+    } catch (error) {
+      console.error('Erro ao salvar projeto:', error)
+    }
+  }
+
+  if (!isOpen) return null
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+        {/* Header */}
+        <div className="flex justify-between items-center p-6 border-b border-gray-200">
+          <h2 className="text-xl font-semibold text-gray-900">Editar Projeto</h2>
+          <button 
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+          <div className="grid grid-cols-2 gap-6">
+            {/* Coluna Esquerda */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium text-gray-900">Informações Básicas</h3>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nome do Projeto</label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => handleInputChange('name', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
+                  <select
+                    value={formData.project_type}
+                    onChange={(e) => handleInputChange('project_type', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="MVP">MVP</option>
+                    <option value="PoC">PoC</option>
+                    <option value="Implementação">Implementação</option>
+                    <option value="Consultoria">Consultoria</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) => handleInputChange('status', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="Planejamento">Planejamento</option>
+                    <option value="Executando">Executando</option>
+                    <option value="Pausado">Pausado</option>
+                    <option value="Concluído">Concluído</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Saúde</label>
+                  <select
+                    value={formData.health}
+                    onChange={(e) => handleInputChange('health', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="Excelente">Excelente</option>
+                    <option value="Bom">Bom</option>
+                    <option value="Crítico">Crítico</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Risco</label>
+                  <select
+                    value={formData.risk_level}
+                    onChange={(e) => handleInputChange('risk_level', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="Baixo">Baixo</option>
+                    <option value="Médio">Médio</option>
+                    <option value="Alto">Alto</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => handleInputChange('description', e.target.value)}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            </div>
+
+            {/* Coluna Direita */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium text-gray-900">Cronograma e Orçamento</h3>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Data Início</label>
+                  <input
+                    type="date"
+                    value={formData.start_date}
+                    onChange={(e) => handleInputChange('start_date', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Previsão Fim</label>
+                  <input
+                    type="date"
+                    value={formData.estimated_end_date}
+                    onChange={(e) => handleInputChange('estimated_end_date', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Progresso (%)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={formData.progress_percentage}
+                  onChange={(e) => handleInputChange('progress_percentage', parseInt(e.target.value) || 0)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Orçamento (R$)</label>
+                  <input
+                    type="number"
+                    value={formData.total_budget}
+                    onChange={(e) => handleInputChange('total_budget', parseFloat(e.target.value) || 0)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Valor Usado (R$)</label>
+                  <input
+                    type="number"
+                    value={formData.used_budget}
+                    onChange={(e) => handleInputChange('used_budget', parseFloat(e.target.value) || 0)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Próximo Marco</label>
+                <input
+                  type="text"
+                  value={formData.next_milestone}
+                  onChange={(e) => handleInputChange('next_milestone', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-end space-x-3 p-6 border-t border-gray-200">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={handleSave}
+            className="px-6 py-2 bg-gray-900 text-white rounded-md hover:bg-gray-800"
+          >
+            Salvar
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -1048,6 +837,20 @@ export default function ProjectsPage() {
           </div>
         </div>
       </div>
+
+      {/* Modal de Edição */}
+      <EditProjectModal
+        project={editingProject}
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false)
+          setEditingProject(null)
+        }}
+        onSave={(updatedProject) => {
+          console.log('Projeto atualizado:', updatedProject)
+          loadProjectsAndMetrics()
+        }}
+      />
     </div>
   )
 }
