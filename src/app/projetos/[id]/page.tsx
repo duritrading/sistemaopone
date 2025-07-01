@@ -141,21 +141,39 @@ const StatusBadge = ({ status, type = 'status' }: { status: string; type?: strin
       }
     }
     
-    switch (status) {
-      case 'Ativo': case 'Em Andamento': case 'Aprovado': case 'Concluído':
+    // Mapear status em inglês e português
+    const normalizedStatus = status.toLowerCase()
+    switch (normalizedStatus) {
+      case 'ativo': case 'em andamento': case 'aprovado': case 'concluído':
+      case 'active': case 'in_progress': case 'approved': case 'completed':
         return 'bg-green-100 text-green-800'
-      case 'Pausado': case 'Em Revisão': case 'Pendente':
+      case 'pausado': case 'em revisão': case 'pendente':
+      case 'paused': case 'in_review': case 'pending':
         return 'bg-yellow-100 text-yellow-800'
-      case 'Cancelado': case 'Atrasado':
+      case 'cancelado': case 'atrasado':
+      case 'cancelled': case 'delayed':
         return 'bg-red-100 text-red-800'
       default:
         return 'bg-gray-200 text-gray-800'
     }
   }
 
+  // Traduzir status para português na exibição
+  const translateStatus = (status: string) => {
+    const translations: Record<string, string> = {
+      'pending': 'Pendente',
+      'in_progress': 'Em Andamento', 
+      'in_review': 'Em Revisão',
+      'approved': 'Aprovado',
+      'completed': 'Concluído',
+      'delayed': 'Atrasado'
+    }
+    return translations[status.toLowerCase()] || status
+  }
+
   return (
     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusConfig()}`}>
-      {status}
+      {translateStatus(status)}
     </span>
   )
 }
@@ -368,15 +386,15 @@ export default function ProjectDetailPage() {
       return
     }
 
-    const completedMilestones = milestones.filter(m => m.status === 'Concluído').length
-    const completedActivities = activities.filter(a => a.status === 'Concluído').length
+    const completedMilestones = milestones.filter(m => m.status === 'completed' || m.status === 'Concluído').length
+    const completedActivities = activities.filter(a => a.status === 'completed' || a.status === 'Concluído').length
     
     // Calcular progresso geral baseado nos entregáveis
     const totalItems = milestones.length + activities.length
     
     // Progresso considerando progresso parcial dos marcos + atividades concluídas
     const milestonesProgress = milestones.reduce((sum, m) => sum + (m.progress_percentage || 0), 0)
-    const activitiesProgress = activities.filter(a => a.status === 'Concluído').length * 100
+    const activitiesProgress = activities.filter(a => a.status === 'completed' || a.status === 'Concluído').length * 100
     
     const overallProgress = totalItems > 0 
       ? Math.round((milestonesProgress + activitiesProgress) / (totalItems * 100) * 100)
@@ -428,17 +446,17 @@ export default function ProjectDetailPage() {
       const category = formData.get('category') as string
       const responsibleId = formData.get('responsible_id') as string
 
-      // Usar project_deliverables com os campos corretos
+      // Usar project_deliverables com os campos corretos da estrutura real
       const { data, error } = await supabase
         .from('project_deliverables')
         .insert([{
           project_id: projectId,
           title,
           description,
-          due_date: deadline, // usar due_date ao invés de deadline
-          deliverable_type: category, // usar deliverable_type ao invés de category
+          due_date: deadline,
+          type: category, // usar 'type' ao invés de 'deliverable_type'
           assigned_to: responsibleId,
-          status: 'Pendente'
+          status: 'pending' // usar status em inglês conforme a tabela
         }])
         .select(`
           *,
@@ -473,9 +491,9 @@ export default function ProjectDetailPage() {
           project_id: projectId,
           title,
           description,
-          due_date: deadline, // usar due_date ao invés de deadline
+          due_date: deadline,
           assigned_to: responsibleId,
-          status: 'Pendente',
+          status: 'pending', // usar status em inglês
           progress_percentage: 0
         }])
         .select(`
@@ -520,7 +538,7 @@ export default function ProjectDetailPage() {
             title,
             description,
             due_date: deadline,
-            status,
+            status: status.toLowerCase(), // converter para inglês
             progress_percentage: progress,
             updated_at: new Date().toISOString()
           })
@@ -547,8 +565,8 @@ export default function ProjectDetailPage() {
             title,
             description,
             due_date: deadline,
-            status,
-            deliverable_type: category,
+            status: status.toLowerCase(), // converter para inglês
+            type: category, // usar 'type' ao invés de 'deliverable_type'
             updated_at: new Date().toISOString()
           })
           .eq('id', editingItem.id)
@@ -931,7 +949,7 @@ export default function ProjectDetailPage() {
                             <h4 className="text-lg font-medium text-gray-900">{activity.title}</h4>
                             <StatusBadge status={activity.status} />
                             <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-800">
-                              {activity.deliverable_type || activity.category}
+                              {activity.type || activity.deliverable_type || activity.category}
                             </span>
                             <div className="flex space-x-1">
                               <button
@@ -1202,7 +1220,7 @@ export default function ProjectDetailPage() {
                   <select
                     name="category"
                     required
-                    defaultValue={editingItem.deliverable_type || editingItem.category}
+                    defaultValue={editingItem.type || editingItem.deliverable_type || editingItem.category}
                     className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                   >
                     <option value="Documento">Documento</option>
