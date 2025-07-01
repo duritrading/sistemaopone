@@ -8,7 +8,7 @@ import {
   ArrowLeft, Edit, AlertTriangle, Calendar, Users, DollarSign, 
   Target, BarChart3, CheckCircle, FileText, Clock,
   CheckSquare, Loader2, AlertCircle,
-  MessageSquare, Activity, TrendingUp, Eye, Plus
+  MessageSquare, Activity, TrendingUp, Eye, Plus, X
 } from 'lucide-react'
 
 // === INTERFACES ===
@@ -152,6 +152,94 @@ export default function ProjectDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState('overview')
+  
+  // Estados para Marcos e Entregáveis
+  const [deliverableFilter, setDeliverableFilter] = useState('todos')
+  const [typeFilter, setTypeFilter] = useState('todos')
+  const [responsibleFilter, setResponsibleFilter] = useState('todos')
+  const [isNewMilestoneModalOpen, setIsNewMilestoneModalOpen] = useState(false)
+  const [isNewActivityModalOpen, setIsNewActivityModalOpen] = useState(false)
+  
+  // Dados fictícios para demonstração
+  const [milestones, setMilestones] = useState([
+    {
+      id: 1,
+      title: 'MVP Funcional',
+      description: 'Primeira versão funcional do sistema',
+      status: 'Em Andamento',
+      deadline: '2024-06-30',
+      responsible: 'João Silva',
+      progress: 75,
+      type: 'marco'
+    },
+    {
+      id: 2,
+      title: 'Integração API Externa',
+      description: 'Conectar com APIs de terceiros',
+      status: 'Pendente',
+      deadline: '2024-07-15',
+      responsible: 'Maria Santos',
+      progress: 0,
+      type: 'marco'
+    },
+    {
+      id: 3,
+      title: 'Testes e Validação',
+      description: 'Testes completos do sistema',
+      status: 'Concluído',
+      deadline: '2024-06-20',
+      responsible: 'João Silva',
+      progress: 100,
+      type: 'marco'
+    }
+  ])
+  
+  const [activities, setActivities] = useState([
+    {
+      id: 1,
+      title: 'Documentação Técnica',
+      description: 'Documentação completa da arquitetura',
+      status: 'Em Revisão',
+      deadline: '2024-06-25',
+      responsible: 'Maria Santos',
+      version: 'v1.2',
+      category: 'Documento',
+      type: 'atividade'
+    },
+    {
+      id: 2,
+      title: 'API REST',
+      description: 'Desenvolvimento da API principal',
+      status: 'Aprovado',
+      deadline: '2024-06-18',
+      responsible: 'João Silva',
+      version: 'v2.0',
+      category: 'Código',
+      type: 'atividade'
+    },
+    {
+      id: 3,
+      title: 'Dashboard Web',
+      description: 'Interface web para visualização',
+      status: 'Em Andamento',
+      deadline: '2024-07-02',
+      responsible: 'Maria Santos',
+      version: 'v1.0',
+      category: 'Interface',
+      type: 'atividade'
+    },
+    {
+      id: 4,
+      title: 'Testes Automatizados',
+      description: 'Suite de testes unitários e integração',
+      status: 'Atrasado',
+      deadline: '2024-06-22',
+      responsible: 'João Silva',
+      version: 'v1.0',
+      category: 'Teste',
+      type: 'atividade'
+    }
+  ])
 
   // Effects
   useEffect(() => {
@@ -233,6 +321,71 @@ export default function ProjectDetailPage() {
     : null
 
   const budgetUsed = project ? (project.used_budget / project.total_budget) * 100 : 0
+
+  // Funções para filtros
+  const getAllItems = () => [...milestones, ...activities]
+  
+  const getFilteredItems = () => {
+    const allItems = getAllItems()
+    return allItems.filter(item => {
+      const matchesStatus = deliverableFilter === 'todos' || item.status === deliverableFilter
+      const matchesType = typeFilter === 'todos' || item.type === typeFilter
+      const matchesResponsible = responsibleFilter === 'todos' || item.responsible === responsibleFilter
+      return matchesStatus && matchesType && matchesResponsible
+    })
+  }
+
+  const getFilteredMilestones = () => {
+    return milestones.filter(item => {
+      const matchesStatus = deliverableFilter === 'todos' || item.status === deliverableFilter
+      const matchesType = typeFilter === 'todos' || typeFilter === 'marco'
+      const matchesResponsible = responsibleFilter === 'todos' || item.responsible === responsibleFilter
+      return matchesStatus && matchesType && matchesResponsible
+    })
+  }
+
+  const getFilteredActivities = () => {
+    return activities.filter(item => {
+      const matchesStatus = deliverableFilter === 'todos' || item.status === deliverableFilter
+      const matchesType = typeFilter === 'todos' || typeFilter === 'atividade'
+      const matchesResponsible = responsibleFilter === 'todos' || item.responsible === responsibleFilter
+      return matchesStatus && matchesType && matchesResponsible
+    })
+  }
+
+  // Cálculos para resumo
+  const allItems = getAllItems()
+  const summary = {
+    completed: allItems.filter(item => item.status === 'Concluído' || item.status === 'Aprovado').length,
+    inProgress: allItems.filter(item => item.status === 'Em Andamento' || item.status === 'Em Revisão').length,
+    delayed: allItems.filter(item => item.status === 'Atrasado').length,
+    total: allItems.length
+  }
+
+  // Funções para modais
+  const handleNewMilestone = (milestoneData: any) => {
+    const newMilestone = {
+      id: milestones.length + 1,
+      type: 'marco',
+      progress: 0,
+      status: 'Pendente',
+      ...milestoneData
+    }
+    setMilestones([...milestones, newMilestone])
+    setIsNewMilestoneModalOpen(false)
+  }
+
+  const handleNewActivity = (activityData: any) => {
+    const newActivity = {
+      id: activities.length + 1,
+      type: 'atividade',
+      status: 'Pendente',
+      version: 'v1.0',
+      ...activityData
+    }
+    setActivities([...activities, newActivity])
+    setIsNewActivityModalOpen(false)
+  }
 
   // Estados de carregamento e erro
   if (loading) return <LoadingState />
@@ -426,41 +579,85 @@ export default function ProjectDetailPage() {
             <div className="flex justify-between items-center">
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">Marcos e Entregáveis</h3>
-                <p className="text-sm text-gray-600">Gerencie atividades e marcos de entrega do projeto</p>
+                <p className="text-sm text-gray-700">Gerencie atividades e marcos de entrega do projeto</p>
               </div>
               <div className="flex space-x-3">
-                <button className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">
+                <button 
+                  onClick={() => setIsNewMilestoneModalOpen(true)}
+                  className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                >
                   <Plus className="w-4 h-4" />
                   <span>Novo Marco</span>
                 </button>
-                <button className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                <button 
+                  onClick={() => setIsNewActivityModalOpen(true)}
+                  className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                >
                   <Plus className="w-4 h-4" />
                   <span>Nova Atividade</span>
                 </button>
               </div>
             </div>
 
+            {/* Resumo Geral no topo */}
+            <InfoCard title="Resumo Geral" icon={BarChart3}>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-green-600">{summary.completed}</div>
+                  <div className="text-sm text-gray-700 font-medium">Concluídos</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-yellow-600">{summary.inProgress}</div>
+                  <div className="text-sm text-gray-700 font-medium">Em Andamento</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-red-600">{summary.delayed}</div>
+                  <div className="text-sm text-gray-700 font-medium">Atrasados</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-blue-600">{summary.total}</div>
+                  <div className="text-sm text-gray-700 font-medium">Total</div>
+                </div>
+              </div>
+            </InfoCard>
+
             {/* Filtros */}
             <div className="bg-white rounded-lg border border-gray-200 p-4">
               <div className="flex items-center space-x-4">
-                <select className="border border-gray-300 rounded-md px-3 py-2 text-sm">
-                  <option>Todos os Status</option>
-                  <option>Pendente</option>
-                  <option>Em Andamento</option>
-                  <option>Concluído</option>
-                  <option>Atrasado</option>
+                <select 
+                  value={deliverableFilter}
+                  onChange={(e) => setDeliverableFilter(e.target.value)}
+                  className="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-800 bg-white focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="todos">Todos os Status</option>
+                  <option value="Pendente">Pendente</option>
+                  <option value="Em Andamento">Em Andamento</option>
+                  <option value="Em Revisão">Em Revisão</option>
+                  <option value="Concluído">Concluído</option>
+                  <option value="Aprovado">Aprovado</option>
+                  <option value="Atrasado">Atrasado</option>
                 </select>
-                <select className="border border-gray-300 rounded-md px-3 py-2 text-sm">
-                  <option>Todos os Tipos</option>
-                  <option>Marco</option>
-                  <option>Atividade</option>
-                  <option>Entregável</option>
+                <select 
+                  value={typeFilter}
+                  onChange={(e) => setTypeFilter(e.target.value)}
+                  className="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-800 bg-white focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="todos">Todos os Tipos</option>
+                  <option value="marco">Marco</option>
+                  <option value="atividade">Atividade</option>
                 </select>
-                <select className="border border-gray-300 rounded-md px-3 py-2 text-sm">
-                  <option>Todos os Responsáveis</option>
-                  <option>João Silva</option>
-                  <option>Maria Santos</option>
+                <select 
+                  value={responsibleFilter}
+                  onChange={(e) => setResponsibleFilter(e.target.value)}
+                  className="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-800 bg-white focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="todos">Todos os Responsáveis</option>
+                  <option value="João Silva">João Silva</option>
+                  <option value="Maria Santos">Maria Santos</option>
                 </select>
+                <div className="text-sm text-gray-700 ml-auto">
+                  {getFilteredItems().length} de {allItems.length} itens
+                </div>
               </div>
             </div>
 
@@ -469,259 +666,108 @@ export default function ProjectDetailPage() {
               {/* Marcos */}
               <InfoCard title="Marcos do Projeto" icon={Target}>
                 <div className="space-y-4">
-                  {/* Marco 1 */}
-                  <div className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
-                        <h4 className="font-medium text-gray-900">MVP Funcional</h4>
-                        <p className="text-sm text-gray-600">Primeira versão funcional do sistema</p>
+                  {getFilteredMilestones().length > 0 ? getFilteredMilestones().map((milestone) => (
+                    <div key={milestone.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <h4 className="font-medium text-gray-900">{milestone.title}</h4>
+                          <p className="text-sm text-gray-700 mt-1">{milestone.description}</p>
+                        </div>
+                        <span className={`px-2 py-1 text-xs font-medium rounded ${
+                          milestone.status === 'Concluído' ? 'bg-green-100 text-green-800' :
+                          milestone.status === 'Em Andamento' ? 'bg-yellow-100 text-yellow-800' :
+                          milestone.status === 'Atrasado' ? 'bg-red-100 text-red-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {milestone.status}
+                        </span>
                       </div>
-                      <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded">
-                        Em Andamento
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="text-gray-500">Prazo:</span>
-                        <p className="font-medium">30/06/2024</p>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="text-gray-600 font-medium">Prazo:</span>
+                          <p className="text-gray-900">{new Date(milestone.deadline).toLocaleDateString('pt-BR')}</p>
+                        </div>
+                        <div>
+                          <span className="text-gray-600 font-medium">Responsável:</span>
+                          <p className="text-gray-900">{milestone.responsible}</p>
+                        </div>
                       </div>
-                      <div>
-                        <span className="text-gray-500">Responsável:</span>
-                        <p className="font-medium">João Silva</p>
-                      </div>
-                    </div>
-                    <div className="mt-3">
-                      <div className="flex justify-between text-xs text-gray-600 mb-1">
-                        <span>Progresso</span>
-                        <span>75%</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div className="bg-blue-600 h-2 rounded-full" style={{ width: '75%' }}></div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Marco 2 */}
-                  <div className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
-                        <h4 className="font-medium text-gray-900">Integração API Externa</h4>
-                        <p className="text-sm text-gray-600">Conectar com APIs de terceiros</p>
-                      </div>
-                      <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded">
-                        Pendente
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="text-gray-500">Prazo:</span>
-                        <p className="font-medium">15/07/2024</p>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Responsável:</span>
-                        <p className="font-medium">Maria Santos</p>
+                      <div className="mt-3">
+                        <div className="flex justify-between text-xs text-gray-700 mb-1 font-medium">
+                          <span>Progresso</span>
+                          <span>{milestone.progress}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div 
+                            className={`h-2 rounded-full ${
+                              milestone.progress === 100 ? 'bg-green-600' :
+                              milestone.progress > 50 ? 'bg-blue-600' : 'bg-yellow-600'
+                            }`}
+                            style={{ width: `${milestone.progress}%` }}
+                          ></div>
+                        </div>
                       </div>
                     </div>
-                    <div className="mt-3">
-                      <div className="flex justify-between text-xs text-gray-600 mb-1">
-                        <span>Progresso</span>
-                        <span>0%</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div className="bg-gray-400 h-2 rounded-full" style={{ width: '0%' }}></div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Marco 3 */}
-                  <div className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
-                        <h4 className="font-medium text-gray-900">Testes e Validação</h4>
-                        <p className="text-sm text-gray-600">Testes completos do sistema</p>
-                      </div>
-                      <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded">
-                        Concluído
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="text-gray-500">Prazo:</span>
-                        <p className="font-medium">20/06/2024</p>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Responsável:</span>
-                        <p className="font-medium">João Silva</p>
-                      </div>
-                    </div>
-                    <div className="mt-3">
-                      <div className="flex justify-between text-xs text-gray-600 mb-1">
-                        <span>Progresso</span>
-                        <span>100%</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div className="bg-green-600 h-2 rounded-full" style={{ width: '100%' }}></div>
-                      </div>
-                    </div>
-                  </div>
+                  )) : (
+                    <p className="text-gray-600 text-center py-4">Nenhum marco encontrado com os filtros aplicados.</p>
+                  )}
                 </div>
               </InfoCard>
 
               {/* Entregáveis */}
               <InfoCard title="Atividades e Entregáveis" icon={FileText}>
                 <div className="space-y-4">
-                  {/* Atividade 1 */}
-                  <div className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
-                        <div className="flex items-center space-x-2">
-                          <span className="px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-800 rounded">
-                            Documento
-                          </span>
-                          <h4 className="font-medium text-gray-900">Documentação Técnica</h4>
+                  {getFilteredActivities().length > 0 ? getFilteredActivities().map((activity) => (
+                    <div key={activity.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <div className="flex items-center space-x-2">
+                            <span className={`px-2 py-0.5 text-xs font-medium rounded ${
+                              activity.category === 'Documento' ? 'bg-blue-100 text-blue-800' :
+                              activity.category === 'Código' ? 'bg-purple-100 text-purple-800' :
+                              activity.category === 'Interface' ? 'bg-green-100 text-green-800' :
+                              activity.category === 'Teste' ? 'bg-orange-100 text-orange-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {activity.category}
+                            </span>
+                            <h4 className="font-medium text-gray-900">{activity.title}</h4>
+                          </div>
+                          <p className="text-sm text-gray-700 mt-1">{activity.description}</p>
                         </div>
-                        <p className="text-sm text-gray-600 mt-1">Documentação completa da arquitetura</p>
+                        <span className={`px-2 py-1 text-xs font-medium rounded ${
+                          activity.status === 'Aprovado' ? 'bg-green-100 text-green-800' :
+                          activity.status === 'Em Revisão' ? 'bg-yellow-100 text-yellow-800' :
+                          activity.status === 'Em Andamento' ? 'bg-blue-100 text-blue-800' :
+                          activity.status === 'Atrasado' ? 'bg-red-100 text-red-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {activity.status}
+                        </span>
                       </div>
-                      <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded">
-                        Em Revisão
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-3 gap-4 text-sm">
-                      <div>
-                        <span className="text-gray-500">Versão:</span>
-                        <p className="font-medium">v1.2</p>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Prazo:</span>
-                        <p className="font-medium">25/06/2024</p>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Responsável:</span>
-                        <p className="font-medium">Maria Santos</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Atividade 2 */}
-                  <div className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
-                        <div className="flex items-center space-x-2">
-                          <span className="px-2 py-0.5 text-xs font-medium bg-purple-100 text-purple-800 rounded">
-                            Código
-                          </span>
-                          <h4 className="font-medium text-gray-900">API REST</h4>
+                      <div className="grid grid-cols-3 gap-4 text-sm">
+                        <div>
+                          <span className="text-gray-600 font-medium">Versão:</span>
+                          <p className="text-gray-900">{activity.version}</p>
                         </div>
-                        <p className="text-sm text-gray-600 mt-1">Desenvolvimento da API principal</p>
-                      </div>
-                      <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded">
-                        Aprovado
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-3 gap-4 text-sm">
-                      <div>
-                        <span className="text-gray-500">Versão:</span>
-                        <p className="font-medium">v2.0</p>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Prazo:</span>
-                        <p className="font-medium">18/06/2024</p>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Responsável:</span>
-                        <p className="font-medium">João Silva</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Atividade 3 */}
-                  <div className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
-                        <div className="flex items-center space-x-2">
-                          <span className="px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800 rounded">
-                            Interface
-                          </span>
-                          <h4 className="font-medium text-gray-900">Dashboard Web</h4>
+                        <div>
+                          <span className="text-gray-600 font-medium">Prazo:</span>
+                          <p className={`${activity.status === 'Atrasado' ? 'text-red-600' : 'text-gray-900'}`}>
+                            {new Date(activity.deadline).toLocaleDateString('pt-BR')}
+                          </p>
                         </div>
-                        <p className="text-sm text-gray-600 mt-1">Interface web para visualização</p>
-                      </div>
-                      <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded">
-                        Em Andamento
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-3 gap-4 text-sm">
-                      <div>
-                        <span className="text-gray-500">Versão:</span>
-                        <p className="font-medium">v1.0</p>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Prazo:</span>
-                        <p className="font-medium">02/07/2024</p>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Responsável:</span>
-                        <p className="font-medium">Maria Santos</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Atividade 4 */}
-                  <div className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
-                        <div className="flex items-center space-x-2">
-                          <span className="px-2 py-0.5 text-xs font-medium bg-orange-100 text-orange-800 rounded">
-                            Teste
-                          </span>
-                          <h4 className="font-medium text-gray-900">Testes Automatizados</h4>
+                        <div>
+                          <span className="text-gray-600 font-medium">Responsável:</span>
+                          <p className="text-gray-900">{activity.responsible}</p>
                         </div>
-                        <p className="text-sm text-gray-600 mt-1">Suite de testes unitários e integração</p>
-                      </div>
-                      <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded">
-                        Atrasado
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-3 gap-4 text-sm">
-                      <div>
-                        <span className="text-gray-500">Versão:</span>
-                        <p className="font-medium">v1.0</p>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Prazo:</span>
-                        <p className="font-medium text-red-600">22/06/2024</p>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Responsável:</span>
-                        <p className="font-medium">João Silva</p>
                       </div>
                     </div>
-                  </div>
+                  )) : (
+                    <p className="text-gray-600 text-center py-4">Nenhuma atividade encontrada com os filtros aplicados.</p>
+                  )}
                 </div>
               </InfoCard>
             </div>
-
-            {/* Resumo de Status */}
-            <InfoCard title="Resumo Geral" icon={BarChart3}>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-green-600">3</div>
-                  <div className="text-sm text-gray-600">Concluídos</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-yellow-600">3</div>
-                  <div className="text-sm text-gray-600">Em Andamento</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-red-600">1</div>
-                  <div className="text-sm text-gray-600">Atrasados</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-600">7</div>
-                  <div className="text-sm text-gray-600">Total</div>
-                </div>
-              </div>
-            </InfoCard>
           </div>
         )}
 
@@ -739,6 +785,202 @@ export default function ProjectDetailPage() {
           </div>
         )}
       </div>
+
+      {/* Modal para Novo Marco */}
+      {isNewMilestoneModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="flex justify-between items-center p-6 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">Novo Marco</h2>
+              <button 
+                onClick={() => setIsNewMilestoneModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <form onSubmit={(e) => {
+              e.preventDefault()
+              const formData = new FormData(e.currentTarget)
+              handleNewMilestone({
+                title: formData.get('title'),
+                description: formData.get('description'),
+                deadline: formData.get('deadline'),
+                responsible: formData.get('responsible')
+              })
+            }}>
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Título do Marco</label>
+                  <input
+                    name="title"
+                    type="text"
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    placeholder="Ex: Deploy em Produção"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+                  <textarea
+                    name="description"
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    placeholder="Descreva o marco do projeto..."
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Prazo</label>
+                  <input
+                    name="deadline"
+                    type="date"
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Responsável</label>
+                  <select
+                    name="responsible"
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  >
+                    <option value="">Selecione um responsável</option>
+                    <option value="João Silva">João Silva</option>
+                    <option value="Maria Santos">Maria Santos</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div className="flex justify-end space-x-3 p-6 border-t border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => setIsNewMilestoneModalOpen(false)}
+                  className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                >
+                  Criar Marco
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para Nova Atividade */}
+      {isNewActivityModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="flex justify-between items-center p-6 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">Nova Atividade</h2>
+              <button 
+                onClick={() => setIsNewActivityModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <form onSubmit={(e) => {
+              e.preventDefault()
+              const formData = new FormData(e.currentTarget)
+              handleNewActivity({
+                title: formData.get('title'),
+                description: formData.get('description'),
+                deadline: formData.get('deadline'),
+                responsible: formData.get('responsible'),
+                category: formData.get('category')
+              })
+            }}>
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Título da Atividade</label>
+                  <input
+                    name="title"
+                    type="text"
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    placeholder="Ex: Implementar Autenticação"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
+                  <select
+                    name="category"
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  >
+                    <option value="">Selecione uma categoria</option>
+                    <option value="Documento">Documento</option>
+                    <option value="Código">Código</option>
+                    <option value="Interface">Interface</option>
+                    <option value="Teste">Teste</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+                  <textarea
+                    name="description"
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    placeholder="Descreva a atividade..."
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Prazo</label>
+                  <input
+                    name="deadline"
+                    type="date"
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Responsável</label>
+                  <select
+                    name="responsible"
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  >
+                    <option value="">Selecione um responsável</option>
+                    <option value="João Silva">João Silva</option>
+                    <option value="Maria Santos">Maria Santos</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div className="flex justify-end space-x-3 p-6 border-t border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => setIsNewActivityModalOpen(false)}
+                  className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                >
+                  Criar Atividade
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
