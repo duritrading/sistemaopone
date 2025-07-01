@@ -8,7 +8,7 @@ import {
   ArrowLeft, Edit, AlertTriangle, Calendar, Users, DollarSign, 
   Target, BarChart3, CheckCircle, FileText, Clock,
   CheckSquare, Loader2, AlertCircle,
-  MessageSquare, Activity, TrendingUp, Eye, Plus, X, Edit3
+  MessageSquare, Activity, TrendingUp, Eye, Plus, X, Edit3, Trash2
 } from 'lucide-react'
 
 // === INTERFACES ===
@@ -28,6 +28,44 @@ interface ProjectDetails {
   next_milestone?: string
   client?: { id: string; company_name: string }
   manager?: { id: string; full_name: string }
+}
+
+interface Milestone {
+  id: string
+  project_id: string
+  title: string
+  description?: string
+  status: string
+  deadline: string
+  responsible_id: string
+  progress_percentage: number
+  created_at: string
+  updated_at: string
+  responsible?: { full_name: string }
+}
+
+interface ProjectActivity {
+  id: string
+  project_id: string
+  title: string
+  description?: string
+  status: string
+  deadline: string
+  responsible_id: string
+  category: string
+  version?: string
+  created_at: string
+  updated_at: string
+  responsible?: { full_name: string }
+}
+
+interface ProjectKPIs {
+  totalMilestones: number
+  completedMilestones: number
+  totalActivities: number
+  completedActivities: number
+  overallProgress: number
+  daysRemaining: number
 }
 
 // === COMPONENTES DE UI ===
@@ -165,109 +203,333 @@ export default function ProjectDetailPage() {
   const router = useRouter()
   const projectId = params.id as string
 
-  // Estados
+  // Estados principais
   const [project, setProject] = useState<ProjectDetails | null>(null)
+  const [milestones, setMilestones] = useState<Milestone[]>([])
+  const [activities, setActivities] = useState<ProjectActivity[]>([])
+  const [teamMembers, setTeamMembers] = useState<any[]>([])
+  const [kpis, setKpis] = useState<ProjectKPIs>({
+    totalMilestones: 0,
+    completedMilestones: 0,
+    totalActivities: 0,
+    completedActivities: 0,
+    overallProgress: 0,
+    daysRemaining: 0
+  })
+  
+  // Estados de UI
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState('overview')
   
-  // Estados para Marcos e Entregáveis
-  const [deliverableFilter, setDeliverableFilter] = useState('todos')
+  // Estados para Filtros e Modais
   const [typeFilter, setTypeFilter] = useState('todos')
   const [responsibleFilter, setResponsibleFilter] = useState('todos')
   const [isNewActivityModalOpen, setIsNewActivityModalOpen] = useState(false)
   const [isNewMilestoneModalOpen, setIsNewMilestoneModalOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<any>(null)
-  
-  // Dados fictícios para demonstração
-  const [milestones, setMilestones] = useState([
-    {
-      id: 1,
-      title: 'MVP Funcional',
-      description: 'Primeira versão funcional do sistema',
-      status: 'Em Andamento',
-      deadline: '2024-06-30',
-      responsible: 'João Silva',
-      progress: 75,
-      type: 'marco'
-    },
-    {
-      id: 2,
-      title: 'Integração API Externa',
-      description: 'Conectar com APIs de terceiros',
-      status: 'Pendente',
-      deadline: '2024-07-15',
-      responsible: 'Maria Santos',
-      progress: 0,
-      type: 'marco'
-    },
-    {
-      id: 3,
-      title: 'Testes e Validação',
-      description: 'Testes completos do sistema',
-      status: 'Concluído',
-      deadline: '2024-06-20',
-      responsible: 'João Silva',
-      progress: 100,
-      type: 'marco'
-    }
-  ])
-  
-  const [activities, setActivities] = useState([
-    {
-      id: 1,
-      title: 'Documentação Técnica',
-      description: 'Documentação completa da arquitetura',
-      status: 'Em Revisão',
-      deadline: '2024-06-25',
-      responsible: 'Maria Santos',
-      version: 'v1.2',
-      category: 'Documento',
-      type: 'atividade'
-    },
-    {
-      id: 2,
-      title: 'API REST',
-      description: 'Desenvolvimento da API principal',
-      status: 'Aprovado',
-      deadline: '2024-06-18',
-      responsible: 'João Silva',
-      version: 'v2.0',
-      category: 'Código',
-      type: 'atividade'
-    },
-    {
-      id: 3,
-      title: 'Dashboard Web',
-      description: 'Interface web para visualização',
-      status: 'Em Andamento',
-      deadline: '2024-07-02',
-      responsible: 'Maria Santos',
-      version: 'v1.0',
-      category: 'Interface',
-      type: 'atividade'
-    },
-    {
-      id: 4,
-      title: 'Testes Automatizados',
-      description: 'Suite de testes unitários e integração',
-      status: 'Atrasado',
-      deadline: '2024-06-22',
-      responsible: 'João Silva',
-      version: 'v1.0',
-      category: 'Teste',
-      type: 'atividade'
-    }
-  ])
 
   // Effects
   useEffect(() => {
     if (projectId) {
-      loadProjectData()
+      loadAllData()
     }
   }, [projectId])
 
-  // Funções utilitárias
+  useEffect(() => {
+    // Recalcular KPIs sempre que milestones ou activities mudarem
+    calculateKPIs()
+  }, [milestones, activities, project])
+
+  // === FUNÇÕES DE DADOS ===
+  const loadAllData = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      await Promise.all([
+        loadProjectData(),
+        loadMilestones(),
+        loadActivities(),
+        loadTeamMembers()
+      ])
+    } catch (err) {
+      console.error('Erro ao carregar dados:', err)
+      setError(err instanceof Error ? err.message : 'Erro desconhecido')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const loadProjectData = async () => {
+    const { data, error: fetchError } = await supabase
+      .from('projects')
+      .select(`
+        *,
+        client:clients(id, company_name),
+        manager:team_members(id, full_name)
+      `)
+      .eq('id', projectId)
+      .single()
+
+    if (fetchError) throw fetchError
+    if (!data) throw new Error('Projeto não encontrado')
+
+    setProject(data as ProjectDetails)
+  }
+
+  const loadMilestones = async () => {
+    const { data, error: fetchError } = await supabase
+      .from('project_milestones')
+      .select(`
+        *,
+        responsible:team_members(full_name)
+      `)
+      .eq('project_id', projectId)
+      .order('deadline', { ascending: true })
+
+    if (fetchError) throw fetchError
+    setMilestones(data || [])
+  }
+
+  const loadActivities = async () => {
+    const { data, error: fetchError } = await supabase
+      .from('project_activities')
+      .select(`
+        *,
+        responsible:team_members(full_name)
+      `)
+      .eq('project_id', projectId)
+      .order('deadline', { ascending: true })
+
+    if (fetchError) throw fetchError
+    setActivities(data || [])
+  }
+
+  const loadTeamMembers = async () => {
+    const { data, error: fetchError } = await supabase
+      .from('team_members')
+      .select('id, full_name, email')
+      .eq('is_active', true)
+      .order('full_name')
+
+    if (fetchError) throw fetchError
+    setTeamMembers(data || [])
+  }
+
+  // === CÁLCULO DE KPIs ===
+  const calculateKPIs = () => {
+    if (!project) return
+
+    const completedMilestones = milestones.filter(m => m.status === 'Concluído').length
+    const completedActivities = activities.filter(a => a.status === 'Concluído').length
+    
+    // Calcular progresso geral baseado nos entregáveis
+    const totalItems = milestones.length + activities.length
+    const completedItems = completedMilestones + completedActivities
+    
+    // Progresso considerando também progresso parcial dos marcos
+    const milestonesProgress = milestones.reduce((sum, m) => sum + (m.progress_percentage || 0), 0)
+    const activitiesProgress = activities.filter(a => a.status === 'Concluído').length * 100
+    
+    const overallProgress = totalItems > 0 
+      ? Math.round((milestonesProgress + activitiesProgress) / (totalItems * 100) * 100)
+      : 0
+
+    // Calcular dias restantes
+    const daysRemaining = project.estimated_end_date 
+      ? Math.max(0, Math.ceil((new Date(project.estimated_end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))
+      : 0
+
+    setKpis({
+      totalMilestones: milestones.length,
+      completedMilestones,
+      totalActivities: activities.length,
+      completedActivities,
+      overallProgress,
+      daysRemaining
+    })
+
+    // Atualizar progresso do projeto no banco
+    updateProjectProgress(overallProgress)
+  }
+
+  const updateProjectProgress = async (newProgress: number) => {
+    if (project && project.progress_percentage !== newProgress) {
+      const { error } = await supabase
+        .from('projects')
+        .update({ progress_percentage: newProgress })
+        .eq('id', projectId)
+      
+      if (!error) {
+        setProject({ ...project, progress_percentage: newProgress })
+      }
+    }
+  }
+
+  // === FUNÇÕES DE CRUD ===
+  const handleNewActivity = async (formData: FormData) => {
+    try {
+      const title = formData.get('title') as string
+      const description = formData.get('description') as string
+      const deadline = formData.get('deadline') as string
+      const category = formData.get('category') as string
+      const responsibleId = formData.get('responsible_id') as string
+
+      const { data, error } = await supabase
+        .from('project_activities')
+        .insert([{
+          project_id: projectId,
+          title,
+          description,
+          deadline,
+          category,
+          responsible_id: responsibleId,
+          status: 'Pendente'
+        }])
+        .select(`
+          *,
+          responsible:team_members(full_name)
+        `)
+        .single()
+
+      if (error) throw error
+
+      setActivities([...activities, data])
+      setIsNewActivityModalOpen(false)
+    } catch (err) {
+      console.error('Erro ao criar atividade:', err)
+      alert('Erro ao criar atividade. Tente novamente.')
+    }
+  }
+
+  const handleNewMilestone = async (formData: FormData) => {
+    try {
+      const title = formData.get('title') as string
+      const description = formData.get('description') as string
+      const deadline = formData.get('deadline') as string
+      const responsibleId = formData.get('responsible_id') as string
+
+      const { data, error } = await supabase
+        .from('project_milestones')
+        .insert([{
+          project_id: projectId,
+          title,
+          description,
+          deadline,
+          responsible_id: responsibleId,
+          status: 'Pendente',
+          progress_percentage: 0
+        }])
+        .select(`
+          *,
+          responsible:team_members(full_name)
+        `)
+        .single()
+
+      if (error) throw error
+
+      setMilestones([...milestones, data])
+      setIsNewMilestoneModalOpen(false)
+    } catch (err) {
+      console.error('Erro ao criar marco:', err)
+      alert('Erro ao criar marco. Tente novamente.')
+    }
+  }
+
+  const handleEditItem = (item: any) => {
+    setEditingItem(item)
+  }
+
+  const handleUpdateItem = async (formData: FormData) => {
+    if (!editingItem) return
+
+    try {
+      const title = formData.get('title') as string
+      const description = formData.get('description') as string
+      const deadline = formData.get('deadline') as string
+      const status = formData.get('status') as string
+
+      if (editingItem.type === 'marco') {
+        const progress = parseInt(formData.get('progress') as string) || 0
+        
+        const { data, error } = await supabase
+          .from('project_milestones')
+          .update({
+            title,
+            description,
+            deadline,
+            status,
+            progress_percentage: progress,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', editingItem.id)
+          .select(`
+            *,
+            responsible:team_members(full_name)
+          `)
+          .single()
+
+        if (error) throw error
+
+        setMilestones(milestones.map(m => m.id === editingItem.id ? data : m))
+      } else {
+        const category = formData.get('category') as string
+        
+        const { data, error } = await supabase
+          .from('project_activities')
+          .update({
+            title,
+            description,
+            deadline,
+            status,
+            category,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', editingItem.id)
+          .select(`
+            *,
+            responsible:team_members(full_name)
+          `)
+          .single()
+
+        if (error) throw error
+
+        setActivities(activities.map(a => a.id === editingItem.id ? data : a))
+      }
+
+      setEditingItem(null)
+    } catch (err) {
+      console.error('Erro ao atualizar item:', err)
+      alert('Erro ao atualizar item. Tente novamente.')
+    }
+  }
+
+  const handleDeleteItem = async (item: any) => {
+    if (!confirm(`Tem certeza que deseja excluir "${item.title}"?`)) return
+
+    try {
+      const table = item.type === 'marco' ? 'project_milestones' : 'project_activities'
+      
+      const { error } = await supabase
+        .from(table)
+        .delete()
+        .eq('id', item.id)
+
+      if (error) throw error
+
+      if (item.type === 'marco') {
+        setMilestones(milestones.filter(m => m.id !== item.id))
+      } else {
+        setActivities(activities.filter(a => a.id !== item.id))
+      }
+    } catch (err) {
+      console.error('Erro ao excluir item:', err)
+      alert('Erro ao excluir item. Tente novamente.')
+    }
+  }
+
+  // === FUNÇÕES UTILITÁRIAS ===
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'Não definido'
     return new Date(dateString).toLocaleDateString('pt-BR')
@@ -280,126 +542,23 @@ export default function ProjectDetailPage() {
     }).format(value)
   }
 
-  // Funções de negócio
-  const loadProjectData = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-
-      const { data, error: fetchError } = await supabase
-        .from('projects')
-        .select(`
-          *,
-          client:clients(id, company_name),
-          manager:team_members(id, full_name)
-        `)
-        .eq('id', projectId)
-        .single()
-
-      if (fetchError) throw fetchError
-      if (!data) throw new Error('Projeto não encontrado')
-
-      setProject(data as ProjectDetails)
-    } catch (err) {
-      console.error('Erro ao carregar projeto:', err)
-      setError(err instanceof Error ? err.message : 'Erro desconhecido')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleNewActivity = async (formData: FormData) => {
-    const title = formData.get('title') as string
-    const description = formData.get('description') as string
-    const deadline = formData.get('deadline') as string
-    const category = formData.get('category') as string
-
-    const newActivity = {
-      id: activities.length + 1,
-      title,
-      description,
-      status: 'Em Andamento',
-      deadline,
-      responsible: 'Usuário Atual',
-      version: 'v1.0',
-      category,
-      type: 'atividade'
-    }
-
-    setActivities([...activities, newActivity])
-    setIsNewActivityModalOpen(false)
-  }
-
-  const handleNewMilestone = async (formData: FormData) => {
-    const title = formData.get('title') as string
-    const description = formData.get('description') as string
-    const deadline = formData.get('deadline') as string
-
-    const newMilestone = {
-      id: milestones.length + 1,
-      title,
-      description,
-      status: 'Pendente',
-      deadline,
-      responsible: 'Usuário Atual',
-      progress: 0,
-      type: 'marco'
-    }
-
-    setMilestones([...milestones, newMilestone])
-    setIsNewMilestoneModalOpen(false)
-  }
-
-  const handleEditItem = (item: any) => {
-    setEditingItem(item)
-  }
-
-  const handleUpdateItem = async (formData: FormData) => {
-    if (!editingItem) return
-
-    const title = formData.get('title') as string
-    const description = formData.get('description') as string
-    const deadline = formData.get('deadline') as string
-    const status = formData.get('status') as string
-
-    if (editingItem.type === 'marco') {
-      const progress = parseInt(formData.get('progress') as string) || 0
-      setMilestones(milestones.map(m => 
-        m.id === editingItem.id 
-          ? { ...m, title, description, deadline, status, progress }
-          : m
-      ))
-    } else {
-      const category = formData.get('category') as string
-      setActivities(activities.map(a => 
-        a.id === editingItem.id 
-          ? { ...a, title, description, deadline, status, category }
-          : a
-      ))
-    }
-
-    setEditingItem(null)
-  }
-
-  // Filtros
+  // === FILTROS ===
   const filteredMilestones = milestones.filter(item => {
     if (typeFilter !== 'todos' && item.status !== typeFilter) return false
-    if (responsibleFilter !== 'todos' && item.responsible !== responsibleFilter) return false
+    if (responsibleFilter !== 'todos' && item.responsible_id !== responsibleFilter) return false
     return true
   })
 
   const filteredActivities = activities.filter(item => {
     if (typeFilter !== 'todos' && item.status !== typeFilter) return false
-    if (responsibleFilter !== 'todos' && item.responsible !== responsibleFilter) return false
+    if (responsibleFilter !== 'todos' && item.responsible_id !== responsibleFilter) return false
     return true
   })
 
-  const uniqueResponsibles = Array.from(new Set([...milestones, ...activities].map(item => item.responsible)))
-
   // Renders condicionais
   if (loading) return <LoadingSpinner />
-  if (error) return <ErrorDisplay error={error} onRetry={loadProjectData} />
-  if (!project) return <ErrorDisplay error="Projeto não encontrado" onRetry={loadProjectData} />
+  if (error) return <ErrorDisplay error={error} onRetry={loadAllData} />
+  if (!project) return <ErrorDisplay error="Projeto não encontrado" onRetry={loadAllData} />
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -431,14 +590,14 @@ export default function ProjectDetailPage() {
             </button>
           </div>
 
-          {/* KPIs antes das tabs */}
+          {/* KPIs dinâmicos */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6 mb-6">
             <KPI_Card
               title="Progresso"
-              value={`${project.progress_percentage}%`}
+              value={`${kpis.overallProgress}%`}
               icon={BarChart3}
               subtitle="do projeto concluído"
-              trend="up"
+              trend={kpis.overallProgress > 50 ? "up" : kpis.overallProgress > 25 ? "neutral" : "down"}
             />
             <KPI_Card
               title="Orçamento Usado"
@@ -449,17 +608,17 @@ export default function ProjectDetailPage() {
             />
             <KPI_Card
               title="Marcos Concluídos"
-              value="1"
+              value={kpis.completedMilestones}
               icon={Target}
-              subtitle="de 3 marcos"
-              trend="up"
+              subtitle={`de ${kpis.totalMilestones} marcos`}
+              trend={kpis.completedMilestones > 0 ? "up" : "neutral"}
             />
             <KPI_Card
               title="Dias Restantes"
-              value="15"
+              value={kpis.daysRemaining}
               icon={Clock}
               subtitle="até o prazo final"
-              trend="down"
+              trend={kpis.daysRemaining > 30 ? "up" : kpis.daysRemaining > 7 ? "neutral" : "down"}
             />
           </div>
 
@@ -509,7 +668,8 @@ export default function ProjectDetailPage() {
                 <div className="space-y-2">
                   <InfoPair label="Cliente" value={project.client?.company_name} />
                   <InfoPair label="Gerente do Projeto" value={project.manager?.full_name} />
-                  <InfoPair label="Próximo Marco" value={project.next_milestone} />
+                  <InfoPair label="Total de Marcos" value={kpis.totalMilestones.toString()} />
+                  <InfoPair label="Total de Atividades" value={kpis.totalActivities.toString()} />
                 </div>
               </InfoCard>
             </div>
@@ -519,13 +679,13 @@ export default function ProjectDetailPage() {
               <div className="space-y-4">
                 <div>
                   <div className="flex justify-between text-sm text-gray-700 mb-2">
-                    <span>Progresso Geral</span>
-                    <span>{project.progress_percentage}%</span>
+                    <span>Progresso Geral (baseado em entregáveis)</span>
+                    <span>{kpis.overallProgress}%</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-3">
                     <div 
                       className="bg-blue-600 h-3 rounded-full transition-all duration-300"
-                      style={{ width: `${project.progress_percentage}%` }}
+                      style={{ width: `${kpis.overallProgress}%` }}
                     />
                   </div>
                 </div>
@@ -574,8 +734,8 @@ export default function ProjectDetailPage() {
                     className="px-3 py-2 border border-gray-400 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                   >
                     <option value="todos">Todos os Responsáveis</option>
-                    {uniqueResponsibles.map(responsible => (
-                      <option key={responsible} value={responsible}>{responsible}</option>
+                    {teamMembers.map(member => (
+                      <option key={member.id} value={member.id}>{member.full_name}</option>
                     ))}
                   </select>
                 </div>
@@ -594,399 +754,3 @@ export default function ProjectDetailPage() {
                   >
                     <Plus className="w-4 h-4" />
                     <span>Nova Atividade</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Colunas separadas */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Coluna de Marcos */}
-              <InfoCard 
-                title={`Marcos (${filteredMilestones.length})`} 
-                icon={Target}
-              >
-                <div className="space-y-4">
-                  {filteredMilestones.length > 0 ? filteredMilestones.map((milestone) => (
-                    <div key={milestone.id} className="border border-gray-300 rounded-lg p-4 hover:shadow-sm transition-shadow">
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-3 mb-2">
-                            <h4 className="text-lg font-medium text-gray-900">{milestone.title}</h4>
-                            <StatusBadge status={milestone.status} />
-                            <button
-                              onClick={() => handleEditItem(milestone)}
-                              className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded"
-                            >
-                              <Edit3 className="w-4 h-4" />
-                            </button>
-                          </div>
-                          <p className="text-gray-700 mb-3">{milestone.description}</p>
-                          
-                          <div className="mb-3">
-                            <div className="flex justify-between text-sm text-gray-700 mb-1">
-                              <span>Progresso</span>
-                              <span>{milestone.progress}%</span>
-                            </div>
-                            <div className="w-full bg-gray-200 rounded-full h-2">
-                              <div 
-                                className="bg-purple-600 h-2 rounded-full transition-all duration-300"
-                                style={{ width: `${milestone.progress}%` }}
-                              />
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-4 text-sm">
-                            <div>
-                              <span className="text-gray-700 font-medium">Prazo:</span>
-                              <p className={`${new Date(milestone.deadline) < new Date() && milestone.status !== 'Concluído' ? 
-                                'text-red-600' : 'text-gray-900'}`}>
-                                {new Date(milestone.deadline).toLocaleDateString('pt-BR')}
-                              </p>
-                            </div>
-                            <div>
-                              <span className="text-gray-700 font-medium">Responsável:</span>
-                              <p className="text-gray-900">{milestone.responsible}</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )) : (
-                    <p className="text-gray-700 text-center py-4">Nenhum marco encontrado com os filtros aplicados.</p>
-                  )}
-                </div>
-              </InfoCard>
-
-              {/* Coluna de Atividades */}
-              <InfoCard 
-                title={`Atividades (${filteredActivities.length})`} 
-                icon={CheckSquare}
-              >
-                <div className="space-y-4">
-                  {filteredActivities.length > 0 ? filteredActivities.map((activity) => (
-                    <div key={activity.id} className="border border-gray-300 rounded-lg p-4 hover:shadow-sm transition-shadow">
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-3 mb-2">
-                            <h4 className="text-lg font-medium text-gray-900">{activity.title}</h4>
-                            <StatusBadge status={activity.status} />
-                            <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-800">
-                              {activity.category}
-                            </span>
-                            <button
-                              onClick={() => handleEditItem(activity)}
-                              className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded"
-                            >
-                              <Edit3 className="w-4 h-4" />
-                            </button>
-                          </div>
-                          <p className="text-gray-700 mb-3">{activity.description}</p>
-
-                          <div className="grid grid-cols-2 gap-4 text-sm">
-                            <div>
-                              <span className="text-gray-700 font-medium">Prazo:</span>
-                              <p className={`${new Date(activity.deadline) < new Date() && activity.status !== 'Concluído' ? 
-                                'text-red-600' : 'text-gray-900'}`}>
-                                {new Date(activity.deadline).toLocaleDateString('pt-BR')}
-                              </p>
-                            </div>
-                            <div>
-                              <span className="text-gray-700 font-medium">Responsável:</span>
-                              <p className="text-gray-900">{activity.responsible}</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )) : (
-                    <p className="text-gray-700 text-center py-4">Nenhuma atividade encontrada com os filtros aplicados.</p>
-                  )}
-                </div>
-              </InfoCard>
-            </div>
-          </div>
-        )}
-
-        {/* Outras tabs com placeholder */}
-        {activeTab !== 'overview' && activeTab !== 'deliverables' && (
-          <div className="bg-white rounded-lg border border-gray-300 p-8 text-center">
-            <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Eye className="w-8 h-8 text-gray-600" />
-            </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              {activeTab === 'timeline' && 'Cronograma em Desenvolvimento'}
-              {activeTab === 'communication' && 'Central de Comunicação em Desenvolvimento'}
-            </h3>
-            <p className="text-gray-700">Esta funcionalidade será implementada na próxima versão.</p>
-          </div>
-        )}
-      </div>
-
-      {/* Modal para Nova Atividade */}
-      {isNewActivityModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Nova Atividade</h3>
-              <button
-                onClick={() => setIsNewActivityModalOpen(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            
-            <form action={handleNewActivity} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-800 mb-1">Título</label>
-                <input
-                  name="title"
-                  type="text"
-                  required
-                  className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                  placeholder="Ex: Implementar Autenticação"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-800 mb-1">Categoria</label>
-                <select
-                  name="category"
-                  required
-                  className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                >
-                  <option value="">Selecione uma categoria</option>
-                  <option value="Documento">Documento</option>
-                  <option value="Código">Código</option>
-                  <option value="Interface">Interface</option>
-                  <option value="Teste">Teste</option>
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-800 mb-1">Descrição</label>
-                <textarea
-                  name="description"
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                  placeholder="Descreva a atividade..."
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-800 mb-1">Prazo</label>
-                <input
-                  name="deadline"
-                  type="date"
-                  required
-                  className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                />
-              </div>
-              
-              <div className="flex space-x-3 pt-4">
-                <button
-                  type="submit"
-                  className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  Criar Atividade
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsNewActivityModalOpen(false)}
-                  className="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Modal para Novo Marco */}
-      {isNewMilestoneModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Novo Marco</h3>
-              <button
-                onClick={() => setIsNewMilestoneModalOpen(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            
-            <form action={handleNewMilestone} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-800 mb-1">Título</label>
-                <input
-                  name="title"
-                  type="text"
-                  required
-                  className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                  placeholder="Ex: Lançamento Beta"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-800 mb-1">Descrição</label>
-                <textarea
-                  name="description"
-                  rows={3}
-                  required
-                  className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                  placeholder="Descreva o marco..."
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-800 mb-1">Prazo</label>
-                <input
-                  name="deadline"
-                  type="date"
-                  required
-                  className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                />
-              </div>
-              
-              <div className="flex space-x-3 pt-4">
-                <button
-                  type="submit"
-                  className="flex-1 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
-                >
-                  Criar Marco
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsNewMilestoneModalOpen(false)}
-                  className="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Modal para Editar Item */}
-      {editingItem && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">
-                Editar {editingItem.type === 'marco' ? 'Marco' : 'Atividade'}
-              </h3>
-              <button
-                onClick={() => setEditingItem(null)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            
-            <form action={handleUpdateItem} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-800 mb-1">Título</label>
-                <input
-                  name="title"
-                  type="text"
-                  required
-                  defaultValue={editingItem.title}
-                  className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                />
-              </div>
-              
-              {editingItem.type === 'atividade' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-800 mb-1">Categoria</label>
-                  <select
-                    name="category"
-                    required
-                    defaultValue={editingItem.category}
-                    className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                  >
-                    <option value="Documento">Documento</option>
-                    <option value="Código">Código</option>
-                    <option value="Interface">Interface</option>
-                    <option value="Teste">Teste</option>
-                  </select>
-                </div>
-              )}
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-800 mb-1">Descrição</label>
-                <textarea
-                  name="description"
-                  rows={3}
-                  defaultValue={editingItem.description}
-                  className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-800 mb-1">Status</label>
-                <select
-                  name="status"
-                  required
-                  defaultValue={editingItem.status}
-                  className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                >
-                  <option value="Pendente">Pendente</option>
-                  <option value="Em Andamento">Em Andamento</option>
-                  <option value="Em Revisão">Em Revisão</option>
-                  <option value="Aprovado">Aprovado</option>
-                  <option value="Concluído">Concluído</option>
-                  <option value="Atrasado">Atrasado</option>
-                </select>
-              </div>
-
-              {editingItem.type === 'marco' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-800 mb-1">Progresso (%)</label>
-                  <input
-                    name="progress"
-                    type="number"
-                    min="0"
-                    max="100"
-                    defaultValue={editingItem.progress}
-                    className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                  />
-                </div>
-              )}
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-800 mb-1">Prazo</label>
-                <input
-                  name="deadline"
-                  type="date"
-                  required
-                  defaultValue={editingItem.deadline}
-                  className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                />
-              </div>
-              
-              <div className="flex space-x-3 pt-4">
-                <button
-                  type="submit"
-                  className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
-                >
-                  Salvar Alterações
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEditingItem(null)}
-                  className="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
