@@ -8,7 +8,7 @@ import {
   ArrowLeft, Edit, AlertTriangle, Calendar, Users, DollarSign, 
   Target, BarChart3, CheckCircle, FileText, Clock,
   CheckSquare, Loader2, AlertCircle,
-  ShieldAlert, MessageSquare, Activity, TrendingUp, Eye
+  MessageSquare, Activity, TrendingUp, Eye, Plus
 } from 'lucide-react'
 
 // === INTERFACES ===
@@ -309,8 +309,7 @@ export default function ProjectDetailPage() {
             {[
               { id: 'overview', label: 'Visão Geral', icon: Target },
               { id: 'timeline', label: 'Cronograma', icon: Calendar },
-              { id: 'deliverables', label: 'Entregáveis', icon: FileText },
-              { id: 'risks', label: 'Riscos', icon: ShieldAlert },
+              { id: 'deliverables', label: 'Marcos e Entregáveis', icon: FileText },
               { id: 'communication', label: 'Comunicação', icon: MessageSquare }
             ].map(tab => (
               <button
@@ -421,16 +420,319 @@ export default function ProjectDetailPage() {
           </div>
         )}
 
-        {/* Outras tabs seriam implementadas aqui */}
-        {activeTab !== 'overview' && (
+        {activeTab === 'deliverables' && (
+          <div className="space-y-6">
+            {/* Header com botões */}
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Marcos e Entregáveis</h3>
+                <p className="text-sm text-gray-600">Gerencie atividades e marcos de entrega do projeto</p>
+              </div>
+              <div className="flex space-x-3">
+                <button className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">
+                  <Plus className="w-4 h-4" />
+                  <span>Novo Marco</span>
+                </button>
+                <button className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                  <Plus className="w-4 h-4" />
+                  <span>Nova Atividade</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Filtros */}
+            <div className="bg-white rounded-lg border border-gray-200 p-4">
+              <div className="flex items-center space-x-4">
+                <select className="border border-gray-300 rounded-md px-3 py-2 text-sm">
+                  <option>Todos os Status</option>
+                  <option>Pendente</option>
+                  <option>Em Andamento</option>
+                  <option>Concluído</option>
+                  <option>Atrasado</option>
+                </select>
+                <select className="border border-gray-300 rounded-md px-3 py-2 text-sm">
+                  <option>Todos os Tipos</option>
+                  <option>Marco</option>
+                  <option>Atividade</option>
+                  <option>Entregável</option>
+                </select>
+                <select className="border border-gray-300 rounded-md px-3 py-2 text-sm">
+                  <option>Todos os Responsáveis</option>
+                  <option>João Silva</option>
+                  <option>Maria Santos</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Lista de Marcos e Entregáveis */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Marcos */}
+              <InfoCard title="Marcos do Projeto" icon={Target}>
+                <div className="space-y-4">
+                  {/* Marco 1 */}
+                  <div className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <h4 className="font-medium text-gray-900">MVP Funcional</h4>
+                        <p className="text-sm text-gray-600">Primeira versão funcional do sistema</p>
+                      </div>
+                      <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded">
+                        Em Andamento
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-gray-500">Prazo:</span>
+                        <p className="font-medium">30/06/2024</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Responsável:</span>
+                        <p className="font-medium">João Silva</p>
+                      </div>
+                    </div>
+                    <div className="mt-3">
+                      <div className="flex justify-between text-xs text-gray-600 mb-1">
+                        <span>Progresso</span>
+                        <span>75%</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div className="bg-blue-600 h-2 rounded-full" style={{ width: '75%' }}></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Marco 2 */}
+                  <div className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <h4 className="font-medium text-gray-900">Integração API Externa</h4>
+                        <p className="text-sm text-gray-600">Conectar com APIs de terceiros</p>
+                      </div>
+                      <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded">
+                        Pendente
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-gray-500">Prazo:</span>
+                        <p className="font-medium">15/07/2024</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Responsável:</span>
+                        <p className="font-medium">Maria Santos</p>
+                      </div>
+                    </div>
+                    <div className="mt-3">
+                      <div className="flex justify-between text-xs text-gray-600 mb-1">
+                        <span>Progresso</span>
+                        <span>0%</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div className="bg-gray-400 h-2 rounded-full" style={{ width: '0%' }}></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Marco 3 */}
+                  <div className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <h4 className="font-medium text-gray-900">Testes e Validação</h4>
+                        <p className="text-sm text-gray-600">Testes completos do sistema</p>
+                      </div>
+                      <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded">
+                        Concluído
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-gray-500">Prazo:</span>
+                        <p className="font-medium">20/06/2024</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Responsável:</span>
+                        <p className="font-medium">João Silva</p>
+                      </div>
+                    </div>
+                    <div className="mt-3">
+                      <div className="flex justify-between text-xs text-gray-600 mb-1">
+                        <span>Progresso</span>
+                        <span>100%</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div className="bg-green-600 h-2 rounded-full" style={{ width: '100%' }}></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </InfoCard>
+
+              {/* Entregáveis */}
+              <InfoCard title="Atividades e Entregáveis" icon={FileText}>
+                <div className="space-y-4">
+                  {/* Atividade 1 */}
+                  <div className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <div className="flex items-center space-x-2">
+                          <span className="px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-800 rounded">
+                            Documento
+                          </span>
+                          <h4 className="font-medium text-gray-900">Documentação Técnica</h4>
+                        </div>
+                        <p className="text-sm text-gray-600 mt-1">Documentação completa da arquitetura</p>
+                      </div>
+                      <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded">
+                        Em Revisão
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4 text-sm">
+                      <div>
+                        <span className="text-gray-500">Versão:</span>
+                        <p className="font-medium">v1.2</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Prazo:</span>
+                        <p className="font-medium">25/06/2024</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Responsável:</span>
+                        <p className="font-medium">Maria Santos</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Atividade 2 */}
+                  <div className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <div className="flex items-center space-x-2">
+                          <span className="px-2 py-0.5 text-xs font-medium bg-purple-100 text-purple-800 rounded">
+                            Código
+                          </span>
+                          <h4 className="font-medium text-gray-900">API REST</h4>
+                        </div>
+                        <p className="text-sm text-gray-600 mt-1">Desenvolvimento da API principal</p>
+                      </div>
+                      <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded">
+                        Aprovado
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4 text-sm">
+                      <div>
+                        <span className="text-gray-500">Versão:</span>
+                        <p className="font-medium">v2.0</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Prazo:</span>
+                        <p className="font-medium">18/06/2024</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Responsável:</span>
+                        <p className="font-medium">João Silva</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Atividade 3 */}
+                  <div className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <div className="flex items-center space-x-2">
+                          <span className="px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800 rounded">
+                            Interface
+                          </span>
+                          <h4 className="font-medium text-gray-900">Dashboard Web</h4>
+                        </div>
+                        <p className="text-sm text-gray-600 mt-1">Interface web para visualização</p>
+                      </div>
+                      <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded">
+                        Em Andamento
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4 text-sm">
+                      <div>
+                        <span className="text-gray-500">Versão:</span>
+                        <p className="font-medium">v1.0</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Prazo:</span>
+                        <p className="font-medium">02/07/2024</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Responsável:</span>
+                        <p className="font-medium">Maria Santos</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Atividade 4 */}
+                  <div className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <div className="flex items-center space-x-2">
+                          <span className="px-2 py-0.5 text-xs font-medium bg-orange-100 text-orange-800 rounded">
+                            Teste
+                          </span>
+                          <h4 className="font-medium text-gray-900">Testes Automatizados</h4>
+                        </div>
+                        <p className="text-sm text-gray-600 mt-1">Suite de testes unitários e integração</p>
+                      </div>
+                      <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded">
+                        Atrasado
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4 text-sm">
+                      <div>
+                        <span className="text-gray-500">Versão:</span>
+                        <p className="font-medium">v1.0</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Prazo:</span>
+                        <p className="font-medium text-red-600">22/06/2024</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Responsável:</span>
+                        <p className="font-medium">João Silva</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </InfoCard>
+            </div>
+
+            {/* Resumo de Status */}
+            <InfoCard title="Resumo Geral" icon={BarChart3}>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-green-600">3</div>
+                  <div className="text-sm text-gray-600">Concluídos</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-yellow-600">3</div>
+                  <div className="text-sm text-gray-600">Em Andamento</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-red-600">1</div>
+                  <div className="text-sm text-gray-600">Atrasados</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-600">7</div>
+                  <div className="text-sm text-gray-600">Total</div>
+                </div>
+              </div>
+            </InfoCard>
+          </div>
+        )}
+
+        {/* Outras tabs com placeholder */}
+        {activeTab !== 'overview' && activeTab !== 'deliverables' && (
           <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Eye className="w-8 h-8 text-gray-400" />
             </div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">
               {activeTab === 'timeline' && 'Cronograma em Desenvolvimento'}
-              {activeTab === 'deliverables' && 'Entregáveis em Desenvolvimento'}
-              {activeTab === 'risks' && 'Gestão de Riscos em Desenvolvimento'}
               {activeTab === 'communication' && 'Central de Comunicação em Desenvolvimento'}
             </h3>
             <p className="text-gray-600">Esta funcionalidade será implementada na próxima versão.</p>
