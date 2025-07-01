@@ -85,57 +85,75 @@ const InfoCard = ({ title, icon: Icon, children, actions = null }: {
   </div>
 )
 
-const InfoPair = ({ label, value }: { label: string; value?: string }) => (
-  <div>
-    <p className="text-sm text-gray-500">{label}</p>
-    <p className="font-medium text-gray-800">{value || 'N/D'}</p>
+const InfoPair = ({ label, value }: { label: string; value: string | null | undefined }) => (
+  <div className="py-2">
+    <span className="text-gray-600 font-medium">{label}:</span>
+    <span className="ml-2 text-gray-900">{value || 'Não informado'}</span>
   </div>
 )
 
-const LoadingState = () => (
+const StatusBadge = ({ status, type = 'status' }: { status: string; type?: string }) => {
+  const getStatusConfig = () => {
+    if (type === 'health') {
+      switch (status) {
+        case 'Verde': return 'bg-green-100 text-green-800'
+        case 'Amarelo': return 'bg-yellow-100 text-yellow-800'
+        case 'Vermelho': return 'bg-red-100 text-red-800'
+        default: return 'bg-gray-100 text-gray-800'
+      }
+    }
+    
+    switch (status) {
+      case 'Ativo': case 'Em Andamento': case 'Aprovado': case 'Concluído':
+        return 'bg-green-100 text-green-800'
+      case 'Pausado': case 'Em Revisão': case 'Pendente':
+        return 'bg-yellow-100 text-yellow-800'
+      case 'Cancelado': case 'Atrasado':
+        return 'bg-red-100 text-red-800'
+      default:
+        return 'bg-gray-100 text-gray-800'
+    }
+  }
+
+  return (
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusConfig()}`}>
+      {status}
+    </span>
+  )
+}
+
+// Componente de Loading
+const LoadingSpinner = () => (
   <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-    <div className="flex flex-col items-center space-y-4">
-      <Loader2 className="w-12 h-12 text-blue-600 animate-spin" />
-      <div className="text-center">
-        <p className="text-lg font-medium text-gray-900">Carregando projeto...</p>
-        <p className="text-sm text-gray-600">Buscando informações detalhadas</p>
-      </div>
+    <div className="text-center">
+      <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
+      <p className="text-gray-600">Carregando projeto...</p>
     </div>
   </div>
 )
 
-const ErrorState = ({ error, onRetry }: { error: string; onRetry: () => void }) => (
-  <div className="min-h-screen bg-gray-50 p-6">
-    <div className="max-w-4xl mx-auto">
-      <div className="bg-red-50 border border-red-200 rounded-lg p-8">
-        <div className="flex items-center space-x-3 mb-4">
-          <AlertCircle className="w-8 h-8 text-red-600" />
-          <div>
-            <h2 className="text-xl font-semibold text-red-800">Erro ao Carregar Projeto</h2>
-            <p className="text-red-700">Não foi possível carregar os detalhes do projeto.</p>
-          </div>
-        </div>
-        
-        <div className="bg-red-100 border border-red-200 rounded-lg p-4 mb-6">
-          <pre className="text-red-700 text-sm whitespace-pre-wrap overflow-auto">{error}</pre>
-        </div>
-        
-        <div className="flex items-center space-x-3">
-          <button 
-            onClick={onRetry}
-            className="flex items-center space-x-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
-          >
-            <Activity className="w-4 h-4" />
-            <span>Tentar Novamente</span>
-          </button>
-          <button 
-            onClick={() => window.history.back()}
-            className="flex items-center space-x-2 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Voltar</span>
-          </button>
-        </div>
+// Componente de Erro
+const ErrorDisplay = ({ error, onRetry }: { error: string; onRetry: () => void }) => (
+  <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="text-center max-w-md">
+      <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+      <h2 className="text-xl font-semibold text-gray-900 mb-2">Erro ao carregar projeto</h2>
+      <p className="text-gray-600 mb-6">{error}</p>
+      <div className="space-x-4">
+        <button 
+          onClick={onRetry}
+          className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          <Activity className="w-4 h-4" />
+          <span>Tentar Novamente</span>
+        </button>
+        <button 
+          onClick={() => window.history.back()}
+          className="flex items-center space-x-2 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>Voltar</span>
+        </button>
       </div>
     </div>
   </div>
@@ -249,41 +267,24 @@ export default function ProjectDetailPage() {
 
   // Funções utilitárias
   const formatDate = (dateString?: string) => {
-    if (!dateString) return 'N/D'
+    if (!dateString) return 'Não definido'
     return new Date(dateString).toLocaleDateString('pt-BR')
   }
 
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', { 
-      style: 'currency', 
-      currency: 'BRL',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
     }).format(value)
   }
 
-  const getHealthConfig = (health: string) => {
-    switch (health.toLowerCase()) {
-      case 'excelente':
-        return { text: 'Excelente', icon: CheckCircle, color: 'bg-green-100 text-green-800' }
-      case 'bom':
-        return { text: 'Bom', icon: CheckCircle, color: 'bg-blue-100 text-blue-800' }
-      case 'crítico':
-        return { text: 'Crítico', icon: AlertTriangle, color: 'bg-red-100 text-red-800' }
-      default:
-        return { text: health, icon: AlertCircle, color: 'bg-gray-100 text-gray-800' }
-    }
-  }
-
-  // Carregamento de dados
+  // Funções de negócio
   const loadProjectData = async () => {
     try {
       setLoading(true)
       setError(null)
 
-      console.log('Carregando projeto com ID:', projectId)
-
-      const { data: projectData, error: projectError } = await supabase
+      const { data, error: fetchError } = await supabase
         .from('projects')
         .select(`
           *,
@@ -293,599 +294,245 @@ export default function ProjectDetailPage() {
         .eq('id', projectId)
         .single()
 
-      if (projectError) {
-        console.error('Erro ao buscar projeto:', projectError)
-        throw new Error(projectError.message)
-      }
+      if (fetchError) throw fetchError
+      if (!data) throw new Error('Projeto não encontrado')
 
-      if (!projectData) {
-        throw new Error('Projeto não encontrado')
-      }
-
-      console.log('Projeto carregado:', projectData)
-      setProject(projectData)
-
-    } catch (err: any) {
-      console.error('Erro ao carregar dados do projeto:', err)
-      setError(err.message || 'Erro desconhecido ao carregar projeto')
+      setProject(data as ProjectDetails)
+    } catch (err) {
+      console.error('Erro ao carregar projeto:', err)
+      setError(err instanceof Error ? err.message : 'Erro desconhecido')
     } finally {
       setLoading(false)
     }
   }
 
-  // Cálculos derivados
-  const healthConfig = project ? getHealthConfig(project.health) : null
-  const daysRemaining = project?.estimated_end_date 
-    ? Math.ceil((new Date(project.estimated_end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
-    : null
+  const handleNewActivity = async (formData: FormData) => {
+    const title = formData.get('title') as string
+    const description = formData.get('description') as string
+    const deadline = formData.get('deadline') as string
+    const category = formData.get('category') as string
 
-  const budgetUsed = project ? (project.used_budget / project.total_budget) * 100 : 0
-
-  // Funções para filtros
-  const getAllItems = () => [...milestones, ...activities]
-  
-  const getFilteredItems = () => {
-    const allItems = getAllItems()
-    return allItems.filter(item => {
-      const matchesStatus = deliverableFilter === 'todos' || item.status === deliverableFilter
-      const matchesType = typeFilter === 'todos' || item.type === typeFilter
-      const matchesResponsible = responsibleFilter === 'todos' || item.responsible === responsibleFilter
-      return matchesStatus && matchesType && matchesResponsible
-    })
-  }
-
-  const getFilteredMilestones = () => {
-    return milestones.filter(item => {
-      const matchesStatus = deliverableFilter === 'todos' || item.status === deliverableFilter
-      const matchesType = typeFilter === 'todos' || typeFilter === 'marco'
-      const matchesResponsible = responsibleFilter === 'todos' || item.responsible === responsibleFilter
-      return matchesStatus && matchesType && matchesResponsible
-    })
-  }
-
-  const getFilteredActivities = () => {
-    return activities.filter(item => {
-      const matchesStatus = deliverableFilter === 'todos' || item.status === deliverableFilter
-      const matchesType = typeFilter === 'todos' || typeFilter === 'atividade'
-      const matchesResponsible = responsibleFilter === 'todos' || item.responsible === responsibleFilter
-      return matchesStatus && matchesType && matchesResponsible
-    })
-  }
-
-  // Cálculos para resumo
-  const allItems = getAllItems()
-  const summary = {
-    completed: allItems.filter(item => item.status === 'Concluído' || item.status === 'Aprovado').length,
-    inProgress: allItems.filter(item => item.status === 'Em Andamento' || item.status === 'Em Revisão').length,
-    delayed: allItems.filter(item => item.status === 'Atrasado').length,
-    total: allItems.length
-  }
-
-  // Funções para modais
-  const handleNewMilestone = (milestoneData: any) => {
-    const newMilestone = {
-      id: milestones.length + 1,
-      type: 'marco',
-      progress: 0,
-      status: 'Pendente',
-      ...milestoneData
-    }
-    setMilestones([...milestones, newMilestone])
-    setIsNewMilestoneModalOpen(false)
-  }
-
-  // Funções para modais
-  const handleNewActivity = (activityData: any) => {
     const newActivity = {
       id: activities.length + 1,
-      type: 'atividade',
-      status: 'Pendente',
+      title,
+      description,
+      status: 'Em Andamento',
+      deadline,
+      responsible: 'Usuário Atual',
       version: 'v1.0',
-      ...activityData
+      category,
+      type: 'atividade'
     }
+
     setActivities([...activities, newActivity])
     setIsNewActivityModalOpen(false)
-    // TODO: Implementar insert no Supabase
   }
 
-  // Funções para edição inline
-  const updateMilestoneStatus = async (milestoneId: number, newStatus: string) => {
-    setMilestones(prev => prev.map(m => 
-      m.id === milestoneId ? { ...m, status: newStatus } : m
-    ))
-    // TODO: Implementar update no Supabase
-  }
+  // Filtros
+  const filteredItems = [...milestones, ...activities].filter(item => {
+    if (deliverableFilter !== 'todos' && item.type !== deliverableFilter) return false
+    if (typeFilter !== 'todos' && item.status !== typeFilter) return false
+    if (responsibleFilter !== 'todos' && item.responsible !== responsibleFilter) return false
+    return true
+  })
 
-  const updateMilestoneProgress = async (milestoneId: number, newProgress: number) => {
-    setMilestones(prev => prev.map(m => 
-      m.id === milestoneId ? { ...m, progress: newProgress } : m
-    ))
-    // TODO: Implementar update no Supabase
-  }
+  const uniqueResponsibles = Array.from(new Set([...milestones, ...activities].map(item => item.responsible)))
 
-  const updateActivityStatus = async (activityId: number, newStatus: string) => {
-    setActivities(prev => prev.map(a => 
-      a.id === activityId ? { ...a, status: newStatus } : a
-    ))
-    // TODO: Implementar update no Supabase
-  }
-
-  const deleteItem = async (itemId: number, type: 'marco' | 'atividade') => {
-    if (confirm(`Tem certeza que deseja excluir este ${type}?`)) {
-      if (type === 'marco') {
-        setMilestones(prev => prev.filter(m => m.id !== itemId))
-      } else {
-        setActivities(prev => prev.filter(a => a.id !== itemId))
-      }
-      // TODO: Implementar delete no Supabase
-    }
-  }
-
-  // Estados de carregamento e erro
-  if (loading) return <LoadingState />
-  if (error || !project) return <ErrorState error={error || 'Projeto não encontrado'} onRetry={loadProjectData} />
+  // Renders condicionais
+  if (loading) return <LoadingSpinner />
+  if (error) return <ErrorDisplay error={error} onRetry={loadProjectData} />
+  if (!project) return <ErrorDisplay error="Projeto não encontrado" onRetry={loadProjectData} />
 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header fixo */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto p-6">
-          <div className="flex justify-between items-center mb-6">
-            <button 
-              onClick={() => router.push('/projetos')}
-              className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors group"
-            >
-              <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
-              <span className="font-medium">Voltar para Projetos</span>
-            </button>
-            
-            <div className="flex items-center space-x-3">
-              <span className={`px-3 py-1 text-sm font-medium rounded-full ${healthConfig?.color}`}>
-                {project.status}
-              </span>
-              <button className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-                <Edit className="w-4 h-4" />
-                <span>Editar Projeto</span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => router.push('/projetos')}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <ArrowLeft className="w-5 h-5 text-gray-600" />
               </button>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">{project.name}</h1>
+                <div className="flex items-center space-x-3 mt-1">
+                  <StatusBadge status={project.status} />
+                  <StatusBadge status={project.health} type="health" />
+                </div>
+              </div>
             </div>
+            <button
+              onClick={() => router.push(`/projetos/${projectId}/edit`)}
+              className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Edit className="w-4 h-4" />
+              <span>Editar Projeto</span>
+            </button>
           </div>
-          
-          <div className="space-y-4">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">{project.name}</h1>
-              <p className="text-gray-600 mt-1">{project.description || 'Sem descrição disponível'}</p>
-            </div>
-            
-            {/* KPIs principais */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <KPI_Card 
-                title="Saúde do Projeto" 
-                value={healthConfig?.text || 'N/D'} 
-                icon={healthConfig?.icon || AlertCircle}
-                trend={project.health === 'Crítico' ? 'down' : project.health === 'Excelente' ? 'up' : 'neutral'}
-              />
-              <KPI_Card 
-                title="Progresso" 
-                value={`${project.progress_percentage}%`} 
-                icon={BarChart3}
-                subtitle="Progresso geral"
-              />
-              <KPI_Card 
-                title="Dias Restantes" 
-                value={daysRemaining !== null ? (daysRemaining > 0 ? daysRemaining : 'Atrasado') : 'N/D'} 
-                icon={Clock}
-                trend={daysRemaining !== null && daysRemaining < 30 ? 'down' : 'neutral'}
-              />
-              <KPI_Card 
-                title="Orçamento Usado" 
-                value={`${Math.round(budgetUsed)}%`} 
-                icon={DollarSign}
-                subtitle={`${formatCurrency(project.used_budget)} de ${formatCurrency(project.total_budget)}`}
-                trend={budgetUsed > 80 ? 'down' : 'neutral'}
-              />
-            </div>
+
+          {/* Tabs */}
+          <div className="flex space-x-6 mt-6">
+            {[
+              { id: 'overview', label: 'Visão Geral', icon: BarChart3 },
+              { id: 'deliverables', label: 'Marcos e Entregáveis', icon: Target },
+              { id: 'timeline', label: 'Cronograma', icon: Calendar },
+              { id: 'communication', label: 'Comunicação', icon: MessageSquare }
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                  activeTab === tab.id
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                }`}
+              >
+                <tab.icon className="w-4 h-4" />
+                <span>{tab.label}</span>
+              </button>
+            ))}
           </div>
         </div>
       </div>
 
       {/* Conteúdo principal */}
       <div className="max-w-7xl mx-auto p-6">
-        {/* Header integrado com tabs quando for deliverables */}
-        {activeTab === 'deliverables' ? (
-          <div className="space-y-6">
-            {/* Header fixo da página */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <div className="flex justify-between items-start mb-6">
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900">Entregáveis</h2>
-                  <p className="text-gray-800 mt-1">Gerencie os entregáveis do projeto</p>
-                </div>
-                <button 
-                  onClick={() => setIsNewActivityModalOpen(true)}
-                  className="flex items-center space-x-2 bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Novo Entregável</span>
-                </button>
-              </div>
-
-              {/* Tabs integradas */}
-              <div className="border-b border-gray-200">
-                <nav className="flex space-x-8">
-                  {[
-                    { id: 'overview', label: 'Visão Geral', icon: Target },
-                    { id: 'timeline', label: 'Cronograma', icon: Calendar },
-                    { id: 'deliverables', label: 'Entregáveis', icon: FileText },
-                    { id: 'communication', label: 'Comunicação', icon: MessageSquare }
-                  ].map(tab => (
-                    <button
-                      key={tab.id}
-                      onClick={() => setActiveTab(tab.id)}
-                      className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium transition-colors ${
-                        activeTab === tab.id 
-                          ? 'border-blue-500 text-blue-600' 
-                          : 'border-transparent text-gray-500 hover:text-gray-700'
-                      }`}
-                    >
-                      <tab.icon className="w-4 h-4" />
-                      <span>{tab.label}</span>
-                    </button>
-                  ))}
-                </nav>
-              </div>
-            </div>
-
-            {/* Conteúdo dos entregáveis */}
-            <div className="space-y-6">
-              {/* Resumo Geral no topo */}
-              <InfoCard title="Resumo Geral" icon={BarChart3}>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                  <div className="text-center">
-                    <div className="text-3xl font-bold text-green-600">{summary.completed}</div>
-                    <div className="text-sm text-gray-800 font-medium">Concluídos</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-3xl font-bold text-yellow-600">{summary.inProgress}</div>
-                    <div className="text-sm text-gray-800 font-medium">Em Andamento</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-3xl font-bold text-red-600">{summary.delayed}</div>
-                    <div className="text-sm text-gray-800 font-medium">Atrasados</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-3xl font-bold text-blue-600">{summary.total}</div>
-                    <div className="text-sm text-gray-800 font-medium">Total</div>
-                  </div>
-                </div>
-              </InfoCard>
-
-              {/* Filtros */}
-              <div className="bg-white rounded-lg border border-gray-200 p-4">
-                <div className="flex items-center space-x-4">
-                  <select 
-                    value={deliverableFilter}
-                    onChange={(e) => setDeliverableFilter(e.target.value)}
-                    className="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-800 bg-white focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="todos">Todos os Status</option>
-                    <option value="Pendente">Pendente</option>
-                    <option value="Em Andamento">Em Andamento</option>
-                    <option value="Em Revisão">Em Revisão</option>
-                    <option value="Concluído">Concluído</option>
-                    <option value="Aprovado">Aprovado</option>
-                    <option value="Atrasado">Atrasado</option>
-                  </select>
-                  <select 
-                    value={typeFilter}
-                    onChange={(e) => setTypeFilter(e.target.value)}
-                    className="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-800 bg-white focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="todos">Todos os Tipos</option>
-                    <option value="marco">Marco</option>
-                    <option value="atividade">Atividade</option>
-                  </select>
-                  <select 
-                    value={responsibleFilter}
-                    onChange={(e) => setResponsibleFilter(e.target.value)}
-                    className="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-800 bg-white focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="todos">Todos os Responsáveis</option>
-                    <option value="João Silva">João Silva</option>
-                    <option value="Maria Santos">Maria Santos</option>
-                  </select>
-                  <div className="text-sm text-gray-800 ml-auto font-medium">
-                    {getFilteredItems().length} de {allItems.length} itens
-                  </div>
-                </div>
-              </div>
-
-              {/* Lista de Marcos e Entregáveis */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Marcos */}
-                <InfoCard title="Marcos do Projeto" icon={Target}>
-                  <div className="space-y-4">
-                    {getFilteredMilestones().length > 0 ? getFilteredMilestones().map((milestone) => (
-                      <div key={milestone.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
-                        <div className="flex justify-between items-start mb-3">
-                          <div className="flex-1">
-                            <h4 className="font-medium text-gray-900">{milestone.title}</h4>
-                            <p className="text-sm text-gray-800 mt-1">{milestone.description}</p>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <select
-                              value={milestone.status}
-                              onChange={(e) => updateMilestoneStatus(milestone.id, e.target.value)}
-                              className={`px-2 py-1 text-xs font-medium rounded border-0 ${
-                                milestone.status === 'Concluído' ? 'bg-green-100 text-green-800' :
-                                milestone.status === 'Em Andamento' ? 'bg-yellow-100 text-yellow-800' :
-                                milestone.status === 'Atrasado' ? 'bg-red-100 text-red-800' :
-                                'bg-gray-100 text-gray-800'
-                              }`}
-                            >
-                              <option value="Pendente">Pendente</option>
-                              <option value="Em Andamento">Em Andamento</option>
-                              <option value="Concluído">Concluído</option>
-                              <option value="Atrasado">Atrasado</option>
-                            </select>
-                            <button
-                              onClick={() => deleteItem(milestone.id, 'marco')}
-                              className="text-red-500 hover:text-red-700 p-1"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                          <div>
-                            <span className="text-gray-700 font-medium">Prazo:</span>
-                            <p className="text-gray-900">{new Date(milestone.deadline).toLocaleDateString('pt-BR')}</p>
-                          </div>
-                          <div>
-                            <span className="text-gray-700 font-medium">Responsável:</span>
-                            <p className="text-gray-900">{milestone.responsible}</p>
-                          </div>
-                        </div>
-                        <div className="mt-3">
-                          <div className="flex justify-between items-center text-xs text-gray-800 mb-2 font-medium">
-                            <span>Progresso</span>
-                            <div className="flex items-center space-x-2">
-                              <input
-                                type="range"
-                                min="0"
-                                max="100"
-                                value={milestone.progress}
-                                onChange={(e) => updateMilestoneProgress(milestone.id, parseInt(e.target.value))}
-                                className="w-16"
-                              />
-                              <span className="w-10 text-right">{milestone.progress}%</span>
-                            </div>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div 
-                              className={`h-2 rounded-full transition-all ${
-                                milestone.progress === 100 ? 'bg-green-600' :
-                                milestone.progress > 50 ? 'bg-blue-600' : 'bg-yellow-600'
-                              }`}
-                              style={{ width: `${milestone.progress}%` }}
-                            ></div>
-                          </div>
-                        </div>
-                      </div>
-                    )) : (
-                      <p className="text-gray-700 text-center py-4">Nenhum marco encontrado com os filtros aplicados.</p>
-                    )}
-                  </div>
-                </InfoCard>
-
-                {/* Entregáveis */}
-                <InfoCard title="Atividades e Entregáveis" icon={FileText}>
-                  <div className="space-y-4">
-                    {getFilteredActivities().length > 0 ? getFilteredActivities().map((activity) => (
-                      <div key={activity.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
-                        <div className="flex justify-between items-start mb-3">
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-2">
-                              <span className={`px-2 py-0.5 text-xs font-medium rounded ${
-                                activity.category === 'Documento' ? 'bg-blue-100 text-blue-800' :
-                                activity.category === 'Código' ? 'bg-purple-100 text-purple-800' :
-                                activity.category === 'Interface' ? 'bg-green-100 text-green-800' :
-                                activity.category === 'Teste' ? 'bg-orange-100 text-orange-800' :
-                                'bg-gray-100 text-gray-800'
-                              }`}>
-                                {activity.category}
-                              </span>
-                              <h4 className="font-medium text-gray-900">{activity.title}</h4>
-                            </div>
-                            <p className="text-sm text-gray-800 mt-1">{activity.description}</p>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <select
-                              value={activity.status}
-                              onChange={(e) => updateActivityStatus(activity.id, e.target.value)}
-                              className={`px-2 py-1 text-xs font-medium rounded border-0 ${
-                                activity.status === 'Aprovado' ? 'bg-green-100 text-green-800' :
-                                activity.status === 'Em Revisão' ? 'bg-yellow-100 text-yellow-800' :
-                                activity.status === 'Em Andamento' ? 'bg-blue-100 text-blue-800' :
-                                activity.status === 'Atrasado' ? 'bg-red-100 text-red-800' :
-                                'bg-gray-100 text-gray-800'
-                              }`}
-                            >
-                              <option value="Pendente">Pendente</option>
-                              <option value="Em Andamento">Em Andamento</option>
-                              <option value="Em Revisão">Em Revisão</option>
-                              <option value="Aprovado">Aprovado</option>
-                              <option value="Atrasado">Atrasado</option>
-                            </select>
-                            <button
-                              onClick={() => deleteItem(activity.id, 'atividade')}
-                              className="text-red-500 hover:text-red-700 p-1"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-3 gap-4 text-sm">
-                          <div>
-                            <span className="text-gray-700 font-medium">Versão:</span>
-                            <p className="text-gray-900">{activity.version}</p>
-                          </div>
-                          <div>
-                            <span className="text-gray-700 font-medium">Prazo:</span>
-                            <p className={`${activity.status === 'Atrasado' ? 'text-red-600' : 'text-gray-900'}`}>
-                              {new Date(activity.deadline).toLocaleDateString('pt-BR')}
-                            </p>
-                          </div>
-                          <div>
-                            <span className="text-gray-700 font-medium">Responsável:</span>
-                            <p className="text-gray-900">{activity.responsible}</p>
-                          </div>
-                        </div>
-                      </div>
-                    )) : (
-                      <p className="text-gray-700 text-center py-4">Nenhuma atividade encontrada com os filtros aplicados.</p>
-                    )}
-                  </div>
-                </InfoCard>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <>
-            {/* Tabs de navegação para outras seções */}
-            <div className="border-b border-gray-200 mb-6">
-              <nav className="flex space-x-8">
-                {[
-                  { id: 'overview', label: 'Visão Geral', icon: Target },
-                  { id: 'timeline', label: 'Cronograma', icon: Calendar },
-                  { id: 'deliverables', label: 'Entregáveis', icon: FileText },
-                  { id: 'communication', label: 'Comunicação', icon: MessageSquare }
-                ].map(tab => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium transition-colors ${
-                      activeTab === tab.id 
-                        ? 'border-blue-500 text-blue-600' 
-                        : 'border-transparent text-gray-500 hover:text-gray-700'
-                    }`}
-                  >
-                    <tab.icon className="w-4 h-4" />
-                    <span>{tab.label}</span>
-                  </button>
-                ))}
-              </nav>
-            </div>
-        )}
-
-        {/* Conteúdo das tabs */}
+        {/* Tab Overview */}
         {activeTab === 'overview' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-6">
-              <InfoCard title="Informações do Projeto" icon={Target}>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="space-y-6">
+            {/* KPIs */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <KPI_Card
+                title="Progresso"
+                value={`${project.progress_percentage}%`}
+                icon={BarChart3}
+                subtitle="do projeto concluído"
+                trend="up"
+              />
+              <KPI_Card
+                title="Orçamento Usado"
+                value={formatCurrency(project.used_budget)}
+                icon={DollarSign}
+                subtitle={`de ${formatCurrency(project.total_budget)}`}
+                trend="neutral"
+              />
+              <KPI_Card
+                title="Marcos Concluídos"
+                value="1"
+                icon={Target}
+                subtitle="de 3 marcos"
+                trend="up"
+              />
+              <KPI_Card
+                title="Dias Restantes"
+                value="15"
+                icon={Clock}
+                subtitle="até o prazo final"
+                trend="down"
+              />
+            </div>
+
+            {/* Cards de informações */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <InfoCard title="Informações do Projeto" icon={FileText}>
+                <div className="space-y-2">
+                  <InfoPair label="Descrição" value={project.description} />
                   <InfoPair label="Tipo" value={project.project_type} />
                   <InfoPair label="Nível de Risco" value={project.risk_level} />
-                  <InfoPair label="Cliente" value={project.client?.company_name} />
-                  <InfoPair label="Gerente" value={project.manager?.full_name} />
                   <InfoPair label="Data de Início" value={formatDate(project.start_date)} />
-                  <InfoPair label="Previsão de Fim" value={formatDate(project.estimated_end_date)} />
-                  <InfoPair label="Próximo Marco" value={project.next_milestone} />
-                  <InfoPair label="Status" value={project.status} />
+                  <InfoPair label="Previsão de Término" value={formatDate(project.estimated_end_date)} />
                 </div>
               </InfoCard>
 
-              <InfoCard title="Progresso Financeiro" icon={DollarSign}>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Orçamento Total</span>
-                    <span className="font-semibold text-gray-900">{formatCurrency(project.total_budget)}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Valor Usado</span>
-                    <span className="font-semibold text-gray-900">{formatCurrency(project.used_budget)}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Restante</span>
-                    <span className="font-semibold text-gray-900">{formatCurrency(project.total_budget - project.used_budget)}</span>
+              <InfoCard title="Equipe e Cliente" icon={Users}>
+                <div className="space-y-2">
+                  <InfoPair label="Cliente" value={project.client?.company_name} />
+                  <InfoPair label="Gerente do Projeto" value={project.manager?.full_name} />
+                  <InfoPair label="Próximo Marco" value={project.next_milestone} />
+                </div>
+              </InfoCard>
+            </div>
+
+            {/* Progresso visual */}
+            <InfoCard title="Progresso do Projeto" icon={TrendingUp}>
+              <div className="space-y-4">
+                <div>
+                  <div className="flex justify-between text-sm text-gray-600 mb-2">
+                    <span>Progresso Geral</span>
+                    <span>{project.progress_percentage}%</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-3">
                     <div 
-                      className={`h-3 rounded-full transition-all duration-300 ${
-                        budgetUsed > 90 ? 'bg-red-500' : 
-                        budgetUsed > 75 ? 'bg-yellow-500' : 'bg-green-500'
-                      }`}
-                      style={{ width: `${Math.min(budgetUsed, 100)}%` }}
+                      className="bg-blue-600 h-3 rounded-full transition-all duration-300"
+                      style={{ width: `${project.progress_percentage}%` }}
                     />
                   </div>
-                  <p className="text-xs text-gray-500 text-center">
-                    {Math.round(budgetUsed)}% do orçamento utilizado
-                  </p>
                 </div>
-              </InfoCard>
-            </div>
-
-            <div className="space-y-6">
-              <InfoCard title="Status Geral" icon={Activity}>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Saúde</span>
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${healthConfig?.color}`}>
-                      {healthConfig?.text}
-                    </span>
+                
+                <div>
+                  <div className="flex justify-between text-sm text-gray-600 mb-2">
+                    <span>Orçamento Utilizado</span>
+                    <span>{Math.round((project.used_budget / project.total_budget) * 100)}%</span>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Progresso</span>
-                    <span className="font-semibold">{project.progress_percentage}%</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Dias Restantes</span>
-                    <span className={`font-semibold ${
-                      daysRemaining !== null && daysRemaining < 0 ? 'text-red-600' :
-                      daysRemaining !== null && daysRemaining < 30 ? 'text-yellow-600' : 'text-green-600'
-                    }`}>
-                      {daysRemaining !== null ? (daysRemaining > 0 ? `${daysRemaining} dias` : 'Atrasado') : 'N/D'}
-                    </span>
+                  <div className="w-full bg-gray-200 rounded-full h-3">
+                    <div 
+                      className="bg-green-600 h-3 rounded-full transition-all duration-300"
+                      style={{ width: `${(project.used_budget / project.total_budget) * 100}%` }}
+                    />
                   </div>
                 </div>
-              </InfoCard>
-
-              <InfoCard title="Ações Rápidas" icon={Activity}>
-                <div className="space-y-3">
-                  <button className="w-full flex items-center justify-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-                    <Edit className="w-4 h-4" />
-                    <span>Editar Projeto</span>
-                  </button>
-                  <button className="w-full flex items-center justify-center space-x-2 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors">
-                    <FileText className="w-4 h-4" />
-                    <span>Relatório</span>
-                  </button>
-                  <button className="w-full flex items-center justify-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">
-                    <Users className="w-4 h-4" />
-                    <span>Gerenciar Equipe</span>
-                  </button>
-                </div>
-              </InfoCard>
-            </div>
+              </div>
+            </InfoCard>
           </div>
         )}
 
+        {/* Tab Marcos e Entregáveis */}
         {activeTab === 'deliverables' && (
           <div className="space-y-6">
-            {/* Header com botões */}
-            <div className="flex justify-between items-center">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Marcos e Entregáveis</h3>
-                <p className="text-sm text-gray-700">Gerencie atividades e marcos de entrega do projeto</p>
-              </div>
-              <div className="flex space-x-3">
-                <button 
-                  onClick={() => setIsNewMilestoneModalOpen(true)}
-                  className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Novo Marco</span>
-                </button>
-                <button 
+            {/* Filtros e Ações */}
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center space-y-4 lg:space-y-0">
+                <div className="flex flex-wrap gap-4">
+                  <select
+                    value={deliverableFilter}
+                    onChange={(e) => setDeliverableFilter(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="todos">Todos os Tipos</option>
+                    <option value="marco">Marcos</option>
+                    <option value="atividade">Atividades</option>
+                  </select>
+
+                  <select
+                    value={typeFilter}
+                    onChange={(e) => setTypeFilter(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="todos">Todos os Status</option>
+                    <option value="Em Andamento">Em Andamento</option>
+                    <option value="Pendente">Pendente</option>
+                    <option value="Concluído">Concluído</option>
+                    <option value="Atrasado">Atrasado</option>
+                    <option value="Em Revisão">Em Revisão</option>
+                    <option value="Aprovado">Aprovado</option>
+                  </select>
+
+                  <select
+                    value={responsibleFilter}
+                    onChange={(e) => setResponsibleFilter(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="todos">Todos os Responsáveis</option>
+                    {uniqueResponsibles.map(responsible => (
+                      <option key={responsible} value={responsible}>{responsible}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <button
                   onClick={() => setIsNewActivityModalOpen(true)}
                   className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
                 >
@@ -895,166 +542,57 @@ export default function ProjectDetailPage() {
               </div>
             </div>
 
-            {/* Resumo Geral no topo */}
-            <InfoCard title="Resumo Geral" icon={BarChart3}>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-green-600">{summary.completed}</div>
-                  <div className="text-sm text-gray-700 font-medium">Concluídos</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-yellow-600">{summary.inProgress}</div>
-                  <div className="text-sm text-gray-700 font-medium">Em Andamento</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-red-600">{summary.delayed}</div>
-                  <div className="text-sm text-gray-700 font-medium">Atrasados</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-blue-600">{summary.total}</div>
-                  <div className="text-sm text-gray-700 font-medium">Total</div>
-                </div>
-              </div>
-            </InfoCard>
-
-            {/* Filtros */}
-            <div className="bg-white rounded-lg border border-gray-200 p-4">
-              <div className="flex items-center space-x-4">
-                <select 
-                  value={deliverableFilter}
-                  onChange={(e) => setDeliverableFilter(e.target.value)}
-                  className="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-800 bg-white focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="todos">Todos os Status</option>
-                  <option value="Pendente">Pendente</option>
-                  <option value="Em Andamento">Em Andamento</option>
-                  <option value="Em Revisão">Em Revisão</option>
-                  <option value="Concluído">Concluído</option>
-                  <option value="Aprovado">Aprovado</option>
-                  <option value="Atrasado">Atrasado</option>
-                </select>
-                <select 
-                  value={typeFilter}
-                  onChange={(e) => setTypeFilter(e.target.value)}
-                  className="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-800 bg-white focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="todos">Todos os Tipos</option>
-                  <option value="marco">Marco</option>
-                  <option value="atividade">Atividade</option>
-                </select>
-                <select 
-                  value={responsibleFilter}
-                  onChange={(e) => setResponsibleFilter(e.target.value)}
-                  className="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-800 bg-white focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="todos">Todos os Responsáveis</option>
-                  <option value="João Silva">João Silva</option>
-                  <option value="Maria Santos">Maria Santos</option>
-                </select>
-                <div className="text-sm text-gray-700 ml-auto">
-                  {getFilteredItems().length} de {allItems.length} itens
-                </div>
-              </div>
-            </div>
-
-            {/* Lista de Marcos e Entregáveis */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Marcos */}
-              <InfoCard title="Marcos do Projeto" icon={Target}>
+            {/* Lista de Marcos e Atividades */}
+            <div className="space-y-4">
+              <InfoCard 
+                title={`Marcos e Atividades (${filteredItems.length})`} 
+                icon={CheckSquare}
+              >
                 <div className="space-y-4">
-                  {getFilteredMilestones().length > 0 ? getFilteredMilestones().map((milestone) => (
-                    <div key={milestone.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
-                      <div className="flex justify-between items-start mb-3">
-                        <div>
-                          <h4 className="font-medium text-gray-900">{milestone.title}</h4>
-                          <p className="text-sm text-gray-700 mt-1">{milestone.description}</p>
-                        </div>
-                        <span className={`px-2 py-1 text-xs font-medium rounded ${
-                          milestone.status === 'Concluído' ? 'bg-green-100 text-green-800' :
-                          milestone.status === 'Em Andamento' ? 'bg-yellow-100 text-yellow-800' :
-                          milestone.status === 'Atrasado' ? 'bg-red-100 text-red-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {milestone.status}
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <span className="text-gray-600 font-medium">Prazo:</span>
-                          <p className="text-gray-900">{new Date(milestone.deadline).toLocaleDateString('pt-BR')}</p>
-                        </div>
-                        <div>
-                          <span className="text-gray-600 font-medium">Responsável:</span>
-                          <p className="text-gray-900">{milestone.responsible}</p>
-                        </div>
-                      </div>
-                      <div className="mt-3">
-                        <div className="flex justify-between text-xs text-gray-700 mb-1 font-medium">
-                          <span>Progresso</span>
-                          <span>{milestone.progress}%</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div 
-                            className={`h-2 rounded-full ${
-                              milestone.progress === 100 ? 'bg-green-600' :
-                              milestone.progress > 50 ? 'bg-blue-600' : 'bg-yellow-600'
-                            }`}
-                            style={{ width: `${milestone.progress}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                    </div>
-                  )) : (
-                    <p className="text-gray-600 text-center py-4">Nenhum marco encontrado com os filtros aplicados.</p>
-                  )}
-                </div>
-              </InfoCard>
-
-              {/* Entregáveis */}
-              <InfoCard title="Atividades e Entregáveis" icon={FileText}>
-                <div className="space-y-4">
-                  {getFilteredActivities().length > 0 ? getFilteredActivities().map((activity) => (
-                    <div key={activity.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
-                      <div className="flex justify-between items-start mb-3">
-                        <div>
-                          <div className="flex items-center space-x-2">
-                            <span className={`px-2 py-0.5 text-xs font-medium rounded ${
-                              activity.category === 'Documento' ? 'bg-blue-100 text-blue-800' :
-                              activity.category === 'Código' ? 'bg-purple-100 text-purple-800' :
-                              activity.category === 'Interface' ? 'bg-green-100 text-green-800' :
-                              activity.category === 'Teste' ? 'bg-orange-100 text-orange-800' :
-                              'bg-gray-100 text-gray-800'
+                  {filteredItems.length > 0 ? filteredItems.map((item) => (
+                    <div key={`${item.type}-${item.id}`} className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-3 mb-2">
+                            <h4 className="text-lg font-medium text-gray-900">{item.title}</h4>
+                            <StatusBadge status={item.status} />
+                            <span className={`text-xs px-2 py-1 rounded-full ${
+                              item.type === 'marco' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
                             }`}>
-                              {activity.category}
+                              {item.type === 'marco' ? 'Marco' : 'Atividade'}
                             </span>
-                            <h4 className="font-medium text-gray-900">{activity.title}</h4>
                           </div>
-                          <p className="text-sm text-gray-700 mt-1">{activity.description}</p>
-                        </div>
-                        <span className={`px-2 py-1 text-xs font-medium rounded ${
-                          activity.status === 'Aprovado' ? 'bg-green-100 text-green-800' :
-                          activity.status === 'Em Revisão' ? 'bg-yellow-100 text-yellow-800' :
-                          activity.status === 'Em Andamento' ? 'bg-blue-100 text-blue-800' :
-                          activity.status === 'Atrasado' ? 'bg-red-100 text-red-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {activity.status}
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-3 gap-4 text-sm">
-                        <div>
-                          <span className="text-gray-600 font-medium">Versão:</span>
-                          <p className="text-gray-900">{activity.version}</p>
-                        </div>
-                        <div>
-                          <span className="text-gray-600 font-medium">Prazo:</span>
-                          <p className={`${activity.status === 'Atrasado' ? 'text-red-600' : 'text-gray-900'}`}>
-                            {new Date(activity.deadline).toLocaleDateString('pt-BR')}
-                          </p>
-                        </div>
-                        <div>
-                          <span className="text-gray-600 font-medium">Responsável:</span>
-                          <p className="text-gray-900">{activity.responsible}</p>
+                          <p className="text-gray-600 mb-3">{item.description}</p>
+                          
+                          {/* Barra de progresso para marcos */}
+                          {item.type === 'marco' && (
+                            <div className="mb-3">
+                              <div className="flex justify-between text-sm text-gray-600 mb-1">
+                                <span>Progresso</span>
+                                <span>{item.progress}%</span>
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div 
+                                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                                  style={{ width: `${item.progress}%` }}
+                                />
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                              <span className="text-gray-600 font-medium">Prazo:</span>
+                              <p className={`${new Date(item.deadline) < new Date() && item.status !== 'Concluído' ? 
+                                'text-red-600' : 'text-gray-900'}`}>
+                                {new Date(item.deadline).toLocaleDateString('pt-BR')}
+                              </p>
+                            </div>
+                            <div>
+                              <span className="text-gray-600 font-medium">Responsável:</span>
+                              <p className="text-gray-900">{item.responsible}</p>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1082,105 +620,80 @@ export default function ProjectDetailPage() {
         )}
       </div>
 
-      {/* Modal para Novo Entregável */}
+      {/* Modal para Nova Atividade */}
       {isNewActivityModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
-            <div className="flex justify-between items-center p-6 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">Novo Entregável</h2>
-              <button 
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Nova Atividade</h3>
+              <button
                 onClick={() => setIsNewActivityModalOpen(false)}
                 className="text-gray-400 hover:text-gray-600"
               >
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5" />
               </button>
             </div>
             
-            <form onSubmit={(e) => {
-              e.preventDefault()
-              const formData = new FormData(e.currentTarget)
-              handleNewActivity({
-                title: formData.get('title'),
-                description: formData.get('description'),
-                deadline: formData.get('deadline'),
-                responsible: formData.get('responsible'),
-                category: formData.get('category')
-              })
-            }}>
-              <div className="p-6 space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Título do Entregável</label>
-                  <input
-                    name="title"
-                    type="text"
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                    placeholder="Ex: Implementar Autenticação"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
-                  <select
-                    name="category"
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                  >
-                    <option value="">Selecione uma categoria</option>
-                    <option value="Documento">Documento</option>
-                    <option value="Código">Código</option>
-                    <option value="Interface">Interface</option>
-                    <option value="Teste">Teste</option>
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
-                  <textarea
-                    name="description"
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                    placeholder="Descreva o entregável..."
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Prazo</label>
-                  <input
-                    name="deadline"
-                    type="date"
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Responsável</label>
-                  <select
-                    name="responsible"
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                  >
-                    <option value="">Selecione um responsável</option>
-                    <option value="João Silva">João Silva</option>
-                    <option value="Maria Santos">Maria Santos</option>
-                  </select>
-                </div>
+            <form action={handleNewActivity} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Título</label>
+                <input
+                  name="title"
+                  type="text"
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  placeholder="Ex: Implementar Autenticação"
+                />
               </div>
               
-              <div className="flex justify-end space-x-3 p-6 border-t border-gray-200">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
+                <select
+                  name="category"
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                >
+                  <option value="">Selecione uma categoria</option>
+                  <option value="Documento">Documento</option>
+                  <option value="Código">Código</option>
+                  <option value="Interface">Interface</option>
+                  <option value="Teste">Teste</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+                <textarea
+                  name="description"
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  placeholder="Descreva o entregável..."
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Prazo</label>
+                <input
+                  name="deadline"
+                  type="date"
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                />
+              </div>
+              
+              <div className="flex space-x-3 pt-4">
+                <button
+                  type="submit"
+                  className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Criar Atividade
+                </button>
                 <button
                   type="button"
                   onClick={() => setIsNewActivityModalOpen(false)}
-                  className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50"
+                  className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition-colors"
                 >
                   Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                >
-                  Criar Entregável
                 </button>
               </div>
             </form>
