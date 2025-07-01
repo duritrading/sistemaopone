@@ -1,750 +1,53 @@
-// src/app/projetos/[id]/page.tsx - VERSÃO INTEGRADA COM STATUS
+// src/app/projetos/[id]/page.tsx - VERSÃO REFATORADA
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense, lazy } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
 import { 
-  ArrowLeft, Edit, AlertTriangle, Calendar, Users, DollarSign, 
-  Target, BarChart3, CheckCircle, FileText, Clock,
-  CheckSquare, Loader2, AlertCircle,
-  MessageSquare, Activity, TrendingUp, Eye, Plus, X, Edit3, Trash2
+  ArrowLeft, 
+  Edit, 
+  BarChart3, 
+  Target, 
+  Calendar, 
+  MessageSquare 
 } from 'lucide-react'
+import { 
+  LoadingSpinner, 
+  ErrorDisplay, 
+  StatusBadge,
+  CardSkeleton
+} from './components/shared'
+import { 
+  NewMilestoneModal, 
+  NewActivityModal, 
+  EditItemModal 
+} from './components/modals'
+import { 
+  ProjectDetails, 
+  Milestone, 
+  Activity, 
+  TabId, 
+  ModalState,
+  MilestoneFormData,
+  ActivityFormData
+} from './types/project.types'
+import { useProjectData } from './hooks/useProjectData'
+import { MilestoneHandlers, ActivityHandlers } from './handlers/ProjectHandlers'
 
-// === HANDLERS INTEGRADOS COM STATUS ===
-const ProjectHandlers = {
-  // === CRIAR MARCO COM STATUS ===
-  async handleNewMilestone(
-    projectId: string, 
-    formData: any, 
-    teamMembers: any[], 
-    setMilestones: any, 
-    setIsNewMilestoneModalOpen: any, 
-    milestones: any[]
-  ) {
-    try {
-      const { title, description, deadline, responsible_id, status } = formData
+// === LAZY LOADED TABS ===
+const OverviewTab = lazy(() => import('./components/tabs/OverviewTab'))
+const DeliverablesTab = lazy(() => import('./components/tabs/DeliverablesTab'))
+const TimelineTab = lazy(() => import('./components/tabs/TimelineTab'))
+const CommunicationTab = lazy(() => import('./components/tabs/CommunicationTab'))
 
-      if (!title?.trim()) {
-        alert('Título é obrigatório')
-        return
-      }
-
-      console.log('Creating milestone with status:', status)
-
-      const { data, error } = await supabase
-        .from('project_milestones')
-        .insert([{
-          project_id: projectId,
-          title: title.trim(),
-          description: description?.trim() || null,
-          due_date: deadline || null,
-          assigned_to: responsible_id || null,
-          status: status,
-          progress_percentage: status === 'completed' ? 100 : 0
-        }])
-        .select(`
-          *,
-          responsible:team_members(id, full_name)
-        `)
-        .single()
-
-      if (error) {
-        console.error('❌ Erro ao criar marco:', error)
-        alert(`Erro ao criar marco: ${error.message}`)
-        return
-      }
-
-      console.log('✅ Marco criado com sucesso:', data)
-      setMilestones([...milestones, data])
-      setIsNewMilestoneModalOpen(false)
-      alert('Marco criado com sucesso!')
-
-    } catch (err) {
-      console.error('💥 Erro inesperado:', err)
-      alert('Erro inesperado ao criar marco.')
-    }
-  },
-
-  // === CRIAR ATIVIDADE COM STATUS ===
-  async handleNewActivity(
-    projectId: string, 
-    formData: any, 
-    teamMembers: any[], 
-    setActivities: any, 
-    setIsNewActivityModalOpen: any, 
-    activities: any[]
-  ) {
-    try {
-      const { title, description, deadline, category, responsible_id, status } = formData
-
-      if (!title?.trim()) {
-        alert('Título é obrigatório')
-        return
-      }
-      if (!category) {
-        alert('Categoria é obrigatória')
-        return
-      }
-
-      console.log('Creating deliverable with status:', status)
-
-      const { data, error } = await supabase
-        .from('project_deliverables')
-        .insert([{
-          project_id: projectId,
-          title: title.trim(),
-          description: description?.trim() || null,
-          type: category,
-          due_date: deadline || null,
-          assigned_to: responsible_id || null,
-          status: status
-        }])
-        .select(`
-          *,
-          responsible:team_members(id, full_name)
-        `)
-        .single()
-
-      if (error) {
-        console.error('❌ Erro ao criar atividade:', error)
-        alert(`Erro ao criar atividade: ${error.message}`)
-        return
-      }
-
-      console.log('✅ Atividade criada com sucesso:', data)
-      setActivities([...activities, data])
-      setIsNewActivityModalOpen(false)
-      alert('Atividade criada com sucesso!')
-
-    } catch (err) {
-      console.error('💥 Erro inesperado:', err)
-      alert('Erro inesperado ao criar atividade.')
-    }
-  },
-
-  // === HELPERS PARA STATUS ===
-  getMilestoneStatusOptions() {
-    return [
-      { value: 'pending', label: 'Pendente' },
-      { value: 'in_progress', label: 'Em Andamento' },
-      { value: 'completed', label: 'Concluído' },
-      { value: 'delayed', label: 'Atrasado' },
-      { value: 'cancelled', label: 'Cancelado' }
-    ]
-  },
-
-  getActivityStatusOptions() {
-    return [
-      { value: 'draft', label: 'Rascunho' },
-      { value: 'in_progress', label: 'Em Progresso' },
-      { value: 'review', label: 'Em Revisão' },
-      { value: 'approved', label: 'Aprovado' },
-      { value: 'delivered', label: 'Entregue' },
-      { value: 'cancelled', label: 'Cancelado' }
-    ]
-  },
-
-  getActivityTypeOptions() {
-    return [
-      { value: 'documentation', label: 'Documento', icon: '📄' },
-      { value: 'code', label: 'Código', icon: '💻' },
-      { value: 'interface', label: 'Interface', icon: '🎨' },
-      { value: 'testing', label: 'Teste', icon: '🧪' },
-      { value: 'infrastructure', label: 'Infraestrutura', icon: '⚙️' },
-      { value: 'analysis', label: 'Análise', icon: '📊' }
-    ]
-  }
-}
-
-// === INTERFACES ===
-interface ProjectDetails {
-  id: string
-  name: string
-  description?: string
-  status: string
-  health: string
-  progress_percentage: number
-  total_budget: number
-  used_budget: number
-  start_date?: string
-  estimated_end_date?: string
-  risk_level: string
-  project_type: string
-  next_milestone?: string
-  client?: { id: string; company_name: string }
-  manager?: { id: string; full_name: string }
-}
-
-interface Milestone {
-  id: string
-  project_id: string
-  title: string
-  description?: string
-  status: string
-  deadline: string
-  responsible_id: string
-  progress_percentage: number
-  created_at: string
-  updated_at: string
-  responsible?: { full_name: string }
-}
-
-interface ProjectActivity {
-  id: string
-  project_id: string
-  title: string
-  description?: string
-  status: string
-  deadline: string
-  responsible_id: string
-  category: string
-  version?: string
-  created_at: string
-  updated_at: string
-  responsible?: { full_name: string }
-}
-
-interface ProjectKPIs {
-  totalMilestones: number
-  completedMilestones: number
-  totalActivities: number
-  completedActivities: number
-  overallProgress: number
-  daysRemaining: number
-}
-
-// === COMPONENTES DE UI ===
-const KPI_Card = ({ title, value, icon: Icon, subtitle, trend }: {
-  title: string
-  value: string | number
-  icon: any
-  subtitle?: string
-  trend?: 'up' | 'down' | 'neutral'
-}) => (
-  <div className="bg-white p-6 rounded-lg border border-gray-300 hover:shadow-md transition-shadow">
-    <div className="flex items-center justify-between">
-      <div className="flex items-center space-x-3">
-        <div className="p-3 rounded-lg bg-gray-200">
-          <Icon className="w-6 h-6 text-gray-800" />
-        </div>
-        <div>
-          <p className="text-sm font-medium text-gray-700">{title}</p>
-          <p className="text-2xl font-bold text-gray-900">{value}</p>
-          {subtitle && <p className="text-xs text-gray-600 mt-1">{subtitle}</p>}
-        </div>
-      </div>
-      {trend && (
-        <div className={`p-2 rounded-full ${
-          trend === 'up' ? 'bg-green-100' : 
-          trend === 'down' ? 'bg-red-100' : 'bg-gray-200'
-        }`}>
-          <TrendingUp className={`w-4 h-4 ${
-            trend === 'up' ? 'text-green-600' : 
-            trend === 'down' ? 'text-red-600 rotate-180' : 'text-gray-700'
-          }`} />
-        </div>
-      )}
-    </div>
+// === TAB SKELETON ===
+const TabSkeleton = () => (
+  <div className="space-y-6">
+    {Array.from({ length: 3 }, (_, i) => (
+      <CardSkeleton key={i} />
+    ))}
   </div>
 )
-
-const InfoCard = ({ title, icon: Icon, children, actions = null }: {
-  title: string
-  icon: any
-  children: React.ReactNode
-  actions?: React.ReactNode
-}) => (
-  <div className="bg-white rounded-lg border border-gray-300 p-6 hover:shadow-sm transition-shadow">
-    <div className="flex justify-between items-center mb-6">
-      <div className="flex items-center space-x-3">
-        <div className="w-8 h-8 bg-gray-200 rounded-md flex items-center justify-center">
-          <Icon className="w-5 h-5 text-gray-800" />
-        </div>
-        <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
-      </div>
-      {actions}
-    </div>
-    <div>{children}</div>
-  </div>
-)
-
-const InfoPair = ({ label, value }: { label: string; value: string | null | undefined }) => (
-  <div className="py-2">
-    <span className="text-gray-700 font-medium">{label}:</span>
-    <span className="ml-2 text-gray-900">{value || 'Não informado'}</span>
-  </div>
-)
-
-const StatusBadge = ({ status, type = 'status' }: { status: string; type?: string }) => {
-  const getStatusConfig = () => {
-    if (type === 'health') {
-      switch (status) {
-        case 'Verde': return 'bg-green-100 text-green-800'
-        case 'Amarelo': return 'bg-yellow-100 text-yellow-800'
-        case 'Vermelho': return 'bg-red-100 text-red-800'
-        default: return 'bg-gray-200 text-gray-800'
-      }
-    }
-    
-    // Status mapping melhorado
-    const normalizedStatus = status.toLowerCase()
-    switch (normalizedStatus) {
-      case 'completed': case 'approved': case 'concluído': case 'aprovado': case 'delivered':
-        return 'bg-green-100 text-green-800'
-      case 'in_progress': case 'em andamento': case 'review': case 'em revisão':
-        return 'bg-blue-100 text-blue-800'
-      case 'draft': case 'rascunho':
-        return 'bg-gray-100 text-gray-800'
-      case 'pending': case 'pendente':
-        return 'bg-yellow-100 text-yellow-800'
-      case 'delayed': case 'atrasado': case 'cancelled': case 'cancelado':
-        return 'bg-red-100 text-red-800'
-      default:
-        return 'bg-gray-200 text-gray-800'
-    }
-  }
-
-  // Traduzir status melhorado
-  const translateStatus = (status: string) => {
-    const translations: Record<string, string> = {
-      'draft': 'Rascunho',
-      'pending': 'Pendente',
-      'in_progress': 'Em Andamento', 
-      'review': 'Em Revisão',
-      'approved': 'Aprovado',
-      'completed': 'Concluído',
-      'delivered': 'Entregue',
-      'delayed': 'Atrasado',
-      'cancelled': 'Cancelado'
-    }
-    return translations[status.toLowerCase()] || status
-  }
-
-  return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusConfig()}`}>
-      {translateStatus(status)}
-    </span>
-  )
-}
-
-// Componente de Loading
-const LoadingSpinner = () => (
-  <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-    <div className="text-center">
-      <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
-      <p className="text-gray-700">Carregando projeto...</p>
-    </div>
-  </div>
-)
-
-// Componente de Erro
-const ErrorDisplay = ({ error, onRetry }: { error: string; onRetry: () => void }) => (
-  <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-    <div className="text-center max-w-md">
-      <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-      <h2 className="text-xl font-semibold text-gray-900 mb-2">Erro ao carregar projeto</h2>
-      <p className="text-gray-700 mb-6">{error}</p>
-      <div className="space-x-4">
-        <button 
-          onClick={onRetry}
-          className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <Activity className="w-4 h-4" />
-          <span>Tentar Novamente</span>
-        </button>
-        <button 
-          onClick={() => window.history.back()}
-          className="flex items-center space-x-2 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Voltar</span>
-        </button>
-      </div>
-    </div>
-  </div>
-)
-
-// === MODAL NOVO MARCO COM STATUS ===
-const NewMilestoneModal = ({ isOpen, onClose, onSubmit, teamMembers }: {
-  isOpen: boolean
-  onClose: () => void
-  onSubmit: (formData: any) => void
-  teamMembers: any[]
-}) => {
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    responsible_id: '',
-    deadline: '',
-    status: 'pending' // STATUS CONFIGURÁVEL
-  })
-
-  const handleSubmit = () => {
-    onSubmit(formData)
-    setFormData({ title: '', description: '', responsible_id: '', deadline: '', status: 'pending' })
-  }
-
-  if (!isOpen) return null
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">Novo Marco</h3>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-        
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-800 mb-1">Título</label>
-            <input
-              type="text"
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-              placeholder="Ex: Lançamento Beta"
-            />
-          </div>
-
-          {/* CAMPO STATUS - NOVO */}
-          <div>
-            <label className="block text-sm font-medium text-gray-800 mb-1">Status Inicial</label>
-            <select
-              value={formData.status}
-              onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-            >
-              {ProjectHandlers.getMilestoneStatusOptions().map(option => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-800 mb-1">Responsável</label>
-            <select
-              value={formData.responsible_id}
-              onChange={(e) => setFormData({ ...formData, responsible_id: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-            >
-              <option value="">Selecione um responsável</option>
-              {teamMembers.map(member => (
-                <option key={member.id} value={member.id}>{member.full_name}</option>
-              ))}
-            </select>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-800 mb-1">Descrição</label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-              placeholder="Descreva o marco..."
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-800 mb-1">Prazo</label>
-            <input
-              type="date"
-              value={formData.deadline}
-              onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-            />
-          </div>
-          
-          <div className="flex space-x-3 pt-4">
-            <button
-              onClick={handleSubmit}
-              className="flex-1 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
-            >
-              Criar Marco
-            </button>
-            <button
-              onClick={onClose}
-              className="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
-            >
-              Cancelar
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// === MODAL NOVA ATIVIDADE COM STATUS ===
-const NewActivityModal = ({ isOpen, onClose, onSubmit, teamMembers }: {
-  isOpen: boolean
-  onClose: () => void
-  onSubmit: (formData: any) => void
-  teamMembers: any[]
-}) => {
-  const [formData, setFormData] = useState({
-    title: '',
-    category: '',
-    responsible_id: '',
-    description: '',
-    deadline: '',
-    status: 'draft' // STATUS CONFIGURÁVEL
-  })
-
-  const handleSubmit = () => {
-    onSubmit(formData)
-    setFormData({ title: '', category: '', responsible_id: '', description: '', deadline: '', status: 'draft' })
-  }
-
-  if (!isOpen) return null
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">Nova Atividade</h3>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-        
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-800 mb-1">Título</label>
-            <input
-              type="text"
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-              placeholder="Ex: Implementar Autenticação"
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-800 mb-1">Categoria</label>
-            <select
-              value={formData.category}
-              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-            >
-              <option value="">Selecione uma categoria</option>
-              {ProjectHandlers.getActivityTypeOptions().map(type => (
-                <option key={type.value} value={type.value}>
-                  {type.icon} {type.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* CAMPO STATUS - NOVO */}
-          <div>
-            <label className="block text-sm font-medium text-gray-800 mb-1">Status Inicial</label>
-            <select
-              value={formData.status}
-              onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-            >
-              {ProjectHandlers.getActivityStatusOptions().map(option => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-800 mb-1">Responsável</label>
-            <select
-              value={formData.responsible_id}
-              onChange={(e) => setFormData({ ...formData, responsible_id: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-            >
-              <option value="">Selecione um responsável</option>
-              {teamMembers.map(member => (
-                <option key={member.id} value={member.id}>{member.full_name}</option>
-              ))}
-            </select>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-800 mb-1">Descrição</label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-              placeholder="Descreva a atividade..."
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-800 mb-1">Prazo</label>
-            <input
-              type="date"
-              value={formData.deadline}
-              onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-            />
-          </div>
-          
-          <div className="flex space-x-3 pt-4">
-            <button
-              onClick={handleSubmit}
-              className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Criar Atividade
-            </button>
-            <button
-              onClick={onClose}
-              className="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
-            >
-              Cancelar
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// === MODAL EDITAR ITEM ===
-const EditItemForm = ({ item, onSubmit, onCancel, teamMembers }: {
-  item: any
-  onSubmit: (formData: any) => void
-  onCancel: () => void
-  teamMembers: any[]
-}) => {
-  const [formData, setFormData] = useState({
-    title: item.title || '',
-    description: item.description || '',
-    deadline: item.due_date || item.deadline || '',
-    status: item.status || (item.type === 'marco' ? 'pending' : 'draft'),
-    category: item.type || item.category || 'documentation',
-    responsible_id: item.responsible_id || item.assigned_to || '',
-    progress: item.progress_percentage || 0
-  })
-
-  const handleSubmit = () => {
-    onSubmit(formData)
-  }
-
-  return (
-    <div className="space-y-4">
-      <div>
-        <label className="block text-sm font-medium text-gray-800 mb-1">Título</label>
-        <input
-          type="text"
-          value={formData.title}
-          onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-          className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-800 mb-1">Status</label>
-        <select
-          value={formData.status}
-          onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-          className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-        >
-          {item.type === 'marco' 
-            ? ProjectHandlers.getMilestoneStatusOptions().map(option => (
-                <option key={option.value} value={option.value}>{option.label}</option>
-              ))
-            : ProjectHandlers.getActivityStatusOptions().map(option => (
-                <option key={option.value} value={option.value}>{option.label}</option>
-              ))
-          }
-        </select>
-      </div>
-
-      {item.type === 'atividade' && (
-        <div>
-          <label className="block text-sm font-medium text-gray-800 mb-1">Categoria</label>
-          <select
-            value={formData.category}
-            onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-          >
-            {ProjectHandlers.getActivityTypeOptions().map(type => (
-              <option key={type.value} value={type.value}>
-                {type.icon} {type.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      {item.type === 'marco' && (
-        <div>
-          <label className="block text-sm font-medium text-gray-800 mb-1">Progresso (%)</label>
-          <input
-            type="number"
-            min="0"
-            max="100"
-            value={formData.progress}
-            onChange={(e) => setFormData({ ...formData, progress: parseInt(e.target.value) || 0 })}
-            className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-          />
-        </div>
-      )}
-
-      <div>
-        <label className="block text-sm font-medium text-gray-800 mb-1">Responsável</label>
-        <select
-          value={formData.responsible_id}
-          onChange={(e) => setFormData({ ...formData, responsible_id: e.target.value })}
-          className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-        >
-          <option value="">Selecione um responsável</option>
-          {teamMembers.map(member => (
-            <option key={member.id} value={member.id}>{member.full_name}</option>
-          ))}
-        </select>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-800 mb-1">Descrição</label>
-        <textarea
-          value={formData.description}
-          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-          rows={3}
-          className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-800 mb-1">Prazo</label>
-        <input
-          type="date"
-          value={formData.deadline}
-          onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
-          className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-        />
-      </div>
-
-      <div className="flex space-x-3 pt-4">
-        <button
-          onClick={handleSubmit}
-          className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
-        >
-          Salvar Alterações
-        </button>
-        <button
-          onClick={onCancel}
-          className="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
-        >
-          Cancelar
-        </button>
-      </div>
-    </div>
-  )
-}
 
 // === COMPONENTE PRINCIPAL ===
 export default function ProjectDetailPage() {
@@ -752,430 +55,267 @@ export default function ProjectDetailPage() {
   const router = useRouter()
   const projectId = params.id as string
 
-  // Estados principais
-  const [project, setProject] = useState<ProjectDetails | null>(null)
-  const [milestones, setMilestones] = useState<Milestone[]>([])
-  const [activities, setActivities] = useState<ProjectActivity[]>([])
-  const [teamMembers, setTeamMembers] = useState<any[]>([])
-  const [kpis, setKpis] = useState<ProjectKPIs>({
-    totalMilestones: 0,
-    completedMilestones: 0,
-    totalActivities: 0,
-    completedActivities: 0,
-    overallProgress: 0,
-    daysRemaining: 0
-  })
-  
-  // Estados de UI
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState('overview')
+  // === ESTADOS DE UI ===
+  const [activeTab, setActiveTab] = useState<TabId>('overview')
   const [mounted, setMounted] = useState(false)
-  
-  // Estados para Filtros e Modais
-  const [typeFilter, setTypeFilter] = useState('todos')
-  const [responsibleFilter, setResponsibleFilter] = useState('todos')
-  const [isNewActivityModalOpen, setIsNewActivityModalOpen] = useState(false)
-  const [isNewMilestoneModalOpen, setIsNewMilestoneModalOpen] = useState(false)
-  const [editingItem, setEditingItem] = useState<any>(null)
+  const [modals, setModals] = useState<ModalState>({
+    isNewMilestoneModalOpen: false,
+    isNewActivityModalOpen: false,
+    editingItem: null
+  })
 
-  // Effect para mounted
+  // === DADOS DO PROJETO ===
+  const {
+    project,
+    milestones,
+    activities,
+    teamMembers,
+    kpis,
+    loading,
+    error,
+    refetchAll,
+    updateProject,
+    addMilestone,
+    updateMilestone,
+    removeMilestone,
+    addActivity,
+    updateActivity,
+    removeActivity
+  } = useProjectData(projectId)
+
+  // === EFFECTS ===
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  // Effects
-  useEffect(() => {
-    if (projectId && mounted) {
-      loadAllData()
-    }
-  }, [projectId, mounted])
+  // === HANDLERS DE MODAL ===
+  const openModal = (modalType: keyof ModalState, value: any = true) => {
+    setModals(prev => ({ ...prev, [modalType]: value }))
+  }
 
-  useEffect(() => {
-    if (mounted) {
-      calculateKPIs()
-    }
-  }, [milestones, activities, project, mounted])
+  const closeModal = (modalType: keyof ModalState) => {
+    setModals(prev => ({ ...prev, [modalType]: modalType === 'editingItem' ? null : false }))
+  }
 
-  // === FUNÇÕES DE DADOS (MANTIDAS) ===
-  const loadAllData = async () => {
-    if (!mounted) return
+  // === HANDLERS DE MILESTONE ===
+  const handleNewMilestone = async (formData: MilestoneFormData) => {
+    const result = await MilestoneHandlers.create(projectId, formData)
     
-    try {
-      setLoading(true)
-      setError(null)
-
-      await loadProjectData()
-      await loadTeamMembers()
-      await loadMilestones()
-      await loadActivities()
-    } catch (err) {
-      console.error('Erro ao carregar dados:', err)
-      setError(err instanceof Error ? err.message : 'Erro desconhecido')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const loadProjectData = async () => {
-    try {
-      const { data, error: fetchError } = await supabase
-        .from('projects')
-        .select(`
-          *,
-          client:clients(id, company_name),
-          manager:team_members(id, full_name)
-        `)
-        .eq('id', projectId)
-        .single()
-
-      if (fetchError) throw fetchError
-      if (!data) throw new Error('Projeto não encontrado')
-
-      setProject(data as ProjectDetails)
-    } catch (err) {
-      throw err
-    }
-  }
-
-  const loadMilestones = async () => {
-    try {
-      const { data, error: fetchError } = await supabase
-        .from('project_milestones')
-        .select(`
-          *,
-          responsible:team_members(full_name)
-        `)
-        .eq('project_id', projectId)
-        .order('due_date', { ascending: true })
-
-      if (fetchError) {
-        console.error('Erro ao carregar marcos:', fetchError)
-        setMilestones([])
-        return
-      }
-      setMilestones(data || [])
-    } catch (err) {
-      console.error('Erro ao carregar marcos:', err)
-      setMilestones([])
-    }
-  }
-
-  const loadActivities = async () => {
-    try {
-      const { data, error: fetchError } = await supabase
-        .from('project_deliverables')
-        .select(`
-          *,
-          responsible:team_members(full_name)
-        `)
-        .eq('project_id', projectId)
-        .order('due_date', { ascending: true })
-
-      if (fetchError) {
-        console.error('Erro ao carregar atividades:', fetchError)
-        setActivities([])
-        return
-      }
-      setActivities(data || [])
-    } catch (err) {
-      console.error('Erro ao carregar atividades:', err)
-      setActivities([])
-    }
-  }
-
-  const loadTeamMembers = async () => {
-    try {
-      const { data, error: fetchError } = await supabase
-        .from('team_members')
-        .select('id, full_name, email')
-        .eq('is_active', true)
-        .order('full_name')
-
-      if (fetchError) throw fetchError
-      setTeamMembers(data || [])
-    } catch (err) {
-      console.error('Erro ao carregar membros da equipe:', err)
-      setTeamMembers([])
-    }
-  }
-
-  // === CÁLCULO DE KPIs (MANTIDO) ===
-  const calculateKPIs = () => {
-    if (!project || milestones.length === 0 && activities.length === 0) {
-      setKpis({
-        totalMilestones: 0,
-        completedMilestones: 0,
-        totalActivities: 0,
-        completedActivities: 0,
-        overallProgress: 0,
-        daysRemaining: 0
-      })
+    if (result.error) {
+      alert(result.error)
       return
     }
 
-    const completedMilestones = milestones.filter(m => 
-      m.status === 'completed' || m.status === 'Concluído'
-    ).length
-    
-    const completedActivities = activities.filter(a => 
-      a.status === 'completed' || a.status === 'approved' || a.status === 'delivered' || 
-      a.status === 'Concluído' || a.status === 'Aprovado'
-    ).length
-    
-    const totalItems = milestones.length + activities.length
-    const milestonesProgress = milestones.reduce((sum, m) => sum + (m.progress_percentage || 0), 0)
-    const activitiesProgress = completedActivities * 100
-    
-    const overallProgress = totalItems > 0 
-      ? Math.round((milestonesProgress + activitiesProgress) / (totalItems * 100) * 100)
-      : 0
-
-    const daysRemaining = project.estimated_end_date 
-      ? Math.max(0, Math.ceil((new Date(project.estimated_end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))
-      : 0
-
-    const newKpis = {
-      totalMilestones: milestones.length,
-      completedMilestones,
-      totalActivities: activities.length,
-      completedActivities,
-      overallProgress,
-      daysRemaining
-    }
-
-    setKpis(newKpis)
-    updateProjectProgress(overallProgress)
-  }
-
-  const updateProjectProgress = async (newProgress: number) => {
-    if (project && project.progress_percentage !== newProgress) {
-      try {
-        const { error } = await supabase
-          .from('projects')
-          .update({ progress_percentage: newProgress })
-          .eq('id', projectId)
-        
-        if (!error) {
-          setProject({ ...project, progress_percentage: newProgress })
-        }
-      } catch (err) {
-        console.error('Erro ao atualizar progresso:', err)
-      }
+    if (result.data) {
+      addMilestone(result.data)
+      closeModal('isNewMilestoneModalOpen')
+      alert('Marco criado com sucesso!')
     }
   }
 
-  // === HANDLERS INTEGRADOS ===
-  const handleNewMilestone = async (formData: any) => {
-    await ProjectHandlers.handleNewMilestone(
-      projectId,
-      formData,
-      teamMembers,
-      setMilestones,
-      setIsNewMilestoneModalOpen,
-      milestones
-    )
+  const handleEditMilestone = (milestone: Milestone) => {
+    openModal('editingItem', { ...milestone, type: 'marco' })
   }
 
-  const handleNewActivity = async (formData: any) => {
-    await ProjectHandlers.handleNewActivity(
-      projectId,
-      formData,
-      teamMembers,
-      setActivities,
-      setIsNewActivityModalOpen,
-      activities
-    )
-  }
+  const handleUpdateMilestone = async (formData: any) => {
+    if (!modals.editingItem) return
 
-  // === HANDLERS EDITAR/DELETAR ===
-  const handleEditMilestone = (milestone: any) => {
-    setEditingItem({ ...milestone, type: 'marco' })
-  }
+    const result = await MilestoneHandlers.update(modals.editingItem.id, formData)
+    
+    if (result.error) {
+      alert(result.error)
+      return
+    }
 
-  const handleEditActivity = (activity: any) => {
-    setEditingItem({ ...activity, type: 'atividade' })
+    if (result.data) {
+      updateMilestone(modals.editingItem.id, result.data)
+      closeModal('editingItem')
+      alert('Marco atualizado com sucesso!')
+    }
   }
 
   const handleDeleteMilestone = async (milestoneId: string, title: string) => {
     if (!confirm(`Tem certeza que deseja excluir o marco "${title}"?`)) return
 
-    try {
-      const { error } = await supabase
-        .from('project_milestones')
-        .delete()
-        .eq('id', milestoneId)
+    const result = await MilestoneHandlers.delete(milestoneId)
+    
+    if (result.error) {
+      alert(result.error)
+      return
+    }
 
-      if (error) {
-        console.error('❌ Erro ao deletar marco:', error)
-        alert(`Erro ao excluir marco: ${error.message}`)
-        return
-      }
+    removeMilestone(milestoneId)
+    alert('Marco excluído com sucesso!')
+  }
 
-      setMilestones(milestones.filter(m => m.id !== milestoneId))
-      alert('Marco excluído com sucesso!')
-    } catch (err) {
-      console.error('💥 Erro ao deletar marco:', err)
-      alert('Erro inesperado ao excluir marco.')
+  // === HANDLERS DE ACTIVITY ===
+  const handleNewActivity = async (formData: ActivityFormData) => {
+    const result = await ActivityHandlers.create(projectId, formData)
+    
+    if (result.error) {
+      alert(result.error)
+      return
+    }
+
+    if (result.data) {
+      addActivity(result.data)
+      closeModal('isNewActivityModalOpen')
+      alert('Atividade criada com sucesso!')
+    }
+  }
+
+  const handleEditActivity = (activity: Activity) => {
+    openModal('editingItem', { ...activity, type: 'atividade' })
+  }
+
+  const handleUpdateActivity = async (formData: any) => {
+    if (!modals.editingItem) return
+
+    const result = await ActivityHandlers.update(modals.editingItem.id, formData)
+    
+    if (result.error) {
+      alert(result.error)
+      return
+    }
+
+    if (result.data) {
+      updateActivity(modals.editingItem.id, result.data)
+      closeModal('editingItem')
+      alert('Atividade atualizada com sucesso!')
     }
   }
 
   const handleDeleteActivity = async (activityId: string, title: string) => {
     if (!confirm(`Tem certeza que deseja excluir a atividade "${title}"?`)) return
 
-    try {
-      const { error } = await supabase
-        .from('project_deliverables')
-        .delete()
-        .eq('id', activityId)
-
-      if (error) {
-        console.error('❌ Erro ao deletar atividade:', error)
-        alert(`Erro ao excluir atividade: ${error.message}`)
-        return
-      }
-
-      setActivities(activities.filter(a => a.id !== activityId))
-      alert('Atividade excluída com sucesso!')
-    } catch (err) {
-      console.error('💥 Erro ao deletar atividade:', err)
-      alert('Erro inesperado ao excluir atividade.')
+    const result = await ActivityHandlers.delete(activityId)
+    
+    if (result.error) {
+      alert(result.error)
+      return
     }
+
+    removeActivity(activityId)
+    alert('Atividade excluída com sucesso!')
   }
 
+  // === HANDLERS UNIFICADOS PARA MODAL DE EDIÇÃO ===
   const handleUpdateItem = async (formData: any) => {
-    if (!editingItem) return
+    if (!modals.editingItem) return
 
-    try {
-      const { title, description, deadline, status, category, responsible_id, progress } = formData
+    if (modals.editingItem.type === 'marco') {
+      await handleUpdateMilestone(formData)
+    } else {
+      await handleUpdateActivity(formData)
+    }
+  }
 
-      if (editingItem.type === 'marco') {
-        const { data, error } = await supabase
-          .from('project_milestones')
-          .update({
-            title,
-            description,
-            due_date: deadline,
-            status: status,
-            progress_percentage: progress,
-            assigned_to: responsible_id,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', editingItem.id)
-          .select(`
-            *,
-            responsible:team_members(full_name)
-          `)
-          .single()
-
-        if (error) {
-          console.error('❌ Erro ao atualizar marco:', error)
-          alert(`Erro ao atualizar marco: ${error.message}`)
-          return
-        }
-
-        setMilestones(milestones.map(m => m.id === editingItem.id ? data : m))
-      } else {
-        const { data, error } = await supabase
-          .from('project_deliverables')
-          .update({
-            title,
-            description,
-            due_date: deadline,
-            status: status,
-            type: category,
-            assigned_to: responsible_id,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', editingItem.id)
-          .select(`
-            *,
-            responsible:team_members(full_name)
-          `)
-          .single()
-
-        if (error) {
-          console.error('❌ Erro ao atualizar atividade:', error)
-          alert(`Erro ao atualizar atividade: ${error.message}`)
-          return
-        }
-
-        setActivities(activities.map(a => a.id === editingItem.id ? data : a))
+  // === CONFIGURAÇÃO DAS TABS ===
+  const tabs = [
+    { 
+      id: 'overview' as TabId, 
+      label: 'Visão Geral', 
+      icon: BarChart3,
+      component: OverviewTab,
+      props: { project, kpis }
+    },
+    { 
+      id: 'deliverables' as TabId, 
+      label: 'Marcos e Entregáveis', 
+      icon: Target,
+      component: DeliverablesTab,
+      props: {
+        milestones,
+        activities,
+        teamMembers,
+        onNewMilestone: () => openModal('isNewMilestoneModalOpen'),
+        onNewActivity: () => openModal('isNewActivityModalOpen'),
+        onEditMilestone: handleEditMilestone,
+        onEditActivity: handleEditActivity,
+        onDeleteMilestone: handleDeleteMilestone,
+        onDeleteActivity: handleDeleteActivity
       }
-
-      setEditingItem(null)
-      alert('Item atualizado com sucesso!')
-    } catch (err) {
-      console.error('💥 Erro ao atualizar item:', err)
-      alert('Erro inesperado ao atualizar item.')
+    },
+    { 
+      id: 'timeline' as TabId, 
+      label: 'Cronograma', 
+      icon: Calendar,
+      component: TimelineTab,
+      props: { milestones, activities }
+    },
+    { 
+      id: 'communication' as TabId, 
+      label: 'Comunicação', 
+      icon: MessageSquare,
+      component: CommunicationTab,
+      props: { projectId }
     }
-  }
+  ]
 
-  // === FUNÇÕES UTILITÁRIAS (MANTIDAS) ===
-  const formatDate = (dateString?: string) => {
-    if (!dateString || !mounted) return 'Não definido'
-    try {
-      return new Date(dateString).toLocaleDateString('pt-BR')
-    } catch {
-      return 'Data inválida'
-    }
-  }
-
-  const formatCurrency = (value: number) => {
-    if (!mounted) return 'R$ 0,00'
-    try {
-      return new Intl.NumberFormat('pt-BR', {
-        style: 'currency',
-        currency: 'BRL'
-      }).format(value)
-    } catch {
-      return `R$ ${value.toFixed(2).replace('.', ',')}`
-    }
-  }
-
-  // === FILTROS (MANTIDOS) ===
-  const filteredMilestones = milestones.filter(item => {
-    if (typeFilter !== 'todos' && item.status !== typeFilter) return false
-    if (responsibleFilter !== 'todos' && item.responsible_id !== responsibleFilter) return false
-    return true
-  })
-
-  const filteredActivities = activities.filter(item => {
-    if (typeFilter !== 'todos' && item.status !== typeFilter) return false
-    if (responsibleFilter !== 'todos' && item.responsible_id !== responsibleFilter) return false
-    return true
-  })
-
-  // Renders condicionais
+  // === RENDER CONDITIONAL ===
   if (!mounted) {
     return <div className="min-h-screen bg-gray-50"></div>
   }
   
-  if (loading) return <LoadingSpinner />
-  if (error) return <ErrorDisplay error={error} onRetry={loadAllData} />
-  if (!project) return <ErrorDisplay error="Projeto não encontrado" onRetry={loadAllData} />
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <LoadingSpinner message="Carregando projeto..." />
+      </div>
+    )
+  }
+  
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <ErrorDisplay 
+          error={error} 
+          onRetry={refetchAll}
+          title="Erro ao carregar projeto"
+        />
+      </div>
+    )
+  }
+  
+  if (!project) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <ErrorDisplay 
+          error="Projeto não encontrado" 
+          onRetry={refetchAll}
+        />
+      </div>
+    )
+  }
 
+  // === RENDER PRINCIPAL ===
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header fixo (MANTIDO) */}
+      
+      {/* Header Fixo */}
       <div className="bg-white border-b border-gray-300 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto p-6">
-          <div className="flex items-center justify-between">
+          
+          {/* Navegação e Título */}
+          <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-4">
               <button
                 onClick={() => router.push('/projetos')}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                aria-label="Voltar para projetos"
               >
                 <ArrowLeft className="w-5 h-5 text-gray-700" />
               </button>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">{project.name}</h1>
                 <div className="flex items-center space-x-3 mt-1">
-                  <StatusBadge status={project.status} />
+                  <StatusBadge status={project.status} type="generic" />
                   <StatusBadge status={project.health} type="health" />
                 </div>
               </div>
             </div>
+            
+            {/* Ação Principal */}
             <button
               onClick={() => {
                 if (typeof window !== 'undefined') {
@@ -1189,46 +329,9 @@ export default function ProjectDetailPage() {
             </button>
           </div>
 
-          {/* KPIs (MANTIDOS) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6 mb-6">
-            <KPI_Card
-              title="Progresso"
-              value={`${kpis.overallProgress}%`}
-              icon={BarChart3}
-              subtitle="do projeto concluído"
-              trend={kpis.overallProgress > 50 ? "up" : kpis.overallProgress > 25 ? "neutral" : "down"}
-            />
-            <KPI_Card
-              title="Orçamento Usado"
-              value={formatCurrency(project.used_budget)}
-              icon={DollarSign}
-              subtitle={`de ${formatCurrency(project.total_budget)}`}
-              trend="neutral"
-            />
-            <KPI_Card
-              title="Marcos Concluídos"
-              value={kpis.completedMilestones}
-              icon={Target}
-              subtitle={`de ${kpis.totalMilestones} marcos`}
-              trend={kpis.completedMilestones > 0 ? "up" : "neutral"}
-            />
-            <KPI_Card
-              title="Dias Restantes"
-              value={kpis.daysRemaining}
-              icon={Clock}
-              subtitle="até o prazo final"
-              trend={kpis.daysRemaining > 30 ? "up" : kpis.daysRemaining > 7 ? "neutral" : "down"}
-            />
-          </div>
-
-          {/* Tabs (MANTIDAS) */}
+          {/* Navegação de Tabs */}
           <div className="flex space-x-6">
-            {[
-              { id: 'overview', label: 'Visão Geral', icon: BarChart3 },
-              { id: 'deliverables', label: 'Marcos e Entregáveis', icon: Target },
-              { id: 'timeline', label: 'Cronograma', icon: Calendar },
-              { id: 'communication', label: 'Comunicação', icon: MessageSquare }
-            ].map(tab => (
+            {tabs.map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
@@ -1237,6 +340,7 @@ export default function ProjectDetailPage() {
                     ? 'bg-blue-100 text-blue-700'
                     : 'text-gray-700 hover:text-gray-900 hover:bg-gray-100'
                 }`}
+                aria-current={activeTab === tab.id ? 'page' : undefined}
               >
                 <tab.icon className="w-4 h-4" />
                 <span>{tab.label}</span>
@@ -1246,290 +350,46 @@ export default function ProjectDetailPage() {
         </div>
       </div>
 
-      {/* Conteúdo principal (MANTIDO - SÓ OS MODAIS MUDARAM) */}
+      {/* Conteúdo das Tabs */}
       <div className="max-w-7xl mx-auto p-6">
-        
-        {/* Tab Overview (MANTIDA) */}
-        {activeTab === 'overview' && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <InfoCard title="Informações do Projeto" icon={FileText}>
-                <div className="space-y-2">
-                  <InfoPair label="Descrição" value={project.description} />
-                  <InfoPair label="Tipo" value={project.project_type} />
-                  <InfoPair label="Nível de Risco" value={project.risk_level} />
-                  <InfoPair label="Data de Início" value={formatDate(project.start_date)} />
-                  <InfoPair label="Previsão de Término" value={formatDate(project.estimated_end_date)} />
-                </div>
-              </InfoCard>
+        {tabs.map(tab => {
+          if (tab.id !== activeTab) return null
+          
+          const TabComponent = tab.component
 
-              <InfoCard title="Equipe e Cliente" icon={Users}>
-                <div className="space-y-2">
-                  <InfoPair label="Cliente" value={project.client?.company_name} />
-                  <InfoPair label="Gerente do Projeto" value={project.manager?.full_name} />
-                  <InfoPair label="Total de Marcos" value={kpis.totalMilestones.toString()} />
-                  <InfoPair label="Total de Atividades" value={kpis.totalActivities.toString()} />
-                </div>
-              </InfoCard>
-            </div>
-
-            <InfoCard title="Progresso do Projeto" icon={TrendingUp}>
-              <div className="space-y-4">
-                <div>
-                  <div className="flex justify-between text-sm text-gray-700 mb-2">
-                    <span>Progresso Geral (baseado em entregáveis)</span>
-                    <span>{kpis.overallProgress}%</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-3">
-                    <div 
-                      className="bg-blue-600 h-3 rounded-full transition-all duration-300"
-                      style={{ width: `${kpis.overallProgress}%` }}
-                    />
-                  </div>
-                </div>
-                
-                <div>
-                  <div className="flex justify-between text-sm text-gray-700 mb-2">
-                    <span>Orçamento Utilizado</span>
-                    <span>{Math.round((project.used_budget / project.total_budget) * 100)}%</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-3">
-                    <div 
-                      className="bg-green-600 h-3 rounded-full transition-all duration-300"
-                      style={{ width: `${(project.used_budget / project.total_budget) * 100}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-            </InfoCard>
-          </div>
-        )}
-
-        {/* Tab Marcos e Entregáveis (MANTIDA) */}
-        {activeTab === 'deliverables' && (
-          <div className="space-y-6">
-            <div className="bg-white rounded-lg border border-gray-300 p-6">
-              <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center space-y-4 lg:space-y-0">
-                <div className="flex flex-wrap gap-4">
-                  <select
-                    value={typeFilter}
-                    onChange={(e) => setTypeFilter(e.target.value)}
-                    className="px-3 py-2 border border-gray-400 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                  >
-                    <option value="todos">Todos os Status</option>
-                    <option value="pending">Pendente</option>
-                    <option value="in_progress">Em Andamento</option>
-                    <option value="completed">Concluído</option>
-                    <option value="delayed">Atrasado</option>
-                    <option value="review">Em Revisão</option>
-                    <option value="approved">Aprovado</option>
-                  </select>
-
-                  <select
-                    value={responsibleFilter}
-                    onChange={(e) => setResponsibleFilter(e.target.value)}
-                    className="px-3 py-2 border border-gray-400 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                  >
-                    <option value="todos">Todos os Responsáveis</option>
-                    {teamMembers.map(member => (
-                      <option key={member.id} value={member.id}>{member.full_name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="flex space-x-3">
-                  <button
-                    onClick={() => setIsNewMilestoneModalOpen(true)}
-                    className="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>Novo Marco</span>
-                  </button>
-                  <button
-                    onClick={() => setIsNewActivityModalOpen(true)}
-                    className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>Nova Atividade</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Colunas com Status Badges Melhorados */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <InfoCard title={`Marcos (${filteredMilestones.length})`} icon={Target}>
-                <div className="space-y-4">
-                  {filteredMilestones.length > 0 ? filteredMilestones.map((milestone) => (
-                    <div key={milestone.id} className="border border-gray-300 rounded-lg p-4 hover:shadow-sm transition-shadow">
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-3 mb-2">
-                            <h4 className="text-lg font-medium text-gray-900">{milestone.title}</h4>
-                            <StatusBadge status={milestone.status} />
-                          </div>
-                          <p className="text-gray-700 mb-3">{milestone.description}</p>
-                          
-                          <div className="mb-3">
-                            <div className="flex justify-between text-sm text-gray-700 mb-1">
-                              <span>Progresso</span>
-                              <span>{milestone.progress_percentage}%</span>
-                            </div>
-                            <div className="w-full bg-gray-200 rounded-full h-2">
-                              <div 
-                                className="bg-purple-600 h-2 rounded-full transition-all duration-300"
-                                style={{ width: `${milestone.progress_percentage}%` }}
-                              />
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-4 text-sm">
-                            <div>
-                              <span className="text-gray-700 font-medium">Prazo:</span>
-                              <p className="text-gray-900">{formatDate(milestone.due_date || milestone.deadline)}</p>
-                            </div>
-                            <div>
-                              <span className="text-gray-700 font-medium">Responsável:</span>
-                              <p className="text-gray-900">{milestone.responsible?.full_name || 'Não atribuído'}</p>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        {/* BOTÕES DE AÇÃO - NOVOS */}
-                        <div className="flex space-x-2 ml-4 opacity-80 hover:opacity-100 transition-opacity">
-                          <button
-                            onClick={() => handleEditMilestone(milestone)}
-                            className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                            title="Editar marco"
-                          >
-                            <Edit3 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteMilestone(milestone.id, milestone.title)}
-                            className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Excluir marco"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )) : (
-                    <p className="text-gray-700 text-center py-4">Nenhum marco encontrado.</p>
-                  )}
-                </div>
-              </InfoCard>
-
-              <InfoCard title={`Atividades (${filteredActivities.length})`} icon={CheckSquare}>
-                <div className="space-y-4">
-                  {filteredActivities.length > 0 ? filteredActivities.map((activity) => (
-                    <div key={activity.id} className="border border-gray-300 rounded-lg p-4 hover:shadow-sm transition-shadow">
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-3 mb-2">
-                            <h4 className="text-lg font-medium text-gray-900">{activity.title}</h4>
-                            <StatusBadge status={activity.status} />
-                            <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-800">
-                              {activity.type || activity.category}
-                            </span>
-                          </div>
-                          <p className="text-gray-700 mb-3">{activity.description}</p>
-
-                          <div className="grid grid-cols-2 gap-4 text-sm">
-                            <div>
-                              <span className="text-gray-700 font-medium">Prazo:</span>
-                              <p className="text-gray-900">{formatDate(activity.due_date || activity.deadline)}</p>
-                            </div>
-                            <div>
-                              <span className="text-gray-700 font-medium">Responsável:</span>
-                              <p className="text-gray-900">{activity.responsible?.full_name || 'Não atribuído'}</p>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        {/* BOTÕES DE AÇÃO - NOVOS */}
-                        <div className="flex space-x-2 ml-4 opacity-80 hover:opacity-100 transition-opacity">
-                          <button
-                            onClick={() => handleEditActivity(activity)}
-                            className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                            title="Editar atividade"
-                          >
-                            <Edit3 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteActivity(activity.id, activity.title)}
-                            className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Excluir atividade"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )) : (
-                    <p className="text-gray-700 text-center py-4">Nenhuma atividade encontrada.</p>
-                  )}
-                </div>
-              </InfoCard>
-            </div>
-          </div>
-        )}
-
-        {/* Outras tabs (MANTIDAS) */}
-        {activeTab !== 'overview' && activeTab !== 'deliverables' && (
-          <div className="bg-white rounded-lg border border-gray-300 p-8 text-center">
-            <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Eye className="w-8 h-8 text-gray-600" />
-            </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              {activeTab === 'timeline' && 'Cronograma em Desenvolvimento'}
-              {activeTab === 'communication' && 'Central de Comunicação em Desenvolvimento'}
-            </h3>
-            <p className="text-gray-700">Esta funcionalidade será implementada na próxima versão.</p>
-          </div>
-        )}
+          return (
+            <Suspense key={tab.id} fallback={<TabSkeleton />}>
+              <TabComponent 
+                {...tab.props}
+                loading={loading}
+              />
+            </Suspense>
+          )
+        })}
       </div>
 
-      {/* MODAIS ATUALIZADOS COM STATUS */}
+      {/* Modais */}
       <NewMilestoneModal
-        isOpen={isNewMilestoneModalOpen}
-        onClose={() => setIsNewMilestoneModalOpen(false)}
+        isOpen={modals.isNewMilestoneModalOpen}
+        onClose={() => closeModal('isNewMilestoneModalOpen')}
         onSubmit={handleNewMilestone}
         teamMembers={teamMembers}
       />
 
       <NewActivityModal
-        isOpen={isNewActivityModalOpen}
-        onClose={() => setIsNewActivityModalOpen(false)}
+        isOpen={modals.isNewActivityModalOpen}
+        onClose={() => closeModal('isNewActivityModalOpen')}
         onSubmit={handleNewActivity}
         teamMembers={teamMembers}
       />
 
-      {/* MODAL DE EDIÇÃO - NOVO */}
-      {editingItem && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">
-                Editar {editingItem.type === 'marco' ? 'Marco' : 'Atividade'}
-              </h3>
-              <button
-                onClick={() => setEditingItem(null)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            
-            <EditItemForm 
-              item={editingItem} 
-              onSubmit={handleUpdateItem}
-              onCancel={() => setEditingItem(null)}
-              teamMembers={teamMembers}
-            />
-          </div>
-        </div>
-      )}
+      <EditItemModal
+        isOpen={!!modals.editingItem}
+        onClose={() => closeModal('editingItem')}
+        onSubmit={handleUpdateItem}
+        item={modals.editingItem}
+        teamMembers={teamMembers}
+      />
     </div>
   )
 }
