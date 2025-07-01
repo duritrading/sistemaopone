@@ -221,6 +221,7 @@ export default function ProjectDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState('overview')
+  const [mounted, setMounted] = useState(false)
   
   // Estados para Filtros e Modais
   const [typeFilter, setTypeFilter] = useState('todos')
@@ -229,29 +230,38 @@ export default function ProjectDetailPage() {
   const [isNewMilestoneModalOpen, setIsNewMilestoneModalOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<any>(null)
 
+  // Effect para mounted
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   // Effects
   useEffect(() => {
-    if (projectId) {
+    if (projectId && mounted) {
       loadAllData()
     }
-  }, [projectId])
+  }, [projectId, mounted])
 
   useEffect(() => {
     // Recalcular KPIs sempre que milestones ou activities mudarem
-    calculateKPIs()
-  }, [milestones, activities, project])
+    if (mounted) {
+      calculateKPIs()
+    }
+  }, [milestones, activities, project, mounted])
 
   // === FUNÇÕES DE DADOS ===
   const loadAllData = async () => {
+    if (!mounted) return
+    
     try {
       setLoading(true)
       setError(null)
 
       // Carregar dados sequencialmente para evitar conflitos
       await loadProjectData()
+      await loadTeamMembers()
       await loadMilestones()
       await loadActivities()
-      await loadTeamMembers()
     } catch (err) {
       console.error('Erro ao carregar dados:', err)
       setError(err instanceof Error ? err.message : 'Erro desconhecido')
@@ -261,59 +271,78 @@ export default function ProjectDetailPage() {
   }
 
   const loadProjectData = async () => {
-    const { data, error: fetchError } = await supabase
-      .from('projects')
-      .select(`
-        *,
-        client:clients(id, company_name),
-        manager:team_members(id, full_name)
-      `)
-      .eq('id', projectId)
-      .single()
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('projects')
+        .select(`
+          *,
+          client:clients(id, company_name),
+          manager:team_members(id, full_name)
+        `)
+        .eq('id', projectId)
+        .single()
 
-    if (fetchError) throw fetchError
-    if (!data) throw new Error('Projeto não encontrado')
+      if (fetchError) throw fetchError
+      if (!data) throw new Error('Projeto não encontrado')
 
-    setProject(data as ProjectDetails)
+      setProject(data as ProjectDetails)
+    } catch (err) {
+      throw err
+    }
   }
 
   const loadMilestones = async () => {
-    const { data, error: fetchError } = await supabase
-      .from('project_milestones')
-      .select(`
-        *,
-        responsible:team_members(full_name)
-      `)
-      .eq('project_id', projectId)
-      .order('deadline', { ascending: true })
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('project_milestones')
+        .select(`
+          *,
+          responsible:team_members(full_name)
+        `)
+        .eq('project_id', projectId)
+        .order('deadline', { ascending: true })
 
-    if (fetchError) throw fetchError
-    setMilestones(data || [])
+      if (fetchError) throw fetchError
+      setMilestones(data || [])
+    } catch (err) {
+      console.error('Erro ao carregar marcos:', err)
+      setMilestones([])
+    }
   }
 
   const loadActivities = async () => {
-    const { data, error: fetchError } = await supabase
-      .from('project_activities')
-      .select(`
-        *,
-        responsible:team_members(full_name)
-      `)
-      .eq('project_id', projectId)
-      .order('deadline', { ascending: true })
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('project_activities')
+        .select(`
+          *,
+          responsible:team_members(full_name)
+        `)
+        .eq('project_id', projectId)
+        .order('deadline', { ascending: true })
 
-    if (fetchError) throw fetchError
-    setActivities(data || [])
+      if (fetchError) throw fetchError
+      setActivities(data || [])
+    } catch (err) {
+      console.error('Erro ao carregar atividades:', err)
+      setActivities([])
+    }
   }
 
   const loadTeamMembers = async () => {
-    const { data, error: fetchError } = await supabase
-      .from('team_members')
-      .select('id, full_name, email')
-      .eq('is_active', true)
-      .order('full_name')
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('team_members')
+        .select('id, full_name, email')
+        .eq('is_active', true)
+        .order('full_name')
 
-    if (fetchError) throw fetchError
-    setTeamMembers(data || [])
+      if (fetchError) throw fetchError
+      setTeamMembers(data || [])
+    } catch (err) {
+      console.error('Erro ao carregar membros da equipe:', err)
+      setTeamMembers([])
+    }
   }
 
   // === CÁLCULO DE KPIs ===
@@ -545,15 +574,24 @@ export default function ProjectDetailPage() {
 
   // === FUNÇÕES UTILITÁRIAS ===
   const formatDate = (dateString?: string) => {
-    if (!dateString) return 'Não definido'
-    return new Date(dateString).toLocaleDateString('pt-BR')
+    if (!dateString || !mounted) return 'Não definido'
+    try {
+      return new Date(dateString).toLocaleDateString('pt-BR')
+    } catch {
+      return 'Data inválida'
+    }
   }
 
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value)
+    if (!mounted) return 'R$ 0,00'
+    try {
+      return new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+      }).format(value)
+    } catch {
+      return `R$ ${value.toFixed(2).replace('.', ',')}`
+    }
   }
 
   // === FILTROS ===
@@ -570,6 +608,10 @@ export default function ProjectDetailPage() {
   })
 
   // Renders condicionais
+  if (!mounted) {
+    return <div className="min-h-screen bg-gray-50"></div>
+  }
+  
   if (loading) return <LoadingSpinner />
   if (error) return <ErrorDisplay error={error} onRetry={loadAllData} />
   if (!project) return <ErrorDisplay error="Projeto não encontrado" onRetry={loadAllData} />
@@ -818,12 +860,12 @@ export default function ProjectDetailPage() {
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div className="grid grid-cols-2 gap-4 text-sm">
                             <div>
                               <span className="text-gray-700 font-medium">Prazo:</span>
                               <p className={`${new Date(milestone.deadline) < new Date() && milestone.status !== 'Concluído' ? 
                                 'text-red-600' : 'text-gray-900'}`}>
-                                {new Date(milestone.deadline).toLocaleDateString('pt-BR')}
+                                {formatDate(milestone.deadline)}
                               </p>
                             </div>
                             <div>
@@ -878,7 +920,7 @@ export default function ProjectDetailPage() {
                               <span className="text-gray-700 font-medium">Prazo:</span>
                               <p className={`${new Date(activity.deadline) < new Date() && activity.status !== 'Concluído' ? 
                                 'text-red-600' : 'text-gray-900'}`}>
-                                {new Date(activity.deadline).toLocaleDateString('pt-BR')}
+                                {formatDate(activity.deadline)}
                               </p>
                             </div>
                             <div>
