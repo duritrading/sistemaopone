@@ -141,17 +141,14 @@ const StatusBadge = ({ status, type = 'status' }: { status: string; type?: strin
       }
     }
     
-    // Mapear status em inglês e português
+    // Mapear status conforme check constraints do banco
     const normalizedStatus = status.toLowerCase()
     switch (normalizedStatus) {
-      case 'ativo': case 'em andamento': case 'aprovado': case 'concluído':
-      case 'active': case 'in_progress': case 'approved': case 'completed':
+      case 'completed': case 'approved': case 'concluído': case 'aprovado':
         return 'bg-green-100 text-green-800'
-      case 'pausado': case 'em revisão': case 'pendente':
-      case 'paused': case 'in_review': case 'pending':
+      case 'in_progress': case 'in_review': case 'draft': case 'em andamento': case 'em revisão': case 'rascunho':
         return 'bg-yellow-100 text-yellow-800'
-      case 'cancelado': case 'atrasado':
-      case 'cancelled': case 'delayed':
+      case 'pending': case 'delayed': case 'cancelled': case 'pendente': case 'atrasado': case 'cancelado':
         return 'bg-red-100 text-red-800'
       default:
         return 'bg-gray-200 text-gray-800'
@@ -161,12 +158,14 @@ const StatusBadge = ({ status, type = 'status' }: { status: string; type?: strin
   // Traduzir status para português na exibição
   const translateStatus = (status: string) => {
     const translations: Record<string, string> = {
+      'draft': 'Rascunho',
       'pending': 'Pendente',
       'in_progress': 'Em Andamento', 
       'in_review': 'Em Revisão',
       'approved': 'Aprovado',
       'completed': 'Concluído',
-      'delayed': 'Atrasado'
+      'delayed': 'Atrasado',
+      'cancelled': 'Cancelado'
     }
     return translations[status.toLowerCase()] || status
   }
@@ -386,15 +385,20 @@ export default function ProjectDetailPage() {
       return
     }
 
-    const completedMilestones = milestones.filter(m => m.status === 'completed' || m.status === 'Concluído').length
-    const completedActivities = activities.filter(a => a.status === 'completed' || a.status === 'Concluído').length
+    const completedMilestones = milestones.filter(m => 
+      m.status === 'completed' || m.status === 'Concluído'
+    ).length
+    
+    const completedActivities = activities.filter(a => 
+      a.status === 'completed' || a.status === 'approved' || a.status === 'Concluído' || a.status === 'Aprovado'
+    ).length
     
     // Calcular progresso geral baseado nos entregáveis
     const totalItems = milestones.length + activities.length
     
     // Progresso considerando progresso parcial dos marcos + atividades concluídas
     const milestonesProgress = milestones.reduce((sum, m) => sum + (m.progress_percentage || 0), 0)
-    const activitiesProgress = activities.filter(a => a.status === 'completed' || a.status === 'Concluído').length * 100
+    const activitiesProgress = completedActivities * 100
     
     const overallProgress = totalItems > 0 
       ? Math.round((milestonesProgress + activitiesProgress) / (totalItems * 100) * 100)
@@ -446,7 +450,16 @@ export default function ProjectDetailPage() {
       const category = formData.get('category') as string
       const responsibleId = formData.get('responsible_id') as string
 
-      // Usar project_deliverables com os campos corretos da estrutura real
+      // Mapear categorias para valores válidos do check constraint
+      const typeMapping: Record<string, string> = {
+        'Documento': 'documentation',
+        'Código': 'code', 
+        'Interface': 'interface',
+        'Teste': 'testing',
+        'Infraestrutura': 'infrastructure',
+        'Análise': 'analysis'
+      }
+
       const { data, error } = await supabase
         .from('project_deliverables')
         .insert([{
@@ -454,14 +467,11 @@ export default function ProjectDetailPage() {
           title,
           description,
           due_date: deadline,
-          type: category, // usar 'type' ao invés de 'deliverable_type'
+          type: typeMapping[category] || category.toLowerCase(),
           assigned_to: responsibleId,
-          status: 'pending' // usar status em inglês conforme a tabela
+          status: 'draft' // usar um status válido do check constraint
         }])
-        .select(`
-          *,
-          responsible:team_members(full_name)
-        `)
+        .select('*')
         .single()
 
       if (error) {
@@ -470,7 +480,13 @@ export default function ProjectDetailPage() {
         return
       }
 
-      setActivities([...activities, data])
+      // Adicionar dados do responsável manualmente se necessário
+      const activityWithResponsible = {
+        ...data,
+        responsible: teamMembers.find(m => m.id === responsibleId)
+      }
+
+      setActivities([...activities, activityWithResponsible])
       setIsNewActivityModalOpen(false)
     } catch (err) {
       console.error('Erro ao criar atividade:', err)
@@ -493,13 +509,10 @@ export default function ProjectDetailPage() {
           description,
           due_date: deadline,
           assigned_to: responsibleId,
-          status: 'pending', // usar status em inglês
+          status: 'in_progress', // usar um status válido do check constraint
           progress_percentage: 0
         }])
-        .select(`
-          *,
-          responsible:team_members(full_name)
-        `)
+        .select('*')
         .single()
 
       if (error) {
@@ -508,7 +521,13 @@ export default function ProjectDetailPage() {
         return
       }
 
-      setMilestones([...milestones, data])
+      // Adicionar dados do responsável manualmente se necessário
+      const milestoneWithResponsible = {
+        ...data,
+        responsible: teamMembers.find(m => m.id === responsibleId)
+      }
+
+      setMilestones([...milestones, milestoneWithResponsible])
       setIsNewMilestoneModalOpen(false)
     } catch (err) {
       console.error('Erro ao criar marco:', err)
