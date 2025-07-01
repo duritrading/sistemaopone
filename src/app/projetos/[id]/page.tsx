@@ -303,13 +303,9 @@ export default function ProjectDetailPage() {
         .order('deadline', { ascending: true })
 
       if (fetchError) {
-        // Se a tabela não existir, apenas log sem quebrar
-        if (fetchError.code === 'PGRST116' || fetchError.message.includes('does not exist')) {
-          console.log('Tabela project_milestones não existe ainda')
-          setMilestones([])
-          return
-        }
-        throw fetchError
+        console.error('Erro ao carregar marcos:', fetchError)
+        setMilestones([])
+        return
       }
       setMilestones(data || [])
     } catch (err) {
@@ -320,8 +316,9 @@ export default function ProjectDetailPage() {
 
   const loadActivities = async () => {
     try {
+      // Usar project_deliverables em vez de project_activities
       const { data, error: fetchError } = await supabase
-        .from('project_activities')
+        .from('project_deliverables')
         .select(`
           *,
           responsible:team_members(full_name)
@@ -330,13 +327,9 @@ export default function ProjectDetailPage() {
         .order('deadline', { ascending: true })
 
       if (fetchError) {
-        // Se a tabela não existir, apenas log sem quebrar
-        if (fetchError.code === 'PGRST116' || fetchError.message.includes('does not exist')) {
-          console.log('Tabela project_activities não existe ainda')
-          setActivities([])
-          return
-        }
-        throw fetchError
+        console.error('Erro ao carregar atividades:', fetchError)
+        setActivities([])
+        return
       }
       setActivities(data || [])
     } catch (err) {
@@ -435,16 +428,18 @@ export default function ProjectDetailPage() {
       const category = formData.get('category') as string
       const responsibleId = formData.get('responsible_id') as string
 
+      // Usar project_deliverables ao invés de project_activities
       const { data, error } = await supabase
-        .from('project_activities')
+        .from('project_deliverables')
         .insert([{
           project_id: projectId,
           title,
           description,
           deadline,
           category,
-          responsible_id: responsibleId,
-          status: 'Pendente'
+          assigned_to: responsibleId, // Verificar se o campo é assigned_to ou responsible_id
+          status: 'Pendente',
+          type: 'activity'
         }])
         .select(`
           *,
@@ -453,18 +448,16 @@ export default function ProjectDetailPage() {
         .single()
 
       if (error) {
-        if (error.code === 'PGRST116' || error.message.includes('does not exist')) {
-          alert('Tabela de atividades não existe. Por favor, configure o banco de dados.')
-          return
-        }
-        throw error
+        console.error('Erro detalhado:', error)
+        alert(`Erro ao criar atividade: ${error.message}`)
+        return
       }
 
       setActivities([...activities, data])
       setIsNewActivityModalOpen(false)
     } catch (err) {
       console.error('Erro ao criar atividade:', err)
-      alert('Erro ao criar atividade. Verifique se as tabelas estão configuradas.')
+      alert('Erro ao criar atividade. Verifique os dados e tente novamente.')
     }
   }
 
@@ -482,7 +475,7 @@ export default function ProjectDetailPage() {
           title,
           description,
           deadline,
-          responsible_id: responsibleId,
+          assigned_to: responsibleId, // Verificar se o campo é assigned_to ou responsible_id
           status: 'Pendente',
           progress_percentage: 0
         }])
@@ -493,18 +486,16 @@ export default function ProjectDetailPage() {
         .single()
 
       if (error) {
-        if (error.code === 'PGRST116' || error.message.includes('does not exist')) {
-          alert('Tabela de marcos não existe. Por favor, configure o banco de dados.')
-          return
-        }
-        throw error
+        console.error('Erro detalhado:', error)
+        alert(`Erro ao criar marco: ${error.message}`)
+        return
       }
 
       setMilestones([...milestones, data])
       setIsNewMilestoneModalOpen(false)
     } catch (err) {
       console.error('Erro ao criar marco:', err)
-      alert('Erro ao criar marco. Verifique se as tabelas estão configuradas.')
+      alert('Erro ao criar marco. Verifique os dados e tente novamente.')
     }
   }
 
@@ -542,11 +533,9 @@ export default function ProjectDetailPage() {
           .single()
 
         if (error) {
-          if (error.code === 'PGRST116') {
-            alert('Tabela de marcos não configurada.')
-            return
-          }
-          throw error
+          console.error('Erro detalhado:', error)
+          alert(`Erro ao atualizar marco: ${error.message}`)
+          return
         }
 
         setMilestones(milestones.map(m => m.id === editingItem.id ? data : m))
@@ -554,7 +543,7 @@ export default function ProjectDetailPage() {
         const category = formData.get('category') as string
         
         const { data, error } = await supabase
-          .from('project_activities')
+          .from('project_deliverables')
           .update({
             title,
             description,
@@ -571,11 +560,9 @@ export default function ProjectDetailPage() {
           .single()
 
         if (error) {
-          if (error.code === 'PGRST116') {
-            alert('Tabela de atividades não configurada.')
-            return
-          }
-          throw error
+          console.error('Erro detalhado:', error)
+          alert(`Erro ao atualizar atividade: ${error.message}`)
+          return
         }
 
         setActivities(activities.map(a => a.id === editingItem.id ? data : a))
@@ -584,7 +571,7 @@ export default function ProjectDetailPage() {
       setEditingItem(null)
     } catch (err) {
       console.error('Erro ao atualizar item:', err)
-      alert('Erro ao atualizar item. Verifique as configurações do banco.')
+      alert('Erro ao atualizar item. Verifique os dados e tente novamente.')
     }
   }
 
@@ -592,7 +579,7 @@ export default function ProjectDetailPage() {
     if (!confirm(`Tem certeza que deseja excluir "${item.title}"?`)) return
 
     try {
-      const table = item.type === 'marco' ? 'project_milestones' : 'project_activities'
+      const table = item.type === 'marco' ? 'project_milestones' : 'project_deliverables'
       
       const { error } = await supabase
         .from(table)
@@ -600,11 +587,9 @@ export default function ProjectDetailPage() {
         .eq('id', item.id)
 
       if (error) {
-        if (error.code === 'PGRST116') {
-          alert('Tabela não configurada no banco de dados.')
-          return
-        }
-        throw error
+        console.error('Erro detalhado:', error)
+        alert(`Erro ao excluir item: ${error.message}`)
+        return
       }
 
       if (item.type === 'marco') {
@@ -614,7 +599,7 @@ export default function ProjectDetailPage() {
       }
     } catch (err) {
       console.error('Erro ao excluir item:', err)
-      alert('Erro ao excluir item. Verifique as configurações do banco.')
+      alert('Erro ao excluir item. Tente novamente.')
     }
   }
 
