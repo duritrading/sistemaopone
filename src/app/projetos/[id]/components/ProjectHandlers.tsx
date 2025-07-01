@@ -103,14 +103,11 @@ const handleNewActivity = async (formData: FormData) => {
     const description = formData.get('description') as string
     const deadline = formData.get('deadline') as string
     const category = formData.get('category') as string
+    const status = formData.get('status') as string
     const responsibleId = formData.get('responsible_id') as string
 
-    console.log('🔍 Form data recebido:', {
-      title,
-      description,
-      deadline,
-      category,
-      responsibleId
+    console.log('🔍 Dados recebidos do form:', {
+      title, description, deadline, category, status, responsibleId
     })
 
     // Validações básicas
@@ -119,54 +116,52 @@ const handleNewActivity = async (formData: FormData) => {
       return
     }
 
-    // MAPEAMENTO EXATO PT→EN (baseado nos constraints do SQL)
+    // MAPEAMENTO CATEGORIA PT → EN
     const categoryMapping: Record<string, string> = {
       'Documento': 'documentation',
       'Código': 'code',
-      'Interface': 'interface', 
+      'Interface': 'interface',
       'Teste': 'testing',
       'Infraestrutura': 'infrastructure',
       'Análise': 'analysis'
     }
 
+    // MAPEAMENTO STATUS PT → EN 
+    const statusMapping: Record<string, string> = {
+      'Pendente': 'draft',
+      'Em Andamento': 'in_progress', 
+      'Em Revisão': 'review',
+      'Aprovado': 'approved',
+      'Concluído': 'delivered',
+      'Atrasado': 'cancelled'
+    }
+
     const mappedCategory = categoryMapping[category]
+    const mappedStatus = status ? statusMapping[status] || 'draft' : 'draft'
     
     if (!mappedCategory) {
-      console.error('❌ Categoria não mapeada:', category)
-      alert(`Categoria "${category}" não é válida. Use: Documento, Código, Interface, Teste, Infraestrutura ou Análise`)
+      alert(`❌ Categoria "${category}" inválida. Use: Documento, Código, Interface, Teste, Infraestrutura ou Análise`)
       return
     }
 
-    // Dados para inserção - APENAS valores que passam nos constraints
+    console.log('🔄 Mapeamentos:', {
+      categoria: `${category} → ${mappedCategory}`,
+      status: `${status || 'N/A'} → ${mappedStatus}`
+    })
+
+    // Dados para inserção
     const insertData = {
       project_id: projectId,
       title: title.trim(),
       description: description?.trim() || null,
-      type: mappedCategory, // Usar mapeamento correto
-      status: 'draft', // Status inicial sempre 'draft'
+      type: mappedCategory,
+      status: mappedStatus,
       due_date: deadline || null,
       assigned_to: responsibleId || null
     }
 
-    console.log('📝 Dados para inserção:', insertData)
+    console.log('📝 Inserindo:', insertData)
 
-    // Verificar se os valores estão nos constraints válidos
-    const validTypes = ['documentation', 'code', 'interface', 'testing', 'infrastructure', 'analysis']
-    const validStatuses = ['draft', 'in_progress', 'review', 'approved', 'delivered', 'cancelled']
-
-    if (!validTypes.includes(insertData.type)) {
-      alert(`❌ Tipo "${insertData.type}" não é válido. Valores aceitos: ${validTypes.join(', ')}`)
-      return
-    }
-
-    if (!validStatuses.includes(insertData.status)) {
-      alert(`❌ Status "${insertData.status}" não é válido. Valores aceitos: ${validStatuses.join(', ')}`)
-      return
-    }
-
-    console.log('✅ Validações passaram. Executando inserção...')
-
-    // Inserção no Supabase
     const { data, error } = await supabase
       .from('project_deliverables')
       .insert([insertData])
@@ -179,38 +174,30 @@ const handleNewActivity = async (formData: FormData) => {
     if (error) {
       console.error('❌ Erro do Supabase:', error)
       
-      // Mensagens específicas por código de erro
       if (error.code === '23514') {
         if (error.message.includes('valid_deliverable_type')) {
-          alert('❌ Erro: Tipo de entregável inválido. Execute o SQL de correção primeiro.')
+          alert('❌ Tipo inválido. Execute o SQL de correção.')
         } else if (error.message.includes('valid_deliverable_status')) {
-          alert('❌ Erro: Status de entregável inválido. Execute o SQL de correção primeiro.')
+          alert('❌ Status inválido. Execute o SQL de correção.')
         } else {
-          alert(`❌ Erro de constraint: ${error.message}`)
+          alert(`❌ Constraint: ${error.message}`)
         }
       } else if (error.code === '42501') {
-        alert('❌ Erro: Permissão negada. RLS pode estar ativo. Execute: ALTER TABLE project_deliverables DISABLE ROW LEVEL SECURITY;')
-      } else if (error.code === 'PGRST116') {
-        alert('❌ Erro: Tabela project_deliverables não encontrada. Execute o SQL de criação primeiro.')
+        alert('❌ RLS ativo. Execute: ALTER TABLE project_deliverables DISABLE ROW LEVEL SECURITY;')
       } else {
-        alert(`❌ Erro ao criar entregável: ${error.message}`)
+        alert(`❌ Erro: ${error.message}`)
       }
       return
     }
 
-    console.log('✅ Entregável criado com sucesso:', data)
-
-    // Atualizar lista local
+    console.log('✅ Criado:', data)
     setActivities([...activities, data])
     setIsNewActivityModalOpen(false)
-    
-    alert('✅ Entregável criado com sucesso!')
+    alert('✅ Atividade criada!')
 
   } catch (err) {
-    console.error('💥 Erro inesperado:', err)
-    alert(`💥 Erro inesperado: ${err.message || 'Erro desconhecido'}`)
-  }
-}
+    console.error('💥 Erro:', err)
+    alert(`💥 Erro: ${err.message || 'Desconhecido'}`)
 
 // ================================
 // FUNÇÃO DE DEBUG ADICIONAL
