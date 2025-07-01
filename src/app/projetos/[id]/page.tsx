@@ -300,7 +300,7 @@ export default function ProjectDetailPage() {
           responsible:team_members(full_name)
         `)
         .eq('project_id', projectId)
-        .order('deadline', { ascending: true })
+        .order('due_date', { ascending: true })
 
       if (fetchError) {
         console.error('Erro ao carregar marcos:', fetchError)
@@ -324,7 +324,7 @@ export default function ProjectDetailPage() {
           responsible:team_members(full_name)
         `)
         .eq('project_id', projectId)
-        .order('deadline', { ascending: true })
+        .order('due_date', { ascending: true })
 
       if (fetchError) {
         console.error('Erro ao carregar atividades:', fetchError)
@@ -428,18 +428,17 @@ export default function ProjectDetailPage() {
       const category = formData.get('category') as string
       const responsibleId = formData.get('responsible_id') as string
 
-      // Usar project_deliverables ao invés de project_activities
+      // Usar project_deliverables com os campos corretos
       const { data, error } = await supabase
         .from('project_deliverables')
         .insert([{
           project_id: projectId,
           title,
           description,
-          deadline,
-          category,
-          assigned_to: responsibleId, // Verificar se o campo é assigned_to ou responsible_id
-          status: 'Pendente',
-          type: 'activity'
+          due_date: deadline, // usar due_date ao invés de deadline
+          deliverable_type: category, // usar deliverable_type ao invés de category
+          assigned_to: responsibleId,
+          status: 'Pendente'
         }])
         .select(`
           *,
@@ -474,8 +473,8 @@ export default function ProjectDetailPage() {
           project_id: projectId,
           title,
           description,
-          deadline,
-          assigned_to: responsibleId, // Verificar se o campo é assigned_to ou responsible_id
+          due_date: deadline, // usar due_date ao invés de deadline
+          assigned_to: responsibleId,
           status: 'Pendente',
           progress_percentage: 0
         }])
@@ -520,7 +519,7 @@ export default function ProjectDetailPage() {
           .update({
             title,
             description,
-            deadline,
+            due_date: deadline,
             status,
             progress_percentage: progress,
             updated_at: new Date().toISOString()
@@ -547,9 +546,9 @@ export default function ProjectDetailPage() {
           .update({
             title,
             description,
-            deadline,
+            due_date: deadline,
             status,
-            category,
+            deliverable_type: category,
             updated_at: new Date().toISOString()
           })
           .eq('id', editingItem.id)
@@ -899,9 +898,9 @@ export default function ProjectDetailPage() {
                             <div className="grid grid-cols-2 gap-4 text-sm">
                             <div>
                               <span className="text-gray-700 font-medium">Prazo:</span>
-                              <p className={`${new Date(milestone.deadline) < new Date() && milestone.status !== 'Concluído' ? 
+                              <p className={`${new Date(milestone.due_date || milestone.deadline) < new Date() && milestone.status !== 'Concluído' ? 
                                 'text-red-600' : 'text-gray-900'}`}>
-                                {formatDate(milestone.deadline)}
+                                {formatDate(milestone.due_date || milestone.deadline)}
                               </p>
                             </div>
                             <div>
@@ -932,7 +931,7 @@ export default function ProjectDetailPage() {
                             <h4 className="text-lg font-medium text-gray-900">{activity.title}</h4>
                             <StatusBadge status={activity.status} />
                             <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-800">
-                              {activity.category}
+                              {activity.deliverable_type || activity.category}
                             </span>
                             <div className="flex space-x-1">
                               <button
@@ -954,9 +953,9 @@ export default function ProjectDetailPage() {
                           <div className="grid grid-cols-2 gap-4 text-sm">
                             <div>
                               <span className="text-gray-700 font-medium">Prazo:</span>
-                              <p className={`${new Date(activity.deadline) < new Date() && activity.status !== 'Concluído' ? 
+                              <p className={`${new Date(activity.due_date || activity.deadline) < new Date() && activity.status !== 'Concluído' ? 
                                 'text-red-600' : 'text-gray-900'}`}>
-                                {formatDate(activity.deadline)}
+                                {formatDate(activity.due_date || activity.deadline)}
                               </p>
                             </div>
                             <div>
@@ -1203,7 +1202,7 @@ export default function ProjectDetailPage() {
                   <select
                     name="category"
                     required
-                    defaultValue={editingItem.category}
+                    defaultValue={editingItem.deliverable_type || editingItem.category}
                     className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                   >
                     <option value="Documento">Documento</option>
@@ -1263,7 +1262,7 @@ export default function ProjectDetailPage() {
                   name="deadline"
                   type="date"
                   required
-                  defaultValue={editingItem.deadline}
+                  defaultValue={editingItem.due_date || editingItem.deadline}
                   className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                 />
               </div>
