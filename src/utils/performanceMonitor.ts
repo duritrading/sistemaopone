@@ -4,6 +4,8 @@
  * Permite medir o impacto das otimizações implementadas
  */
 
+import React from 'react'
+
 interface PerformanceMetric {
   name: string
   startTime: number
