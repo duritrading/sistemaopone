@@ -302,7 +302,15 @@ export default function ProjectDetailPage() {
         .eq('project_id', projectId)
         .order('deadline', { ascending: true })
 
-      if (fetchError) throw fetchError
+      if (fetchError) {
+        // Se a tabela não existir, apenas log sem quebrar
+        if (fetchError.code === 'PGRST116' || fetchError.message.includes('does not exist')) {
+          console.log('Tabela project_milestones não existe ainda')
+          setMilestones([])
+          return
+        }
+        throw fetchError
+      }
       setMilestones(data || [])
     } catch (err) {
       console.error('Erro ao carregar marcos:', err)
@@ -321,7 +329,15 @@ export default function ProjectDetailPage() {
         .eq('project_id', projectId)
         .order('deadline', { ascending: true })
 
-      if (fetchError) throw fetchError
+      if (fetchError) {
+        // Se a tabela não existir, apenas log sem quebrar
+        if (fetchError.code === 'PGRST116' || fetchError.message.includes('does not exist')) {
+          console.log('Tabela project_activities não existe ainda')
+          setActivities([])
+          return
+        }
+        throw fetchError
+      }
       setActivities(data || [])
     } catch (err) {
       console.error('Erro ao carregar atividades:', err)
@@ -436,13 +452,19 @@ export default function ProjectDetailPage() {
         `)
         .single()
 
-      if (error) throw error
+      if (error) {
+        if (error.code === 'PGRST116' || error.message.includes('does not exist')) {
+          alert('Tabela de atividades não existe. Por favor, configure o banco de dados.')
+          return
+        }
+        throw error
+      }
 
       setActivities([...activities, data])
       setIsNewActivityModalOpen(false)
     } catch (err) {
       console.error('Erro ao criar atividade:', err)
-      alert('Erro ao criar atividade. Tente novamente.')
+      alert('Erro ao criar atividade. Verifique se as tabelas estão configuradas.')
     }
   }
 
@@ -470,13 +492,19 @@ export default function ProjectDetailPage() {
         `)
         .single()
 
-      if (error) throw error
+      if (error) {
+        if (error.code === 'PGRST116' || error.message.includes('does not exist')) {
+          alert('Tabela de marcos não existe. Por favor, configure o banco de dados.')
+          return
+        }
+        throw error
+      }
 
       setMilestones([...milestones, data])
       setIsNewMilestoneModalOpen(false)
     } catch (err) {
       console.error('Erro ao criar marco:', err)
-      alert('Erro ao criar marco. Tente novamente.')
+      alert('Erro ao criar marco. Verifique se as tabelas estão configuradas.')
     }
   }
 
@@ -513,7 +541,13 @@ export default function ProjectDetailPage() {
           `)
           .single()
 
-        if (error) throw error
+        if (error) {
+          if (error.code === 'PGRST116') {
+            alert('Tabela de marcos não configurada.')
+            return
+          }
+          throw error
+        }
 
         setMilestones(milestones.map(m => m.id === editingItem.id ? data : m))
       } else {
@@ -536,7 +570,13 @@ export default function ProjectDetailPage() {
           `)
           .single()
 
-        if (error) throw error
+        if (error) {
+          if (error.code === 'PGRST116') {
+            alert('Tabela de atividades não configurada.')
+            return
+          }
+          throw error
+        }
 
         setActivities(activities.map(a => a.id === editingItem.id ? data : a))
       }
@@ -544,7 +584,7 @@ export default function ProjectDetailPage() {
       setEditingItem(null)
     } catch (err) {
       console.error('Erro ao atualizar item:', err)
-      alert('Erro ao atualizar item. Tente novamente.')
+      alert('Erro ao atualizar item. Verifique as configurações do banco.')
     }
   }
 
@@ -559,7 +599,13 @@ export default function ProjectDetailPage() {
         .delete()
         .eq('id', item.id)
 
-      if (error) throw error
+      if (error) {
+        if (error.code === 'PGRST116') {
+          alert('Tabela não configurada no banco de dados.')
+          return
+        }
+        throw error
+      }
 
       if (item.type === 'marco') {
         setMilestones(milestones.filter(m => m.id !== item.id))
@@ -568,7 +614,7 @@ export default function ProjectDetailPage() {
       }
     } catch (err) {
       console.error('Erro ao excluir item:', err)
-      alert('Erro ao excluir item. Tente novamente.')
+      alert('Erro ao excluir item. Verifique as configurações do banco.')
     }
   }
 
@@ -638,7 +684,12 @@ export default function ProjectDetailPage() {
               </div>
             </div>
             <button
-              onClick={() => router.push(`/projetos/${projectId}/edit`)}
+              onClick={() => {
+                // Verificar se a rota existe antes de navegar
+                if (typeof window !== 'undefined') {
+                  window.location.href = `/projetos/${projectId}/edit`
+                }
+              }}
               className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
             >
               <Edit className="w-4 h-4" />
