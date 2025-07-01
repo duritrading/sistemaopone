@@ -247,12 +247,11 @@ export default function ProjectDetailPage() {
       setLoading(true)
       setError(null)
 
-      await Promise.all([
-        loadProjectData(),
-        loadMilestones(),
-        loadActivities(),
-        loadTeamMembers()
-      ])
+      // Carregar dados sequencialmente para evitar conflitos
+      await loadProjectData()
+      await loadMilestones()
+      await loadActivities()
+      await loadTeamMembers()
     } catch (err) {
       console.error('Erro ao carregar dados:', err)
       setError(err instanceof Error ? err.message : 'Erro desconhecido')
@@ -319,7 +318,17 @@ export default function ProjectDetailPage() {
 
   // === CÁLCULO DE KPIs ===
   const calculateKPIs = () => {
-    if (!project) return
+    if (!project || milestones.length === 0 && activities.length === 0) {
+      setKpis({
+        totalMilestones: 0,
+        completedMilestones: 0,
+        totalActivities: 0,
+        completedActivities: 0,
+        overallProgress: 0,
+        daysRemaining: 0
+      })
+      return
+    }
 
     const completedMilestones = milestones.filter(m => m.status === 'Concluído').length
     const completedActivities = activities.filter(a => a.status === 'Concluído').length
@@ -340,14 +349,16 @@ export default function ProjectDetailPage() {
       ? Math.max(0, Math.ceil((new Date(project.estimated_end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))
       : 0
 
-    setKpis({
+    const newKpis = {
       totalMilestones: milestones.length,
       completedMilestones,
       totalActivities: activities.length,
       completedActivities,
       overallProgress,
       daysRemaining
-    })
+    }
+
+    setKpis(newKpis)
 
     // Atualizar progresso do projeto no banco
     updateProjectProgress(overallProgress)
@@ -355,13 +366,17 @@ export default function ProjectDetailPage() {
 
   const updateProjectProgress = async (newProgress: number) => {
     if (project && project.progress_percentage !== newProgress) {
-      const { error } = await supabase
-        .from('projects')
-        .update({ progress_percentage: newProgress })
-        .eq('id', projectId)
-      
-      if (!error) {
-        setProject({ ...project, progress_percentage: newProgress })
+      try {
+        const { error } = await supabase
+          .from('projects')
+          .update({ progress_percentage: newProgress })
+          .eq('id', projectId)
+        
+        if (!error) {
+          setProject({ ...project, progress_percentage: newProgress })
+        }
+      } catch (err) {
+        console.error('Erro ao atualizar progresso:', err)
       }
     }
   }
