@@ -87,16 +87,6 @@ const ProjectHandlers = {
         return
       }
 
-      // Mapear categorias PT -> EN
-      const typeMapping: Record<string, string> = {
-        'Documento': 'documentation',
-        'Código': 'code', 
-        'Interface': 'interface',
-        'Teste': 'testing',
-        'Infraestrutura': 'infrastructure',
-        'Análise': 'analysis'
-      }
-
       console.log('Creating deliverable with status:', status)
 
       const { data, error } = await supabase
@@ -105,7 +95,7 @@ const ProjectHandlers = {
           project_id: projectId,
           title: title.trim(),
           description: description?.trim() || null,
-          type: typeMapping[category] || category.toLowerCase(),
+          type: category,
           due_date: deadline || null,
           assigned_to: responsible_id || null,
           status: status
@@ -157,12 +147,12 @@ const ProjectHandlers = {
 
   getActivityTypeOptions() {
     return [
-      { value: 'Documento', label: 'Documento', icon: '📄' },
-      { value: 'Código', label: 'Código', icon: '💻' },
-      { value: 'Interface', label: 'Interface', icon: '🎨' },
-      { value: 'Teste', label: 'Teste', icon: '🧪' },
-      { value: 'Infraestrutura', label: 'Infraestrutura', icon: '⚙️' },
-      { value: 'Análise', label: 'Análise', icon: '📊' }
+      { value: 'documentation', label: 'Documento', icon: '📄' },
+      { value: 'code', label: 'Código', icon: '💻' },
+      { value: 'interface', label: 'Interface', icon: '🎨' },
+      { value: 'testing', label: 'Teste', icon: '🧪' },
+      { value: 'infrastructure', label: 'Infraestrutura', icon: '⚙️' },
+      { value: 'analysis', label: 'Análise', icon: '📊' }
     ]
   }
 }
@@ -622,6 +612,140 @@ const NewActivityModal = ({ isOpen, onClose, onSubmit, teamMembers }: {
   )
 }
 
+// === MODAL EDITAR ITEM ===
+const EditItemForm = ({ item, onSubmit, onCancel, teamMembers }: {
+  item: any
+  onSubmit: (formData: any) => void
+  onCancel: () => void
+  teamMembers: any[]
+}) => {
+  const [formData, setFormData] = useState({
+    title: item.title || '',
+    description: item.description || '',
+    deadline: item.due_date || item.deadline || '',
+    status: item.status || (item.type === 'marco' ? 'pending' : 'draft'),
+    category: item.type || item.category || 'documentation',
+    responsible_id: item.responsible_id || item.assigned_to || '',
+    progress: item.progress_percentage || 0
+  })
+
+  const handleSubmit = () => {
+    onSubmit(formData)
+  }
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-800 mb-1">Título</label>
+        <input
+          type="text"
+          value={formData.title}
+          onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+          className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-800 mb-1">Status</label>
+        <select
+          value={formData.status}
+          onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+          className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+        >
+          {item.type === 'marco' 
+            ? ProjectHandlers.getMilestoneStatusOptions().map(option => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))
+            : ProjectHandlers.getActivityStatusOptions().map(option => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))
+          }
+        </select>
+      </div>
+
+      {item.type === 'atividade' && (
+        <div>
+          <label className="block text-sm font-medium text-gray-800 mb-1">Categoria</label>
+          <select
+            value={formData.category}
+            onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+          >
+            {ProjectHandlers.getActivityTypeOptions().map(type => (
+              <option key={type.value} value={type.value}>
+                {type.icon} {type.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {item.type === 'marco' && (
+        <div>
+          <label className="block text-sm font-medium text-gray-800 mb-1">Progresso (%)</label>
+          <input
+            type="number"
+            min="0"
+            max="100"
+            value={formData.progress}
+            onChange={(e) => setFormData({ ...formData, progress: parseInt(e.target.value) || 0 })}
+            className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+          />
+        </div>
+      )}
+
+      <div>
+        <label className="block text-sm font-medium text-gray-800 mb-1">Responsável</label>
+        <select
+          value={formData.responsible_id}
+          onChange={(e) => setFormData({ ...formData, responsible_id: e.target.value })}
+          className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+        >
+          <option value="">Selecione um responsável</option>
+          {teamMembers.map(member => (
+            <option key={member.id} value={member.id}>{member.full_name}</option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-800 mb-1">Descrição</label>
+        <textarea
+          value={formData.description}
+          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          rows={3}
+          className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-800 mb-1">Prazo</label>
+        <input
+          type="date"
+          value={formData.deadline}
+          onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+          className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+        />
+      </div>
+
+      <div className="flex space-x-3 pt-4">
+        <button
+          onClick={handleSubmit}
+          className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+        >
+          Salvar Alterações
+        </button>
+        <button
+          onClick={onCancel}
+          className="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
+        >
+          Cancelar
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // === COMPONENTE PRINCIPAL ===
 export default function ProjectDetailPage() {
   const params = useParams()
@@ -862,6 +986,129 @@ export default function ProjectDetailPage() {
       setIsNewActivityModalOpen,
       activities
     )
+  }
+
+  // === HANDLERS EDITAR/DELETAR ===
+  const handleEditMilestone = (milestone: any) => {
+    setEditingItem({ ...milestone, type: 'marco' })
+  }
+
+  const handleEditActivity = (activity: any) => {
+    setEditingItem({ ...activity, type: 'atividade' })
+  }
+
+  const handleDeleteMilestone = async (milestoneId: string, title: string) => {
+    if (!confirm(`Tem certeza que deseja excluir o marco "${title}"?`)) return
+
+    try {
+      const { error } = await supabase
+        .from('project_milestones')
+        .delete()
+        .eq('id', milestoneId)
+
+      if (error) {
+        console.error('❌ Erro ao deletar marco:', error)
+        alert(`Erro ao excluir marco: ${error.message}`)
+        return
+      }
+
+      setMilestones(milestones.filter(m => m.id !== milestoneId))
+      alert('Marco excluído com sucesso!')
+    } catch (err) {
+      console.error('💥 Erro ao deletar marco:', err)
+      alert('Erro inesperado ao excluir marco.')
+    }
+  }
+
+  const handleDeleteActivity = async (activityId: string, title: string) => {
+    if (!confirm(`Tem certeza que deseja excluir a atividade "${title}"?`)) return
+
+    try {
+      const { error } = await supabase
+        .from('project_deliverables')
+        .delete()
+        .eq('id', activityId)
+
+      if (error) {
+        console.error('❌ Erro ao deletar atividade:', error)
+        alert(`Erro ao excluir atividade: ${error.message}`)
+        return
+      }
+
+      setActivities(activities.filter(a => a.id !== activityId))
+      alert('Atividade excluída com sucesso!')
+    } catch (err) {
+      console.error('💥 Erro ao deletar atividade:', err)
+      alert('Erro inesperado ao excluir atividade.')
+    }
+  }
+
+  const handleUpdateItem = async (formData: any) => {
+    if (!editingItem) return
+
+    try {
+      const { title, description, deadline, status, category, responsible_id, progress } = formData
+
+      if (editingItem.type === 'marco') {
+        const { data, error } = await supabase
+          .from('project_milestones')
+          .update({
+            title,
+            description,
+            due_date: deadline,
+            status: status,
+            progress_percentage: progress,
+            assigned_to: responsible_id,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', editingItem.id)
+          .select(`
+            *,
+            responsible:team_members(full_name)
+          `)
+          .single()
+
+        if (error) {
+          console.error('❌ Erro ao atualizar marco:', error)
+          alert(`Erro ao atualizar marco: ${error.message}`)
+          return
+        }
+
+        setMilestones(milestones.map(m => m.id === editingItem.id ? data : m))
+      } else {
+        const { data, error } = await supabase
+          .from('project_deliverables')
+          .update({
+            title,
+            description,
+            due_date: deadline,
+            status: status,
+            type: category,
+            assigned_to: responsible_id,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', editingItem.id)
+          .select(`
+            *,
+            responsible:team_members(full_name)
+          `)
+          .single()
+
+        if (error) {
+          console.error('❌ Erro ao atualizar atividade:', error)
+          alert(`Erro ao atualizar atividade: ${error.message}`)
+          return
+        }
+
+        setActivities(activities.map(a => a.id === editingItem.id ? data : a))
+      }
+
+      setEditingItem(null)
+      alert('Item atualizado com sucesso!')
+    } catch (err) {
+      console.error('💥 Erro ao atualizar item:', err)
+      alert('Erro inesperado ao atualizar item.')
+    }
   }
 
   // === FUNÇÕES UTILITÁRIAS (MANTIDAS) ===
@@ -1147,6 +1394,24 @@ export default function ProjectDetailPage() {
                             </div>
                           </div>
                         </div>
+                        
+                        {/* BOTÕES DE AÇÃO - NOVOS */}
+                        <div className="flex space-x-2 ml-4 opacity-80 hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => handleEditMilestone(milestone)}
+                            className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="Editar marco"
+                          >
+                            <Edit3 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteMilestone(milestone.id, milestone.title)}
+                            className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Excluir marco"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   )) : (
@@ -1180,6 +1445,24 @@ export default function ProjectDetailPage() {
                               <p className="text-gray-900">{activity.responsible?.full_name || 'Não atribuído'}</p>
                             </div>
                           </div>
+                        </div>
+                        
+                        {/* BOTÕES DE AÇÃO - NOVOS */}
+                        <div className="flex space-x-2 ml-4 opacity-80 hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => handleEditActivity(activity)}
+                            className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="Editar atividade"
+                          >
+                            <Edit3 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteActivity(activity.id, activity.title)}
+                            className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Excluir atividade"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -1221,6 +1504,32 @@ export default function ProjectDetailPage() {
         onSubmit={handleNewActivity}
         teamMembers={teamMembers}
       />
+
+      {/* MODAL DE EDIÇÃO - NOVO */}
+      {editingItem && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Editar {editingItem.type === 'marco' ? 'Marco' : 'Atividade'}
+              </h3>
+              <button
+                onClick={() => setEditingItem(null)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <EditItemForm 
+              item={editingItem} 
+              onSubmit={handleUpdateItem}
+              onCancel={() => setEditingItem(null)}
+              teamMembers={teamMembers}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }
