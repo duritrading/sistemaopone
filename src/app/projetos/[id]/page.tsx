@@ -326,9 +326,8 @@ export default function ProjectDetailPage() {
     
     // Calcular progresso geral baseado nos entregáveis
     const totalItems = milestones.length + activities.length
-    const completedItems = completedMilestones + completedActivities
     
-    // Progresso considerando também progresso parcial dos marcos
+    // Progresso considerando progresso parcial dos marcos + atividades concluídas
     const milestonesProgress = milestones.reduce((sum, m) => sum + (m.progress_percentage || 0), 0)
     const activitiesProgress = activities.filter(a => a.status === 'Concluído').length * 100
     
@@ -754,3 +753,447 @@ export default function ProjectDetailPage() {
                   >
                     <Plus className="w-4 h-4" />
                     <span>Nova Atividade</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Colunas separadas */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Coluna de Marcos */}
+              <InfoCard 
+                title={`Marcos (${filteredMilestones.length})`} 
+                icon={Target}
+              >
+                <div className="space-y-4">
+                  {filteredMilestones.length > 0 ? filteredMilestones.map((milestone) => (
+                    <div key={milestone.id} className="border border-gray-300 rounded-lg p-4 hover:shadow-sm transition-shadow">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-3 mb-2">
+                            <h4 className="text-lg font-medium text-gray-900">{milestone.title}</h4>
+                            <StatusBadge status={milestone.status} />
+                            <div className="flex space-x-1">
+                              <button
+                                onClick={() => handleEditItem({...milestone, type: 'marco'})}
+                                className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded"
+                              >
+                                <Edit3 className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteItem({...milestone, type: 'marco'})}
+                                className="p-1 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                          <p className="text-gray-700 mb-3">{milestone.description}</p>
+                          
+                          <div className="mb-3">
+                            <div className="flex justify-between text-sm text-gray-700 mb-1">
+                              <span>Progresso</span>
+                              <span>{milestone.progress_percentage}%</span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                              <div 
+                                className="bg-purple-600 h-2 rounded-full transition-all duration-300"
+                                style={{ width: `${milestone.progress_percentage}%` }}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                              <span className="text-gray-700 font-medium">Prazo:</span>
+                              <p className={`${new Date(milestone.deadline) < new Date() && milestone.status !== 'Concluído' ? 
+                                'text-red-600' : 'text-gray-900'}`}>
+                                {new Date(milestone.deadline).toLocaleDateString('pt-BR')}
+                              </p>
+                            </div>
+                            <div>
+                              <span className="text-gray-700 font-medium">Responsável:</span>
+                              <p className="text-gray-900">{milestone.responsible?.full_name || 'Não atribuído'}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )) : (
+                    <p className="text-gray-700 text-center py-4">Nenhum marco encontrado com os filtros aplicados.</p>
+                  )}
+                </div>
+              </InfoCard>
+
+              {/* Coluna de Atividades */}
+              <InfoCard 
+                title={`Atividades (${filteredActivities.length})`} 
+                icon={CheckSquare}
+              >
+                <div className="space-y-4">
+                  {filteredActivities.length > 0 ? filteredActivities.map((activity) => (
+                    <div key={activity.id} className="border border-gray-300 rounded-lg p-4 hover:shadow-sm transition-shadow">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-3 mb-2">
+                            <h4 className="text-lg font-medium text-gray-900">{activity.title}</h4>
+                            <StatusBadge status={activity.status} />
+                            <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-800">
+                              {activity.category}
+                            </span>
+                            <div className="flex space-x-1">
+                              <button
+                                onClick={() => handleEditItem({...activity, type: 'atividade'})}
+                                className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded"
+                              >
+                                <Edit3 className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteItem({...activity, type: 'atividade'})}
+                                className="p-1 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                          <p className="text-gray-700 mb-3">{activity.description}</p>
+
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                              <span className="text-gray-700 font-medium">Prazo:</span>
+                              <p className={`${new Date(activity.deadline) < new Date() && activity.status !== 'Concluído' ? 
+                                'text-red-600' : 'text-gray-900'}`}>
+                                {new Date(activity.deadline).toLocaleDateString('pt-BR')}
+                              </p>
+                            </div>
+                            <div>
+                              <span className="text-gray-700 font-medium">Responsável:</span>
+                              <p className="text-gray-900">{activity.responsible?.full_name || 'Não atribuído'}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )) : (
+                    <p className="text-gray-700 text-center py-4">Nenhuma atividade encontrada com os filtros aplicados.</p>
+                  )}
+                </div>
+              </InfoCard>
+            </div>
+          </div>
+        )}
+
+        {/* Outras tabs com placeholder */}
+        {activeTab !== 'overview' && activeTab !== 'deliverables' && (
+          <div className="bg-white rounded-lg border border-gray-300 p-8 text-center">
+            <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Eye className="w-8 h-8 text-gray-600" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              {activeTab === 'timeline' && 'Cronograma em Desenvolvimento'}
+              {activeTab === 'communication' && 'Central de Comunicação em Desenvolvimento'}
+            </h3>
+            <p className="text-gray-700">Esta funcionalidade será implementada na próxima versão.</p>
+          </div>
+        )}
+      </div>
+
+      {/* Modal para Nova Atividade */}
+      {isNewActivityModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Nova Atividade</h3>
+              <button
+                onClick={() => setIsNewActivityModalOpen(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <form action={handleNewActivity} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-800 mb-1">Título</label>
+                <input
+                  name="title"
+                  type="text"
+                  required
+                  className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  placeholder="Ex: Implementar Autenticação"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-800 mb-1">Categoria</label>
+                <select
+                  name="category"
+                  required
+                  className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                >
+                  <option value="">Selecione uma categoria</option>
+                  <option value="Documento">Documento</option>
+                  <option value="Código">Código</option>
+                  <option value="Interface">Interface</option>
+                  <option value="Teste">Teste</option>
+                  <option value="Infraestrutura">Infraestrutura</option>
+                  <option value="Análise">Análise</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-800 mb-1">Responsável</label>
+                <select
+                  name="responsible_id"
+                  required
+                  className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                >
+                  <option value="">Selecione um responsável</option>
+                  {teamMembers.map(member => (
+                    <option key={member.id} value={member.id}>{member.full_name}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-800 mb-1">Descrição</label>
+                <textarea
+                  name="description"
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  placeholder="Descreva a atividade..."
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-800 mb-1">Prazo</label>
+                <input
+                  name="deadline"
+                  type="date"
+                  required
+                  className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                />
+              </div>
+              
+              <div className="flex space-x-3 pt-4">
+                <button
+                  type="submit"
+                  className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Criar Atividade
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsNewActivityModalOpen(false)}
+                  className="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para Novo Marco */}
+      {isNewMilestoneModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Novo Marco</h3>
+              <button
+                onClick={() => setIsNewMilestoneModalOpen(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <form action={handleNewMilestone} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-800 mb-1">Título</label>
+                <input
+                  name="title"
+                  type="text"
+                  required
+                  className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  placeholder="Ex: Lançamento Beta"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-800 mb-1">Responsável</label>
+                <select
+                  name="responsible_id"
+                  required
+                  className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                >
+                  <option value="">Selecione um responsável</option>
+                  {teamMembers.map(member => (
+                    <option key={member.id} value={member.id}>{member.full_name}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-800 mb-1">Descrição</label>
+                <textarea
+                  name="description"
+                  rows={3}
+                  required
+                  className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  placeholder="Descreva o marco..."
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-800 mb-1">Prazo</label>
+                <input
+                  name="deadline"
+                  type="date"
+                  required
+                  className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                />
+              </div>
+              
+              <div className="flex space-x-3 pt-4">
+                <button
+                  type="submit"
+                  className="flex-1 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                >
+                  Criar Marco
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsNewMilestoneModalOpen(false)}
+                  className="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para Editar Item */}
+      {editingItem && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Editar {editingItem.type === 'marco' ? 'Marco' : 'Atividade'}
+              </h3>
+              <button
+                onClick={() => setEditingItem(null)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <form action={handleUpdateItem} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-800 mb-1">Título</label>
+                <input
+                  name="title"
+                  type="text"
+                  required
+                  defaultValue={editingItem.title}
+                  className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                />
+              </div>
+              
+              {editingItem.type === 'atividade' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-800 mb-1">Categoria</label>
+                  <select
+                    name="category"
+                    required
+                    defaultValue={editingItem.category}
+                    className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  >
+                    <option value="Documento">Documento</option>
+                    <option value="Código">Código</option>
+                    <option value="Interface">Interface</option>
+                    <option value="Teste">Teste</option>
+                    <option value="Infraestrutura">Infraestrutura</option>
+                    <option value="Análise">Análise</option>
+                  </select>
+                </div>
+              )}
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-800 mb-1">Descrição</label>
+                <textarea
+                  name="description"
+                  rows={3}
+                  defaultValue={editingItem.description}
+                  className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-800 mb-1">Status</label>
+                <select
+                  name="status"
+                  required
+                  defaultValue={editingItem.status}
+                  className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                >
+                  <option value="Pendente">Pendente</option>
+                  <option value="Em Andamento">Em Andamento</option>
+                  <option value="Em Revisão">Em Revisão</option>
+                  <option value="Aprovado">Aprovado</option>
+                  <option value="Concluído">Concluído</option>
+                  <option value="Atrasado">Atrasado</option>
+                </select>
+              </div>
+
+              {editingItem.type === 'marco' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-800 mb-1">Progresso (%)</label>
+                  <input
+                    name="progress"
+                    type="number"
+                    min="0"
+                    max="100"
+                    defaultValue={editingItem.progress_percentage}
+                    className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  />
+                </div>
+              )}
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-800 mb-1">Prazo</label>
+                <input
+                  name="deadline"
+                  type="date"
+                  required
+                  defaultValue={editingItem.deadline}
+                  className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                />
+              </div>
+              
+              <div className="flex space-x-3 pt-4">
+                <button
+                  type="submit"
+                  className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  Salvar Alterações
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditingItem(null)}
+                  className="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
