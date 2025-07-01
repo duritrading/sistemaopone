@@ -52,6 +52,17 @@ export interface ProjectTechnology {
   created_at: string
 }
 
+export interface ProjectTeamMember {
+  role_in_project: string
+  allocation_percentage: number
+  team_member: {
+    full_name: string
+    primary_specialization: string
+    seniority_level: string
+    availability_status: string
+  }
+}
+
 export interface ProjectWithDetails extends Project {
   team_members?: ProjectTeamMember[]
   scope_items?: ProjectScopeItem[]
