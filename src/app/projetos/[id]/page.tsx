@@ -157,7 +157,6 @@ export default function ProjectDetailPage() {
   const [deliverableFilter, setDeliverableFilter] = useState('todos')
   const [typeFilter, setTypeFilter] = useState('todos')
   const [responsibleFilter, setResponsibleFilter] = useState('todos')
-  const [isNewMilestoneModalOpen, setIsNewMilestoneModalOpen] = useState(false)
   const [isNewActivityModalOpen, setIsNewActivityModalOpen] = useState(false)
   
   // Dados fictícios para demonstração
@@ -375,6 +374,7 @@ export default function ProjectDetailPage() {
     setIsNewMilestoneModalOpen(false)
   }
 
+  // Funções para modais
   const handleNewActivity = (activityData: any) => {
     const newActivity = {
       id: activities.length + 1,
@@ -385,6 +385,40 @@ export default function ProjectDetailPage() {
     }
     setActivities([...activities, newActivity])
     setIsNewActivityModalOpen(false)
+    // TODO: Implementar insert no Supabase
+  }
+
+  // Funções para edição inline
+  const updateMilestoneStatus = async (milestoneId: number, newStatus: string) => {
+    setMilestones(prev => prev.map(m => 
+      m.id === milestoneId ? { ...m, status: newStatus } : m
+    ))
+    // TODO: Implementar update no Supabase
+  }
+
+  const updateMilestoneProgress = async (milestoneId: number, newProgress: number) => {
+    setMilestones(prev => prev.map(m => 
+      m.id === milestoneId ? { ...m, progress: newProgress } : m
+    ))
+    // TODO: Implementar update no Supabase
+  }
+
+  const updateActivityStatus = async (activityId: number, newStatus: string) => {
+    setActivities(prev => prev.map(a => 
+      a.id === activityId ? { ...a, status: newStatus } : a
+    ))
+    // TODO: Implementar update no Supabase
+  }
+
+  const deleteItem = async (itemId: number, type: 'marco' | 'atividade') => {
+    if (confirm(`Tem certeza que deseja excluir este ${type}?`)) {
+      if (type === 'marco') {
+        setMilestones(prev => prev.filter(m => m.id !== itemId))
+      } else {
+        setActivities(prev => prev.filter(a => a.id !== itemId))
+      }
+      // TODO: Implementar delete no Supabase
+    }
   }
 
   // Estados de carregamento e erro
@@ -456,30 +490,292 @@ export default function ProjectDetailPage() {
 
       {/* Conteúdo principal */}
       <div className="max-w-7xl mx-auto p-6">
-        {/* Tabs de navegação */}
-        <div className="border-b border-gray-200 mb-6">
-          <nav className="flex space-x-8">
-            {[
-              { id: 'overview', label: 'Visão Geral', icon: Target },
-              { id: 'timeline', label: 'Cronograma', icon: Calendar },
-              { id: 'deliverables', label: 'Marcos e Entregáveis', icon: FileText },
-              { id: 'communication', label: 'Comunicação', icon: MessageSquare }
-            ].map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium transition-colors ${
-                  activeTab === tab.id 
-                    ? 'border-blue-500 text-blue-600' 
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                <tab.icon className="w-4 h-4" />
-                <span>{tab.label}</span>
-              </button>
-            ))}
-          </nav>
-        </div>
+        {/* Header integrado com tabs quando for deliverables */}
+        {activeTab === 'deliverables' ? (
+          <div className="space-y-6">
+            {/* Header fixo da página */}
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">Entregáveis</h2>
+                  <p className="text-gray-800 mt-1">Gerencie os entregáveis do projeto</p>
+                </div>
+                <button 
+                  onClick={() => setIsNewActivityModalOpen(true)}
+                  className="flex items-center space-x-2 bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Novo Entregável</span>
+                </button>
+              </div>
+
+              {/* Tabs integradas */}
+              <div className="border-b border-gray-200">
+                <nav className="flex space-x-8">
+                  {[
+                    { id: 'overview', label: 'Visão Geral', icon: Target },
+                    { id: 'timeline', label: 'Cronograma', icon: Calendar },
+                    { id: 'deliverables', label: 'Entregáveis', icon: FileText },
+                    { id: 'communication', label: 'Comunicação', icon: MessageSquare }
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium transition-colors ${
+                        activeTab === tab.id 
+                          ? 'border-blue-500 text-blue-600' 
+                          : 'border-transparent text-gray-500 hover:text-gray-700'
+                      }`}
+                    >
+                      <tab.icon className="w-4 h-4" />
+                      <span>{tab.label}</span>
+                    </button>
+                  ))}
+                </nav>
+              </div>
+            </div>
+
+            {/* Conteúdo dos entregáveis */}
+            <div className="space-y-6">
+              {/* Resumo Geral no topo */}
+              <InfoCard title="Resumo Geral" icon={BarChart3}>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-green-600">{summary.completed}</div>
+                    <div className="text-sm text-gray-800 font-medium">Concluídos</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-yellow-600">{summary.inProgress}</div>
+                    <div className="text-sm text-gray-800 font-medium">Em Andamento</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-red-600">{summary.delayed}</div>
+                    <div className="text-sm text-gray-800 font-medium">Atrasados</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-blue-600">{summary.total}</div>
+                    <div className="text-sm text-gray-800 font-medium">Total</div>
+                  </div>
+                </div>
+              </InfoCard>
+
+              {/* Filtros */}
+              <div className="bg-white rounded-lg border border-gray-200 p-4">
+                <div className="flex items-center space-x-4">
+                  <select 
+                    value={deliverableFilter}
+                    onChange={(e) => setDeliverableFilter(e.target.value)}
+                    className="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-800 bg-white focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="todos">Todos os Status</option>
+                    <option value="Pendente">Pendente</option>
+                    <option value="Em Andamento">Em Andamento</option>
+                    <option value="Em Revisão">Em Revisão</option>
+                    <option value="Concluído">Concluído</option>
+                    <option value="Aprovado">Aprovado</option>
+                    <option value="Atrasado">Atrasado</option>
+                  </select>
+                  <select 
+                    value={typeFilter}
+                    onChange={(e) => setTypeFilter(e.target.value)}
+                    className="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-800 bg-white focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="todos">Todos os Tipos</option>
+                    <option value="marco">Marco</option>
+                    <option value="atividade">Atividade</option>
+                  </select>
+                  <select 
+                    value={responsibleFilter}
+                    onChange={(e) => setResponsibleFilter(e.target.value)}
+                    className="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-800 bg-white focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="todos">Todos os Responsáveis</option>
+                    <option value="João Silva">João Silva</option>
+                    <option value="Maria Santos">Maria Santos</option>
+                  </select>
+                  <div className="text-sm text-gray-800 ml-auto font-medium">
+                    {getFilteredItems().length} de {allItems.length} itens
+                  </div>
+                </div>
+              </div>
+
+              {/* Lista de Marcos e Entregáveis */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Marcos */}
+                <InfoCard title="Marcos do Projeto" icon={Target}>
+                  <div className="space-y-4">
+                    {getFilteredMilestones().length > 0 ? getFilteredMilestones().map((milestone) => (
+                      <div key={milestone.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
+                        <div className="flex justify-between items-start mb-3">
+                          <div className="flex-1">
+                            <h4 className="font-medium text-gray-900">{milestone.title}</h4>
+                            <p className="text-sm text-gray-800 mt-1">{milestone.description}</p>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <select
+                              value={milestone.status}
+                              onChange={(e) => updateMilestoneStatus(milestone.id, e.target.value)}
+                              className={`px-2 py-1 text-xs font-medium rounded border-0 ${
+                                milestone.status === 'Concluído' ? 'bg-green-100 text-green-800' :
+                                milestone.status === 'Em Andamento' ? 'bg-yellow-100 text-yellow-800' :
+                                milestone.status === 'Atrasado' ? 'bg-red-100 text-red-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}
+                            >
+                              <option value="Pendente">Pendente</option>
+                              <option value="Em Andamento">Em Andamento</option>
+                              <option value="Concluído">Concluído</option>
+                              <option value="Atrasado">Atrasado</option>
+                            </select>
+                            <button
+                              onClick={() => deleteItem(milestone.id, 'marco')}
+                              className="text-red-500 hover:text-red-700 p-1"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <span className="text-gray-700 font-medium">Prazo:</span>
+                            <p className="text-gray-900">{new Date(milestone.deadline).toLocaleDateString('pt-BR')}</p>
+                          </div>
+                          <div>
+                            <span className="text-gray-700 font-medium">Responsável:</span>
+                            <p className="text-gray-900">{milestone.responsible}</p>
+                          </div>
+                        </div>
+                        <div className="mt-3">
+                          <div className="flex justify-between items-center text-xs text-gray-800 mb-2 font-medium">
+                            <span>Progresso</span>
+                            <div className="flex items-center space-x-2">
+                              <input
+                                type="range"
+                                min="0"
+                                max="100"
+                                value={milestone.progress}
+                                onChange={(e) => updateMilestoneProgress(milestone.id, parseInt(e.target.value))}
+                                className="w-16"
+                              />
+                              <span className="w-10 text-right">{milestone.progress}%</span>
+                            </div>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div 
+                              className={`h-2 rounded-full transition-all ${
+                                milestone.progress === 100 ? 'bg-green-600' :
+                                milestone.progress > 50 ? 'bg-blue-600' : 'bg-yellow-600'
+                              }`}
+                              style={{ width: `${milestone.progress}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      </div>
+                    )) : (
+                      <p className="text-gray-700 text-center py-4">Nenhum marco encontrado com os filtros aplicados.</p>
+                    )}
+                  </div>
+                </InfoCard>
+
+                {/* Entregáveis */}
+                <InfoCard title="Atividades e Entregáveis" icon={FileText}>
+                  <div className="space-y-4">
+                    {getFilteredActivities().length > 0 ? getFilteredActivities().map((activity) => (
+                      <div key={activity.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
+                        <div className="flex justify-between items-start mb-3">
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-2">
+                              <span className={`px-2 py-0.5 text-xs font-medium rounded ${
+                                activity.category === 'Documento' ? 'bg-blue-100 text-blue-800' :
+                                activity.category === 'Código' ? 'bg-purple-100 text-purple-800' :
+                                activity.category === 'Interface' ? 'bg-green-100 text-green-800' :
+                                activity.category === 'Teste' ? 'bg-orange-100 text-orange-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {activity.category}
+                              </span>
+                              <h4 className="font-medium text-gray-900">{activity.title}</h4>
+                            </div>
+                            <p className="text-sm text-gray-800 mt-1">{activity.description}</p>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <select
+                              value={activity.status}
+                              onChange={(e) => updateActivityStatus(activity.id, e.target.value)}
+                              className={`px-2 py-1 text-xs font-medium rounded border-0 ${
+                                activity.status === 'Aprovado' ? 'bg-green-100 text-green-800' :
+                                activity.status === 'Em Revisão' ? 'bg-yellow-100 text-yellow-800' :
+                                activity.status === 'Em Andamento' ? 'bg-blue-100 text-blue-800' :
+                                activity.status === 'Atrasado' ? 'bg-red-100 text-red-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}
+                            >
+                              <option value="Pendente">Pendente</option>
+                              <option value="Em Andamento">Em Andamento</option>
+                              <option value="Em Revisão">Em Revisão</option>
+                              <option value="Aprovado">Aprovado</option>
+                              <option value="Atrasado">Atrasado</option>
+                            </select>
+                            <button
+                              onClick={() => deleteItem(activity.id, 'atividade')}
+                              className="text-red-500 hover:text-red-700 p-1"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-4 text-sm">
+                          <div>
+                            <span className="text-gray-700 font-medium">Versão:</span>
+                            <p className="text-gray-900">{activity.version}</p>
+                          </div>
+                          <div>
+                            <span className="text-gray-700 font-medium">Prazo:</span>
+                            <p className={`${activity.status === 'Atrasado' ? 'text-red-600' : 'text-gray-900'}`}>
+                              {new Date(activity.deadline).toLocaleDateString('pt-BR')}
+                            </p>
+                          </div>
+                          <div>
+                            <span className="text-gray-700 font-medium">Responsável:</span>
+                            <p className="text-gray-900">{activity.responsible}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )) : (
+                      <p className="text-gray-700 text-center py-4">Nenhuma atividade encontrada com os filtros aplicados.</p>
+                    )}
+                  </div>
+                </InfoCard>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Tabs de navegação para outras seções */}
+            <div className="border-b border-gray-200 mb-6">
+              <nav className="flex space-x-8">
+                {[
+                  { id: 'overview', label: 'Visão Geral', icon: Target },
+                  { id: 'timeline', label: 'Cronograma', icon: Calendar },
+                  { id: 'deliverables', label: 'Entregáveis', icon: FileText },
+                  { id: 'communication', label: 'Comunicação', icon: MessageSquare }
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium transition-colors ${
+                      activeTab === tab.id 
+                        ? 'border-blue-500 text-blue-600' 
+                        : 'border-transparent text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    <tab.icon className="w-4 h-4" />
+                    <span>{tab.label}</span>
+                  </button>
+                ))}
+              </nav>
+            </div>
+        )}
 
         {/* Conteúdo das tabs */}
         {activeTab === 'overview' && (
@@ -786,102 +1082,12 @@ export default function ProjectDetailPage() {
         )}
       </div>
 
-      {/* Modal para Novo Marco */}
-      {isNewMilestoneModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
-            <div className="flex justify-between items-center p-6 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">Novo Marco</h2>
-              <button 
-                onClick={() => setIsNewMilestoneModalOpen(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            
-            <form onSubmit={(e) => {
-              e.preventDefault()
-              const formData = new FormData(e.currentTarget)
-              handleNewMilestone({
-                title: formData.get('title'),
-                description: formData.get('description'),
-                deadline: formData.get('deadline'),
-                responsible: formData.get('responsible')
-              })
-            }}>
-              <div className="p-6 space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Título do Marco</label>
-                  <input
-                    name="title"
-                    type="text"
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                    placeholder="Ex: Deploy em Produção"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
-                  <textarea
-                    name="description"
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                    placeholder="Descreva o marco do projeto..."
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Prazo</label>
-                  <input
-                    name="deadline"
-                    type="date"
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Responsável</label>
-                  <select
-                    name="responsible"
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                  >
-                    <option value="">Selecione um responsável</option>
-                    <option value="João Silva">João Silva</option>
-                    <option value="Maria Santos">Maria Santos</option>
-                  </select>
-                </div>
-              </div>
-              
-              <div className="flex justify-end space-x-3 p-6 border-t border-gray-200">
-                <button
-                  type="button"
-                  onClick={() => setIsNewMilestoneModalOpen(false)}
-                  className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-                >
-                  Criar Marco
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Modal para Nova Atividade */}
+      {/* Modal para Novo Entregável */}
       {isNewActivityModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
             <div className="flex justify-between items-center p-6 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">Nova Atividade</h2>
+              <h2 className="text-lg font-semibold text-gray-900">Novo Entregável</h2>
               <button 
                 onClick={() => setIsNewActivityModalOpen(false)}
                 className="text-gray-400 hover:text-gray-600"
@@ -903,7 +1109,7 @@ export default function ProjectDetailPage() {
             }}>
               <div className="p-6 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Título da Atividade</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Título do Entregável</label>
                   <input
                     name="title"
                     type="text"
@@ -934,7 +1140,7 @@ export default function ProjectDetailPage() {
                     name="description"
                     rows={3}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                    placeholder="Descreva a atividade..."
+                    placeholder="Descreva o entregável..."
                   />
                 </div>
                 
@@ -974,7 +1180,7 @@ export default function ProjectDetailPage() {
                   type="submit"
                   className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
                 >
-                  Criar Atividade
+                  Criar Entregável
                 </button>
               </div>
             </form>
