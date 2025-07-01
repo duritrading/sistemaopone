@@ -8,7 +8,7 @@ import {
   ArrowLeft, Edit, AlertTriangle, Calendar, Users, DollarSign, 
   Target, BarChart3, CheckCircle, FileText, Clock,
   CheckSquare, Loader2, AlertCircle,
-  MessageSquare, Activity, TrendingUp, Eye, Plus, X
+  MessageSquare, Activity, TrendingUp, Eye, Plus, X, Edit3
 } from 'lucide-react'
 
 // === INTERFACES ===
@@ -38,26 +38,26 @@ const KPI_Card = ({ title, value, icon: Icon, subtitle, trend }: {
   subtitle?: string
   trend?: 'up' | 'down' | 'neutral'
 }) => (
-  <div className="bg-white p-6 rounded-lg border border-gray-200 hover:shadow-md transition-shadow">
+  <div className="bg-white p-6 rounded-lg border border-gray-300 hover:shadow-md transition-shadow">
     <div className="flex items-center justify-between">
       <div className="flex items-center space-x-3">
-        <div className="p-3 rounded-lg bg-gray-100">
-          <Icon className="w-6 h-6 text-gray-700" />
+        <div className="p-3 rounded-lg bg-gray-200">
+          <Icon className="w-6 h-6 text-gray-800" />
         </div>
         <div>
-          <p className="text-sm font-medium text-gray-500">{title}</p>
+          <p className="text-sm font-medium text-gray-700">{title}</p>
           <p className="text-2xl font-bold text-gray-900">{value}</p>
-          {subtitle && <p className="text-xs text-gray-500 mt-1">{subtitle}</p>}
+          {subtitle && <p className="text-xs text-gray-600 mt-1">{subtitle}</p>}
         </div>
       </div>
       {trend && (
         <div className={`p-2 rounded-full ${
           trend === 'up' ? 'bg-green-100' : 
-          trend === 'down' ? 'bg-red-100' : 'bg-gray-100'
+          trend === 'down' ? 'bg-red-100' : 'bg-gray-200'
         }`}>
           <TrendingUp className={`w-4 h-4 ${
             trend === 'up' ? 'text-green-600' : 
-            trend === 'down' ? 'text-red-600 rotate-180' : 'text-gray-600'
+            trend === 'down' ? 'text-red-600 rotate-180' : 'text-gray-700'
           }`} />
         </div>
       )}
@@ -71,13 +71,13 @@ const InfoCard = ({ title, icon: Icon, children, actions = null }: {
   children: React.ReactNode
   actions?: React.ReactNode
 }) => (
-  <div className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-sm transition-shadow">
+  <div className="bg-white rounded-lg border border-gray-300 p-6 hover:shadow-sm transition-shadow">
     <div className="flex justify-between items-center mb-6">
       <div className="flex items-center space-x-3">
-        <div className="w-8 h-8 bg-gray-100 rounded-md flex items-center justify-center">
-          <Icon className="w-5 h-5 text-gray-600" />
+        <div className="w-8 h-8 bg-gray-200 rounded-md flex items-center justify-center">
+          <Icon className="w-5 h-5 text-gray-800" />
         </div>
-        <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
+        <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
       </div>
       {actions}
     </div>
@@ -87,7 +87,7 @@ const InfoCard = ({ title, icon: Icon, children, actions = null }: {
 
 const InfoPair = ({ label, value }: { label: string; value: string | null | undefined }) => (
   <div className="py-2">
-    <span className="text-gray-600 font-medium">{label}:</span>
+    <span className="text-gray-700 font-medium">{label}:</span>
     <span className="ml-2 text-gray-900">{value || 'Não informado'}</span>
   </div>
 )
@@ -99,7 +99,7 @@ const StatusBadge = ({ status, type = 'status' }: { status: string; type?: strin
         case 'Verde': return 'bg-green-100 text-green-800'
         case 'Amarelo': return 'bg-yellow-100 text-yellow-800'
         case 'Vermelho': return 'bg-red-100 text-red-800'
-        default: return 'bg-gray-100 text-gray-800'
+        default: return 'bg-gray-200 text-gray-800'
       }
     }
     
@@ -111,7 +111,7 @@ const StatusBadge = ({ status, type = 'status' }: { status: string; type?: strin
       case 'Cancelado': case 'Atrasado':
         return 'bg-red-100 text-red-800'
       default:
-        return 'bg-gray-100 text-gray-800'
+        return 'bg-gray-200 text-gray-800'
     }
   }
 
@@ -127,7 +127,7 @@ const LoadingSpinner = () => (
   <div className="min-h-screen bg-gray-50 flex items-center justify-center">
     <div className="text-center">
       <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
-      <p className="text-gray-600">Carregando projeto...</p>
+      <p className="text-gray-700">Carregando projeto...</p>
     </div>
   </div>
 )
@@ -138,7 +138,7 @@ const ErrorDisplay = ({ error, onRetry }: { error: string; onRetry: () => void }
     <div className="text-center max-w-md">
       <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
       <h2 className="text-xl font-semibold text-gray-900 mb-2">Erro ao carregar projeto</h2>
-      <p className="text-gray-600 mb-6">{error}</p>
+      <p className="text-gray-700 mb-6">{error}</p>
       <div className="space-x-4">
         <button 
           onClick={onRetry}
@@ -176,6 +176,8 @@ export default function ProjectDetailPage() {
   const [typeFilter, setTypeFilter] = useState('todos')
   const [responsibleFilter, setResponsibleFilter] = useState('todos')
   const [isNewActivityModalOpen, setIsNewActivityModalOpen] = useState(false)
+  const [isNewMilestoneModalOpen, setIsNewMilestoneModalOpen] = useState(false)
+  const [editingItem, setEditingItem] = useState<any>(null)
   
   // Dados fictícios para demonstração
   const [milestones, setMilestones] = useState([
@@ -328,9 +330,65 @@ export default function ProjectDetailPage() {
     setIsNewActivityModalOpen(false)
   }
 
+  const handleNewMilestone = async (formData: FormData) => {
+    const title = formData.get('title') as string
+    const description = formData.get('description') as string
+    const deadline = formData.get('deadline') as string
+
+    const newMilestone = {
+      id: milestones.length + 1,
+      title,
+      description,
+      status: 'Pendente',
+      deadline,
+      responsible: 'Usuário Atual',
+      progress: 0,
+      type: 'marco'
+    }
+
+    setMilestones([...milestones, newMilestone])
+    setIsNewMilestoneModalOpen(false)
+  }
+
+  const handleEditItem = (item: any) => {
+    setEditingItem(item)
+  }
+
+  const handleUpdateItem = async (formData: FormData) => {
+    if (!editingItem) return
+
+    const title = formData.get('title') as string
+    const description = formData.get('description') as string
+    const deadline = formData.get('deadline') as string
+    const status = formData.get('status') as string
+
+    if (editingItem.type === 'marco') {
+      const progress = parseInt(formData.get('progress') as string) || 0
+      setMilestones(milestones.map(m => 
+        m.id === editingItem.id 
+          ? { ...m, title, description, deadline, status, progress }
+          : m
+      ))
+    } else {
+      const category = formData.get('category') as string
+      setActivities(activities.map(a => 
+        a.id === editingItem.id 
+          ? { ...a, title, description, deadline, status, category }
+          : a
+      ))
+    }
+
+    setEditingItem(null)
+  }
+
   // Filtros
-  const filteredItems = [...milestones, ...activities].filter(item => {
-    if (deliverableFilter !== 'todos' && item.type !== deliverableFilter) return false
+  const filteredMilestones = milestones.filter(item => {
+    if (typeFilter !== 'todos' && item.status !== typeFilter) return false
+    if (responsibleFilter !== 'todos' && item.responsible !== responsibleFilter) return false
+    return true
+  })
+
+  const filteredActivities = activities.filter(item => {
     if (typeFilter !== 'todos' && item.status !== typeFilter) return false
     if (responsibleFilter !== 'todos' && item.responsible !== responsibleFilter) return false
     return true
@@ -346,7 +404,7 @@ export default function ProjectDetailPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header fixo */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+      <div className="bg-white border-b border-gray-300 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto p-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
@@ -354,7 +412,7 @@ export default function ProjectDetailPage() {
                 onClick={() => router.push('/projetos')}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
               >
-                <ArrowLeft className="w-5 h-5 text-gray-600" />
+                <ArrowLeft className="w-5 h-5 text-gray-700" />
               </button>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">{project.name}</h1>
@@ -373,8 +431,40 @@ export default function ProjectDetailPage() {
             </button>
           </div>
 
+          {/* KPIs antes das tabs */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6 mb-6">
+            <KPI_Card
+              title="Progresso"
+              value={`${project.progress_percentage}%`}
+              icon={BarChart3}
+              subtitle="do projeto concluído"
+              trend="up"
+            />
+            <KPI_Card
+              title="Orçamento Usado"
+              value={formatCurrency(project.used_budget)}
+              icon={DollarSign}
+              subtitle={`de ${formatCurrency(project.total_budget)}`}
+              trend="neutral"
+            />
+            <KPI_Card
+              title="Marcos Concluídos"
+              value="1"
+              icon={Target}
+              subtitle="de 3 marcos"
+              trend="up"
+            />
+            <KPI_Card
+              title="Dias Restantes"
+              value="15"
+              icon={Clock}
+              subtitle="até o prazo final"
+              trend="down"
+            />
+          </div>
+
           {/* Tabs */}
-          <div className="flex space-x-6 mt-6">
+          <div className="flex space-x-6">
             {[
               { id: 'overview', label: 'Visão Geral', icon: BarChart3 },
               { id: 'deliverables', label: 'Marcos e Entregáveis', icon: Target },
@@ -387,7 +477,7 @@ export default function ProjectDetailPage() {
                 className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors ${
                   activeTab === tab.id
                     ? 'bg-blue-100 text-blue-700'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                    : 'text-gray-700 hover:text-gray-900 hover:bg-gray-100'
                 }`}
               >
                 <tab.icon className="w-4 h-4" />
@@ -403,38 +493,6 @@ export default function ProjectDetailPage() {
         {/* Tab Overview */}
         {activeTab === 'overview' && (
           <div className="space-y-6">
-            {/* KPIs */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <KPI_Card
-                title="Progresso"
-                value={`${project.progress_percentage}%`}
-                icon={BarChart3}
-                subtitle="do projeto concluído"
-                trend="up"
-              />
-              <KPI_Card
-                title="Orçamento Usado"
-                value={formatCurrency(project.used_budget)}
-                icon={DollarSign}
-                subtitle={`de ${formatCurrency(project.total_budget)}`}
-                trend="neutral"
-              />
-              <KPI_Card
-                title="Marcos Concluídos"
-                value="1"
-                icon={Target}
-                subtitle="de 3 marcos"
-                trend="up"
-              />
-              <KPI_Card
-                title="Dias Restantes"
-                value="15"
-                icon={Clock}
-                subtitle="até o prazo final"
-                trend="down"
-              />
-            </div>
-
             {/* Cards de informações */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <InfoCard title="Informações do Projeto" icon={FileText}>
@@ -460,7 +518,7 @@ export default function ProjectDetailPage() {
             <InfoCard title="Progresso do Projeto" icon={TrendingUp}>
               <div className="space-y-4">
                 <div>
-                  <div className="flex justify-between text-sm text-gray-600 mb-2">
+                  <div className="flex justify-between text-sm text-gray-700 mb-2">
                     <span>Progresso Geral</span>
                     <span>{project.progress_percentage}%</span>
                   </div>
@@ -473,7 +531,7 @@ export default function ProjectDetailPage() {
                 </div>
                 
                 <div>
-                  <div className="flex justify-between text-sm text-gray-600 mb-2">
+                  <div className="flex justify-between text-sm text-gray-700 mb-2">
                     <span>Orçamento Utilizado</span>
                     <span>{Math.round((project.used_budget / project.total_budget) * 100)}%</span>
                   </div>
@@ -493,23 +551,13 @@ export default function ProjectDetailPage() {
         {activeTab === 'deliverables' && (
           <div className="space-y-6">
             {/* Filtros e Ações */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <div className="bg-white rounded-lg border border-gray-300 p-6">
               <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center space-y-4 lg:space-y-0">
                 <div className="flex flex-wrap gap-4">
                   <select
-                    value={deliverableFilter}
-                    onChange={(e) => setDeliverableFilter(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="todos">Todos os Tipos</option>
-                    <option value="marco">Marcos</option>
-                    <option value="atividade">Atividades</option>
-                  </select>
-
-                  <select
                     value={typeFilter}
                     onChange={(e) => setTypeFilter(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+                    className="px-3 py-2 border border-gray-400 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                   >
                     <option value="todos">Todos os Status</option>
                     <option value="Em Andamento">Em Andamento</option>
@@ -523,7 +571,7 @@ export default function ProjectDetailPage() {
                   <select
                     value={responsibleFilter}
                     onChange={(e) => setResponsibleFilter(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+                    className="px-3 py-2 border border-gray-400 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                   >
                     <option value="todos">Todos os Responsáveis</option>
                     {uniqueResponsibles.map(responsible => (
@@ -532,72 +580,127 @@ export default function ProjectDetailPage() {
                   </select>
                 </div>
 
-                <button
-                  onClick={() => setIsNewActivityModalOpen(true)}
-                  className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Nova Atividade</span>
-                </button>
+                <div className="flex space-x-3">
+                  <button
+                    onClick={() => setIsNewMilestoneModalOpen(true)}
+                    className="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Novo Marco</span>
+                  </button>
+                  <button
+                    onClick={() => setIsNewActivityModalOpen(true)}
+                    className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Nova Atividade</span>
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* Lista de Marcos e Atividades */}
-            <div className="space-y-4">
+            {/* Colunas separadas */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Coluna de Marcos */}
               <InfoCard 
-                title={`Marcos e Atividades (${filteredItems.length})`} 
-                icon={CheckSquare}
+                title={`Marcos (${filteredMilestones.length})`} 
+                icon={Target}
               >
                 <div className="space-y-4">
-                  {filteredItems.length > 0 ? filteredItems.map((item) => (
-                    <div key={`${item.type}-${item.id}`} className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
+                  {filteredMilestones.length > 0 ? filteredMilestones.map((milestone) => (
+                    <div key={milestone.id} className="border border-gray-300 rounded-lg p-4 hover:shadow-sm transition-shadow">
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
                           <div className="flex items-center space-x-3 mb-2">
-                            <h4 className="text-lg font-medium text-gray-900">{item.title}</h4>
-                            <StatusBadge status={item.status} />
-                            <span className={`text-xs px-2 py-1 rounded-full ${
-                              item.type === 'marco' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
-                            }`}>
-                              {item.type === 'marco' ? 'Marco' : 'Atividade'}
-                            </span>
+                            <h4 className="text-lg font-medium text-gray-900">{milestone.title}</h4>
+                            <StatusBadge status={milestone.status} />
+                            <button
+                              onClick={() => handleEditItem(milestone)}
+                              className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                            </button>
                           </div>
-                          <p className="text-gray-600 mb-3">{item.description}</p>
+                          <p className="text-gray-700 mb-3">{milestone.description}</p>
                           
-                          {/* Barra de progresso para marcos */}
-                          {item.type === 'marco' && (
-                            <div className="mb-3">
-                              <div className="flex justify-between text-sm text-gray-600 mb-1">
-                                <span>Progresso</span>
-                                <span>{item.progress}%</span>
-                              </div>
-                              <div className="w-full bg-gray-200 rounded-full h-2">
-                                <div 
-                                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                                  style={{ width: `${item.progress}%` }}
-                                />
-                              </div>
+                          <div className="mb-3">
+                            <div className="flex justify-between text-sm text-gray-700 mb-1">
+                              <span>Progresso</span>
+                              <span>{milestone.progress}%</span>
                             </div>
-                          )}
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                              <div 
+                                className="bg-purple-600 h-2 rounded-full transition-all duration-300"
+                                style={{ width: `${milestone.progress}%` }}
+                              />
+                            </div>
+                          </div>
 
                           <div className="grid grid-cols-2 gap-4 text-sm">
                             <div>
-                              <span className="text-gray-600 font-medium">Prazo:</span>
-                              <p className={`${new Date(item.deadline) < new Date() && item.status !== 'Concluído' ? 
+                              <span className="text-gray-700 font-medium">Prazo:</span>
+                              <p className={`${new Date(milestone.deadline) < new Date() && milestone.status !== 'Concluído' ? 
                                 'text-red-600' : 'text-gray-900'}`}>
-                                {new Date(item.deadline).toLocaleDateString('pt-BR')}
+                                {new Date(milestone.deadline).toLocaleDateString('pt-BR')}
                               </p>
                             </div>
                             <div>
-                              <span className="text-gray-600 font-medium">Responsável:</span>
-                              <p className="text-gray-900">{item.responsible}</p>
+                              <span className="text-gray-700 font-medium">Responsável:</span>
+                              <p className="text-gray-900">{milestone.responsible}</p>
                             </div>
                           </div>
                         </div>
                       </div>
                     </div>
                   )) : (
-                    <p className="text-gray-600 text-center py-4">Nenhuma atividade encontrada com os filtros aplicados.</p>
+                    <p className="text-gray-700 text-center py-4">Nenhum marco encontrado com os filtros aplicados.</p>
+                  )}
+                </div>
+              </InfoCard>
+
+              {/* Coluna de Atividades */}
+              <InfoCard 
+                title={`Atividades (${filteredActivities.length})`} 
+                icon={CheckSquare}
+              >
+                <div className="space-y-4">
+                  {filteredActivities.length > 0 ? filteredActivities.map((activity) => (
+                    <div key={activity.id} className="border border-gray-300 rounded-lg p-4 hover:shadow-sm transition-shadow">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-3 mb-2">
+                            <h4 className="text-lg font-medium text-gray-900">{activity.title}</h4>
+                            <StatusBadge status={activity.status} />
+                            <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-800">
+                              {activity.category}
+                            </span>
+                            <button
+                              onClick={() => handleEditItem(activity)}
+                              className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                            </button>
+                          </div>
+                          <p className="text-gray-700 mb-3">{activity.description}</p>
+
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                              <span className="text-gray-700 font-medium">Prazo:</span>
+                              <p className={`${new Date(activity.deadline) < new Date() && activity.status !== 'Concluído' ? 
+                                'text-red-600' : 'text-gray-900'}`}>
+                                {new Date(activity.deadline).toLocaleDateString('pt-BR')}
+                              </p>
+                            </div>
+                            <div>
+                              <span className="text-gray-700 font-medium">Responsável:</span>
+                              <p className="text-gray-900">{activity.responsible}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )) : (
+                    <p className="text-gray-700 text-center py-4">Nenhuma atividade encontrada com os filtros aplicados.</p>
                   )}
                 </div>
               </InfoCard>
@@ -607,15 +710,15 @@ export default function ProjectDetailPage() {
 
         {/* Outras tabs com placeholder */}
         {activeTab !== 'overview' && activeTab !== 'deliverables' && (
-          <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Eye className="w-8 h-8 text-gray-400" />
+          <div className="bg-white rounded-lg border border-gray-300 p-8 text-center">
+            <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Eye className="w-8 h-8 text-gray-600" />
             </div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">
               {activeTab === 'timeline' && 'Cronograma em Desenvolvimento'}
               {activeTab === 'communication' && 'Central de Comunicação em Desenvolvimento'}
             </h3>
-            <p className="text-gray-600">Esta funcionalidade será implementada na próxima versão.</p>
+            <p className="text-gray-700">Esta funcionalidade será implementada na próxima versão.</p>
           </div>
         )}
       </div>
@@ -628,7 +731,7 @@ export default function ProjectDetailPage() {
               <h3 className="text-lg font-semibold text-gray-900">Nova Atividade</h3>
               <button
                 onClick={() => setIsNewActivityModalOpen(false)}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-gray-500 hover:text-gray-700"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -636,22 +739,22 @@ export default function ProjectDetailPage() {
             
             <form action={handleNewActivity} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Título</label>
+                <label className="block text-sm font-medium text-gray-800 mb-1">Título</label>
                 <input
                   name="title"
                   type="text"
                   required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                   placeholder="Ex: Implementar Autenticação"
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
+                <label className="block text-sm font-medium text-gray-800 mb-1">Categoria</label>
                 <select
                   name="category"
                   required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                 >
                   <option value="">Selecione uma categoria</option>
                   <option value="Documento">Documento</option>
@@ -662,22 +765,22 @@ export default function ProjectDetailPage() {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+                <label className="block text-sm font-medium text-gray-800 mb-1">Descrição</label>
                 <textarea
                   name="description"
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                  placeholder="Descreva o entregável..."
+                  className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  placeholder="Descreva a atividade..."
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Prazo</label>
+                <label className="block text-sm font-medium text-gray-800 mb-1">Prazo</label>
                 <input
                   name="deadline"
                   type="date"
                   required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                 />
               </div>
               
@@ -691,7 +794,191 @@ export default function ProjectDetailPage() {
                 <button
                   type="button"
                   onClick={() => setIsNewActivityModalOpen(false)}
-                  className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition-colors"
+                  className="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para Novo Marco */}
+      {isNewMilestoneModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Novo Marco</h3>
+              <button
+                onClick={() => setIsNewMilestoneModalOpen(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <form action={handleNewMilestone} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-800 mb-1">Título</label>
+                <input
+                  name="title"
+                  type="text"
+                  required
+                  className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  placeholder="Ex: Lançamento Beta"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-800 mb-1">Descrição</label>
+                <textarea
+                  name="description"
+                  rows={3}
+                  required
+                  className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  placeholder="Descreva o marco..."
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-800 mb-1">Prazo</label>
+                <input
+                  name="deadline"
+                  type="date"
+                  required
+                  className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                />
+              </div>
+              
+              <div className="flex space-x-3 pt-4">
+                <button
+                  type="submit"
+                  className="flex-1 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                >
+                  Criar Marco
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsNewMilestoneModalOpen(false)}
+                  className="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para Editar Item */}
+      {editingItem && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Editar {editingItem.type === 'marco' ? 'Marco' : 'Atividade'}
+              </h3>
+              <button
+                onClick={() => setEditingItem(null)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <form action={handleUpdateItem} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-800 mb-1">Título</label>
+                <input
+                  name="title"
+                  type="text"
+                  required
+                  defaultValue={editingItem.title}
+                  className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                />
+              </div>
+              
+              {editingItem.type === 'atividade' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-800 mb-1">Categoria</label>
+                  <select
+                    name="category"
+                    required
+                    defaultValue={editingItem.category}
+                    className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  >
+                    <option value="Documento">Documento</option>
+                    <option value="Código">Código</option>
+                    <option value="Interface">Interface</option>
+                    <option value="Teste">Teste</option>
+                  </select>
+                </div>
+              )}
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-800 mb-1">Descrição</label>
+                <textarea
+                  name="description"
+                  rows={3}
+                  defaultValue={editingItem.description}
+                  className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-800 mb-1">Status</label>
+                <select
+                  name="status"
+                  required
+                  defaultValue={editingItem.status}
+                  className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                >
+                  <option value="Pendente">Pendente</option>
+                  <option value="Em Andamento">Em Andamento</option>
+                  <option value="Em Revisão">Em Revisão</option>
+                  <option value="Aprovado">Aprovado</option>
+                  <option value="Concluído">Concluído</option>
+                  <option value="Atrasado">Atrasado</option>
+                </select>
+              </div>
+
+              {editingItem.type === 'marco' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-800 mb-1">Progresso (%)</label>
+                  <input
+                    name="progress"
+                    type="number"
+                    min="0"
+                    max="100"
+                    defaultValue={editingItem.progress}
+                    className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  />
+                </div>
+              )}
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-800 mb-1">Prazo</label>
+                <input
+                  name="deadline"
+                  type="date"
+                  required
+                  defaultValue={editingItem.deadline}
+                  className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                />
+              </div>
+              
+              <div className="flex space-x-3 pt-4">
+                <button
+                  type="submit"
+                  className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  Salvar Alterações
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditingItem(null)}
+                  className="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
                 >
                   Cancelar
                 </button>
