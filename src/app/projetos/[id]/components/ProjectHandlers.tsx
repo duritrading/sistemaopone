@@ -1,40 +1,25 @@
-// src/app/projetos/[id]/components/ProjectHandlers.tsx
-'use client'
-
-import { useState } from 'react'
+// src/app/projetos/[id]/components/ProjectHandlers.tsx - VERSÃO INTEGRADA
 import { supabase } from '@/lib/supabase'
 
-interface ProjectHandlersProps {
-  projectId: string
-  milestones: any[]
-  activities: any[]
-  teamMembers: any[]
-  setMilestones: (data: any[]) => void
-  setActivities: (data: any[]) => void
-  setIsNewMilestoneModalOpen: (open: boolean) => void
-  setIsNewActivityModalOpen: (open: boolean) => void
-}
-
-export default function ProjectHandlers({
-  projectId,
-  milestones,
-  activities,
-  teamMembers,
-  setMilestones,
-  setActivities,
-  setIsNewMilestoneModalOpen,
-  setIsNewActivityModalOpen
-}: ProjectHandlersProps) {
-
+export const ProjectHandlers = {
+  
   // ================================
-  // HANDLERS PARA MARCOS
+  // CRIAR MARCO (ATUALIZADO COM STATUS)
   // ================================
-  const handleNewMilestone = async (formData: FormData) => {
+  async handleNewMilestone(
+    projectId: string, 
+    formData: FormData, 
+    teamMembers: any[], 
+    setMilestones: any, 
+    setIsNewMilestoneModalOpen: any, 
+    milestones: any[]
+  ) {
     try {
       const title = formData.get('title') as string
       const description = formData.get('description') as string
       const deadline = formData.get('deadline') as string
       const responsibleId = formData.get('responsible_id') as string
+      const status = formData.get('status') as string || 'pending' // DEFAULT
 
       // Validações básicas
       if (!title?.trim()) {
@@ -42,15 +27,13 @@ export default function ProjectHandlers({
         return
       }
 
-      console.log('Creating milestone with data:', {
-        project_id: projectId,
-        title: title.trim(),
-        description: description?.trim() || null,
-        due_date: deadline || null,
-        assigned_to: responsibleId || null,
-        status: 'not_started',
-        progress_percentage: 0
-      })
+      // Validar status
+      if (!this.validateMilestoneStatus(status)) {
+        alert('Status inválido para marco')
+        return
+      }
+
+      console.log('Creating milestone with status:', status)
 
       const { data, error } = await supabase
         .from('project_milestones')
@@ -60,8 +43,8 @@ export default function ProjectHandlers({
           description: description?.trim() || null,
           due_date: deadline || null,
           assigned_to: responsibleId || null,
-          status: 'not_started', // Usar valor válido do check constraint
-          progress_percentage: 0
+          status: status,
+          progress_percentage: status === 'completed' ? 100 : 0
         }])
         .select(`
           *,
@@ -72,11 +55,10 @@ export default function ProjectHandlers({
       if (error) {
         console.error('❌ Erro ao criar marco:', error)
         
-        // Mensagens de erro específicas
         if (error.code === '23514') {
-          alert('Erro: Status inválido. Use: not_started, in_progress, completed, cancelled, ou on_hold')
+          alert('Status inválido. Use: pending, in_progress, completed, delayed, cancelled')
         } else if (error.code === '42501') {
-          alert('Erro: Permissão negada. RLS pode estar ativo - execute o SQL de correção')
+          alert('Erro de permissão - RLS pode estar ativo - execute o SQL de correção')
         } else {
           alert(`Erro ao criar marco: ${error.message}`)
         }
@@ -95,18 +77,26 @@ export default function ProjectHandlers({
       console.error('💥 Erro inesperado:', err)
       alert('Erro inesperado ao criar marco. Tente novamente.')
     }
-  }
+  },
 
   // ================================
-  // HANDLERS PARA ENTREGÁVEIS
+  // CRIAR ATIVIDADE (ATUALIZADO COM STATUS)
   // ================================
-  const handleNewActivity = async (formData: FormData) => {
+  async handleNewActivity(
+    projectId: string, 
+    formData: FormData, 
+    teamMembers: any[], 
+    setActivities: any, 
+    setIsNewActivityModalOpen: any, 
+    activities: any[]
+  ) {
     try {
       const title = formData.get('title') as string
       const description = formData.get('description') as string
       const deadline = formData.get('deadline') as string
       const category = formData.get('category') as string
       const responsibleId = formData.get('responsible_id') as string
+      const status = formData.get('status') as string || 'draft' // DEFAULT
 
       // Validações básicas
       if (!title?.trim()) {
@@ -114,27 +104,23 @@ export default function ProjectHandlers({
         return
       }
 
-      // Mapear categorias PT -> EN para check constraint
-      const categoryMapping: Record<string, string> = {
-        'Documento': 'documentation',
-        'Código': 'code', 
-        'Interface': 'interface',
-        'Teste': 'testing',
-        'Infraestrutura': 'infrastructure',
-        'Análise': 'analysis'
+      if (!category) {
+        alert('Categoria é obrigatória')
+        return
       }
 
-      const mappedCategory = categoryMapping[category] || 'documentation'
+      // Validar status e categoria
+      if (!this.validateActivityStatus(status)) {
+        alert('Status inválido para atividade')
+        return
+      }
 
-      console.log('Creating deliverable with data:', {
-        project_id: projectId,
-        title: title.trim(),
-        description: description?.trim() || null,
-        type: mappedCategory,
-        due_date: deadline || null,
-        assigned_to: responsibleId || null,
-        status: 'draft'
-      })
+      if (!this.validateActivityType(category)) {
+        alert('Categoria inválida')
+        return
+      }
+
+      console.log('Creating deliverable with status:', status)
 
       const { data, error } = await supabase
         .from('project_deliverables')
@@ -142,10 +128,10 @@ export default function ProjectHandlers({
           project_id: projectId,
           title: title.trim(),
           description: description?.trim() || null,
-          type: mappedCategory,
+          type: category,
           due_date: deadline || null,
           assigned_to: responsibleId || null,
-          status: 'draft' // Usar valor válido do check constraint
+          status: status
         }])
         .select(`
           *,
@@ -156,49 +142,46 @@ export default function ProjectHandlers({
       if (error) {
         console.error('❌ Erro ao criar entregável:', error)
         
-        // Mensagens de erro específicas
         if (error.code === '23514') {
           if (error.message.includes('type')) {
-            alert('Erro: Tipo inválido. Use: documentation, code, interface, testing, infrastructure, ou analysis')
+            alert('Tipo inválido. Use: documentation, code, interface, testing, infrastructure, analysis')
           } else if (error.message.includes('status')) {
-            alert('Erro: Status inválido. Use: draft, in_progress, review, approved, delivered, ou cancelled')
-          } else {
-            alert(`Erro de validação: ${error.message}`)
+            alert('Status inválido. Use: draft, in_progress, review, approved, delivered, cancelled')
           }
         } else if (error.code === '42501') {
-          alert('Erro: Permissão negada. RLS pode estar ativo - execute o SQL de correção')
+          alert('Erro de permissão - RLS pode estar ativo - execute o SQL de correção')
         } else {
-          alert(`Erro ao criar entregável: ${error.message}`)
+          alert(`Erro ao criar atividade: ${error.message}`)
         }
         return
       }
 
-      console.log('✅ Entregável criado com sucesso:', data)
+      console.log('✅ Atividade criada com sucesso:', data)
 
-      // Atualizar lista de atividades
+      // Atualizar lista
       setActivities([...activities, data])
       setIsNewActivityModalOpen(false)
       
-      alert('Entregável criado com sucesso!')
+      alert('Atividade criada com sucesso!')
 
     } catch (err) {
       console.error('💥 Erro inesperado:', err)
-      alert('Erro inesperado ao criar entregável. Tente novamente.')
+      alert('Erro inesperado ao criar atividade. Tente novamente.')
     }
-  }
+  },
 
   // ================================
-  // ATUALIZAR MARCO
+  // ATUALIZAR MARCO (MANTIDO + STATUS)
   // ================================
-  const handleUpdateMilestone = async (milestoneId: string, updates: any) => {
+  async handleUpdateMilestone(milestoneId: string, updates: any, setMilestones: any, milestones: any[]) {
     try {
-      // Mapear status PT -> EN
+      // Mapear status PT -> EN se necessário
       const statusMapping: Record<string, string> = {
-        'Não Iniciado': 'not_started',
-        'Em Progresso': 'in_progress', 
+        'Pendente': 'pending',
+        'Em Andamento': 'in_progress',
         'Concluído': 'completed',
-        'Cancelado': 'cancelled',
-        'Pausado': 'on_hold'
+        'Atrasado': 'delayed',
+        'Cancelado': 'cancelled'
       }
 
       const mappedStatus = updates.status ? statusMapping[updates.status] || updates.status : undefined
@@ -210,6 +193,10 @@ export default function ProjectHandlers({
 
       if (mappedStatus) {
         updateData.status = mappedStatus
+        // Se marcado como concluído, progresso = 100%
+        if (mappedStatus === 'completed') {
+          updateData.progress_percentage = 100
+        }
       }
 
       console.log('Updating milestone:', milestoneId, updateData)
@@ -239,12 +226,12 @@ export default function ProjectHandlers({
       console.error('💥 Erro ao atualizar marco:', err)
       alert('Erro inesperado ao atualizar marco.')
     }
-  }
+  },
 
   // ================================
-  // ATUALIZAR ENTREGÁVEL  
+  // ATUALIZAR ATIVIDADE (MANTIDO + STATUS)  
   // ================================
-  const handleUpdateActivity = async (activityId: string, updates: any) => {
+  async handleUpdateActivity(activityId: string, updates: any, setActivities: any, activities: any[]) {
     try {
       // Mapear status PT -> EN
       const statusMapping: Record<string, string> = {
@@ -294,12 +281,12 @@ export default function ProjectHandlers({
       console.error('💥 Erro ao atualizar entregável:', err)
       alert('Erro inesperado ao atualizar entregável.')
     }
-  }
+  },
 
   // ================================
-  // DELETAR MARCO
+  // DELETAR MARCO (MANTIDO)
   // ================================
-  const handleDeleteMilestone = async (milestoneId: string) => {
+  async handleDeleteMilestone(milestoneId: string, setMilestones: any, milestones: any[]) {
     if (!confirm('Tem certeza que deseja excluir este marco?')) return
 
     try {
@@ -322,12 +309,12 @@ export default function ProjectHandlers({
       console.error('💥 Erro ao deletar marco:', err)
       alert('Erro inesperado ao excluir marco.')
     }
-  }
+  },
 
   // ================================
-  // DELETAR ENTREGÁVEL
+  // DELETAR ATIVIDADE (MANTIDO)
   // ================================
-  const handleDeleteActivity = async (activityId: string) => {
+  async handleDeleteActivity(activityId: string, setActivities: any, activities: any[]) {
     if (!confirm('Tem certeza que deseja excluir este entregável?')) return
 
     try {
@@ -350,52 +337,84 @@ export default function ProjectHandlers({
       console.error('💥 Erro ao deletar entregável:', err)
       alert('Erro inesperado ao excluir entregável.')
     }
-  }
+  },
 
   // ================================
-  // UTILIDADES
+  // HELPERS PARA STATUS (NOVOS)
   // ================================
-  const getValidStatuses = (type: 'milestone' | 'deliverable') => {
-    if (type === 'milestone') {
-      return [
-        { value: 'not_started', label: 'Não Iniciado' },
-        { value: 'in_progress', label: 'Em Progresso' },
-        { value: 'completed', label: 'Concluído' },
-        { value: 'cancelled', label: 'Cancelado' },
-        { value: 'on_hold', label: 'Pausado' }
-      ]
-    } else {
-      return [
-        { value: 'draft', label: 'Rascunho' },
-        { value: 'in_progress', label: 'Em Progresso' },
-        { value: 'review', label: 'Em Revisão' },
-        { value: 'approved', label: 'Aprovado' },
-        { value: 'delivered', label: 'Entregue' },
-        { value: 'cancelled', label: 'Cancelado' }
-      ]
+  getMilestoneStatusBadge(status: string) {
+    const statusMap = {
+      'pending': { label: 'Pendente', color: 'bg-gray-100 text-gray-800' },
+      'in_progress': { label: 'Em Andamento', color: 'bg-blue-100 text-blue-800' },
+      'completed': { label: 'Concluído', color: 'bg-green-100 text-green-800' },
+      'delayed': { label: 'Atrasado', color: 'bg-red-100 text-red-800' },
+      'cancelled': { label: 'Cancelado', color: 'bg-gray-100 text-gray-600' }
     }
-  }
+    return statusMap[status as keyof typeof statusMap] || { label: status, color: 'bg-gray-100 text-gray-800' }
+  },
 
-  const getValidTypes = () => {
+  getActivityStatusBadge(status: string) {
+    const statusMap = {
+      'draft': { label: 'Rascunho', color: 'bg-gray-100 text-gray-800' },
+      'in_progress': { label: 'Em Progresso', color: 'bg-blue-100 text-blue-800' },
+      'review': { label: 'Em Revisão', color: 'bg-yellow-100 text-yellow-800' },
+      'approved': { label: 'Aprovado', color: 'bg-green-100 text-green-800' },
+      'delivered': { label: 'Entregue', color: 'bg-purple-100 text-purple-800' },
+      'cancelled': { label: 'Cancelado', color: 'bg-red-100 text-red-800' }
+    }
+    return statusMap[status as keyof typeof statusMap] || { label: status, color: 'bg-gray-100 text-gray-800' }
+  },
+
+  // ================================
+  // VALIDAÇÕES (NOVAS)
+  // ================================
+  validateMilestoneStatus(status: string): boolean {
+    const validStatuses = ['pending', 'in_progress', 'completed', 'delayed', 'cancelled']
+    return validStatuses.includes(status)
+  },
+
+  validateActivityStatus(status: string): boolean {
+    const validStatuses = ['draft', 'in_progress', 'review', 'approved', 'delivered', 'cancelled']
+    return validStatuses.includes(status)
+  },
+
+  validateActivityType(type: string): boolean {
+    const validTypes = ['documentation', 'code', 'interface', 'testing', 'infrastructure', 'analysis']
+    return validTypes.includes(type)
+  },
+
+  // ================================
+  // MAPEAMENTOS PARA SELECTS (NOVOS)
+  // ================================
+  getMilestoneStatusOptions() {
     return [
-      { value: 'documentation', label: 'Documento' },
-      { value: 'code', label: 'Código' },
-      { value: 'interface', label: 'Interface' },
-      { value: 'testing', label: 'Teste' },
-      { value: 'infrastructure', label: 'Infraestrutura' },
-      { value: 'analysis', label: 'Análise' }
+      { value: 'pending', label: 'Pendente' },
+      { value: 'in_progress', label: 'Em Andamento' },
+      { value: 'completed', label: 'Concluído' },
+      { value: 'delayed', label: 'Atrasado' },
+      { value: 'cancelled', label: 'Cancelado' }
     ]
-  }
+  },
 
-  // Retornar handlers para uso nos componentes
-  return {
-    handleNewMilestone,
-    handleNewActivity,
-    handleUpdateMilestone,
-    handleUpdateActivity,
-    handleDeleteMilestone,
-    handleDeleteActivity,
-    getValidStatuses,
-    getValidTypes
+  getActivityStatusOptions() {
+    return [
+      { value: 'draft', label: 'Rascunho' },
+      { value: 'in_progress', label: 'Em Progresso' },
+      { value: 'review', label: 'Em Revisão' },
+      { value: 'approved', label: 'Aprovado' },
+      { value: 'delivered', label: 'Entregue' },
+      { value: 'cancelled', label: 'Cancelado' }
+    ]
+  },
+
+  getActivityTypeOptions() {
+    return [
+      { value: 'documentation', label: 'Documento', icon: '📄' },
+      { value: 'code', label: 'Código', icon: '💻' },
+      { value: 'interface', label: 'Interface', icon: '🎨' },
+      { value: 'testing', label: 'Teste', icon: '🧪' },
+      { value: 'infrastructure', label: 'Infraestrutura', icon: '⚙️' },
+      { value: 'analysis', label: 'Análise', icon: '📊' }
+    ]
   }
 }

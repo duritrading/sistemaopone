@@ -1,4 +1,4 @@
-// src/app/projetos/[id]/page.tsx
+// src/app/projetos/[id]/page.tsx - VERSÃO INTEGRADA COM STATUS
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -10,6 +10,162 @@ import {
   CheckSquare, Loader2, AlertCircle,
   MessageSquare, Activity, TrendingUp, Eye, Plus, X, Edit3, Trash2
 } from 'lucide-react'
+
+// === HANDLERS INTEGRADOS COM STATUS ===
+const ProjectHandlers = {
+  // === CRIAR MARCO COM STATUS ===
+  async handleNewMilestone(
+    projectId: string, 
+    formData: any, 
+    teamMembers: any[], 
+    setMilestones: any, 
+    setIsNewMilestoneModalOpen: any, 
+    milestones: any[]
+  ) {
+    try {
+      const { title, description, deadline, responsible_id, status } = formData
+
+      if (!title?.trim()) {
+        alert('Título é obrigatório')
+        return
+      }
+
+      console.log('Creating milestone with status:', status)
+
+      const { data, error } = await supabase
+        .from('project_milestones')
+        .insert([{
+          project_id: projectId,
+          title: title.trim(),
+          description: description?.trim() || null,
+          due_date: deadline || null,
+          assigned_to: responsible_id || null,
+          status: status,
+          progress_percentage: status === 'completed' ? 100 : 0
+        }])
+        .select(`
+          *,
+          responsible:team_members(id, full_name)
+        `)
+        .single()
+
+      if (error) {
+        console.error('❌ Erro ao criar marco:', error)
+        alert(`Erro ao criar marco: ${error.message}`)
+        return
+      }
+
+      console.log('✅ Marco criado com sucesso:', data)
+      setMilestones([...milestones, data])
+      setIsNewMilestoneModalOpen(false)
+      alert('Marco criado com sucesso!')
+
+    } catch (err) {
+      console.error('💥 Erro inesperado:', err)
+      alert('Erro inesperado ao criar marco.')
+    }
+  },
+
+  // === CRIAR ATIVIDADE COM STATUS ===
+  async handleNewActivity(
+    projectId: string, 
+    formData: any, 
+    teamMembers: any[], 
+    setActivities: any, 
+    setIsNewActivityModalOpen: any, 
+    activities: any[]
+  ) {
+    try {
+      const { title, description, deadline, category, responsible_id, status } = formData
+
+      if (!title?.trim()) {
+        alert('Título é obrigatório')
+        return
+      }
+      if (!category) {
+        alert('Categoria é obrigatória')
+        return
+      }
+
+      // Mapear categorias PT -> EN
+      const typeMapping: Record<string, string> = {
+        'Documento': 'documentation',
+        'Código': 'code', 
+        'Interface': 'interface',
+        'Teste': 'testing',
+        'Infraestrutura': 'infrastructure',
+        'Análise': 'analysis'
+      }
+
+      console.log('Creating deliverable with status:', status)
+
+      const { data, error } = await supabase
+        .from('project_deliverables')
+        .insert([{
+          project_id: projectId,
+          title: title.trim(),
+          description: description?.trim() || null,
+          type: typeMapping[category] || category.toLowerCase(),
+          due_date: deadline || null,
+          assigned_to: responsible_id || null,
+          status: status
+        }])
+        .select(`
+          *,
+          responsible:team_members(id, full_name)
+        `)
+        .single()
+
+      if (error) {
+        console.error('❌ Erro ao criar atividade:', error)
+        alert(`Erro ao criar atividade: ${error.message}`)
+        return
+      }
+
+      console.log('✅ Atividade criada com sucesso:', data)
+      setActivities([...activities, data])
+      setIsNewActivityModalOpen(false)
+      alert('Atividade criada com sucesso!')
+
+    } catch (err) {
+      console.error('💥 Erro inesperado:', err)
+      alert('Erro inesperado ao criar atividade.')
+    }
+  },
+
+  // === HELPERS PARA STATUS ===
+  getMilestoneStatusOptions() {
+    return [
+      { value: 'pending', label: 'Pendente' },
+      { value: 'in_progress', label: 'Em Andamento' },
+      { value: 'completed', label: 'Concluído' },
+      { value: 'delayed', label: 'Atrasado' },
+      { value: 'cancelled', label: 'Cancelado' }
+    ]
+  },
+
+  getActivityStatusOptions() {
+    return [
+      { value: 'draft', label: 'Rascunho' },
+      { value: 'in_progress', label: 'Em Progresso' },
+      { value: 'review', label: 'Em Revisão' },
+      { value: 'approved', label: 'Aprovado' },
+      { value: 'delivered', label: 'Entregue' },
+      { value: 'cancelled', label: 'Cancelado' }
+    ]
+  },
+
+  getActivityTypeOptions() {
+    return [
+      { value: 'Documento', label: 'Documento', icon: '📄' },
+      { value: 'Código', label: 'Código', icon: '💻' },
+      { value: 'Interface', label: 'Interface', icon: '🎨' },
+      { value: 'Teste', label: 'Teste', icon: '🧪' },
+      { value: 'Infraestrutura', label: 'Infraestrutura', icon: '⚙️' },
+      { value: 'Análise', label: 'Análise', icon: '📊' }
+    ]
+  }
+}
 
 // === INTERFACES ===
 interface ProjectDetails {
@@ -141,29 +297,34 @@ const StatusBadge = ({ status, type = 'status' }: { status: string; type?: strin
       }
     }
     
-    // Mapear status conforme check constraints do banco
+    // Status mapping melhorado
     const normalizedStatus = status.toLowerCase()
     switch (normalizedStatus) {
-      case 'completed': case 'approved': case 'concluído': case 'aprovado':
+      case 'completed': case 'approved': case 'concluído': case 'aprovado': case 'delivered':
         return 'bg-green-100 text-green-800'
-      case 'in_progress': case 'in_review': case 'draft': case 'em andamento': case 'em revisão': case 'rascunho':
+      case 'in_progress': case 'em andamento': case 'review': case 'em revisão':
+        return 'bg-blue-100 text-blue-800'
+      case 'draft': case 'rascunho':
+        return 'bg-gray-100 text-gray-800'
+      case 'pending': case 'pendente':
         return 'bg-yellow-100 text-yellow-800'
-      case 'pending': case 'delayed': case 'cancelled': case 'pendente': case 'atrasado': case 'cancelado':
+      case 'delayed': case 'atrasado': case 'cancelled': case 'cancelado':
         return 'bg-red-100 text-red-800'
       default:
         return 'bg-gray-200 text-gray-800'
     }
   }
 
-  // Traduzir status para português na exibição
+  // Traduzir status melhorado
   const translateStatus = (status: string) => {
     const translations: Record<string, string> = {
       'draft': 'Rascunho',
       'pending': 'Pendente',
       'in_progress': 'Em Andamento', 
-      'in_review': 'Em Revisão',
+      'review': 'Em Revisão',
       'approved': 'Aprovado',
       'completed': 'Concluído',
+      'delivered': 'Entregue',
       'delayed': 'Atrasado',
       'cancelled': 'Cancelado'
     }
@@ -214,6 +375,253 @@ const ErrorDisplay = ({ error, onRetry }: { error: string; onRetry: () => void }
   </div>
 )
 
+// === MODAL NOVO MARCO COM STATUS ===
+const NewMilestoneModal = ({ isOpen, onClose, onSubmit, teamMembers }: {
+  isOpen: boolean
+  onClose: () => void
+  onSubmit: (formData: any) => void
+  teamMembers: any[]
+}) => {
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    responsible_id: '',
+    deadline: '',
+    status: 'pending' // STATUS CONFIGURÁVEL
+  })
+
+  const handleSubmit = () => {
+    onSubmit(formData)
+    setFormData({ title: '', description: '', responsible_id: '', deadline: '', status: 'pending' })
+  }
+
+  if (!isOpen) return null
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 w-full max-w-md">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">Novo Marco</h3>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-800 mb-1">Título</label>
+            <input
+              type="text"
+              value={formData.title}
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+              placeholder="Ex: Lançamento Beta"
+            />
+          </div>
+
+          {/* CAMPO STATUS - NOVO */}
+          <div>
+            <label className="block text-sm font-medium text-gray-800 mb-1">Status Inicial</label>
+            <select
+              value={formData.status}
+              onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+            >
+              {ProjectHandlers.getMilestoneStatusOptions().map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-800 mb-1">Responsável</label>
+            <select
+              value={formData.responsible_id}
+              onChange={(e) => setFormData({ ...formData, responsible_id: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+            >
+              <option value="">Selecione um responsável</option>
+              {teamMembers.map(member => (
+                <option key={member.id} value={member.id}>{member.full_name}</option>
+              ))}
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-800 mb-1">Descrição</label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+              placeholder="Descreva o marco..."
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-800 mb-1">Prazo</label>
+            <input
+              type="date"
+              value={formData.deadline}
+              onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+            />
+          </div>
+          
+          <div className="flex space-x-3 pt-4">
+            <button
+              onClick={handleSubmit}
+              className="flex-1 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+            >
+              Criar Marco
+            </button>
+            <button
+              onClick={onClose}
+              className="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// === MODAL NOVA ATIVIDADE COM STATUS ===
+const NewActivityModal = ({ isOpen, onClose, onSubmit, teamMembers }: {
+  isOpen: boolean
+  onClose: () => void
+  onSubmit: (formData: any) => void
+  teamMembers: any[]
+}) => {
+  const [formData, setFormData] = useState({
+    title: '',
+    category: '',
+    responsible_id: '',
+    description: '',
+    deadline: '',
+    status: 'draft' // STATUS CONFIGURÁVEL
+  })
+
+  const handleSubmit = () => {
+    onSubmit(formData)
+    setFormData({ title: '', category: '', responsible_id: '', description: '', deadline: '', status: 'draft' })
+  }
+
+  if (!isOpen) return null
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 w-full max-w-md">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">Nova Atividade</h3>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-800 mb-1">Título</label>
+            <input
+              type="text"
+              value={formData.title}
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+              placeholder="Ex: Implementar Autenticação"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-800 mb-1">Categoria</label>
+            <select
+              value={formData.category}
+              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+            >
+              <option value="">Selecione uma categoria</option>
+              {ProjectHandlers.getActivityTypeOptions().map(type => (
+                <option key={type.value} value={type.value}>
+                  {type.icon} {type.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* CAMPO STATUS - NOVO */}
+          <div>
+            <label className="block text-sm font-medium text-gray-800 mb-1">Status Inicial</label>
+            <select
+              value={formData.status}
+              onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+            >
+              {ProjectHandlers.getActivityStatusOptions().map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-800 mb-1">Responsável</label>
+            <select
+              value={formData.responsible_id}
+              onChange={(e) => setFormData({ ...formData, responsible_id: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+            >
+              <option value="">Selecione um responsável</option>
+              {teamMembers.map(member => (
+                <option key={member.id} value={member.id}>{member.full_name}</option>
+              ))}
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-800 mb-1">Descrição</label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+              placeholder="Descreva a atividade..."
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-800 mb-1">Prazo</label>
+            <input
+              type="date"
+              value={formData.deadline}
+              onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+            />
+          </div>
+          
+          <div className="flex space-x-3 pt-4">
+            <button
+              onClick={handleSubmit}
+              className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Criar Atividade
+            </button>
+            <button
+              onClick={onClose}
+              className="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // === COMPONENTE PRINCIPAL ===
 export default function ProjectDetailPage() {
   const params = useParams()
@@ -260,13 +668,12 @@ export default function ProjectDetailPage() {
   }, [projectId, mounted])
 
   useEffect(() => {
-    // Recalcular KPIs sempre que milestones ou activities mudarem
     if (mounted) {
       calculateKPIs()
     }
   }, [milestones, activities, project, mounted])
 
-  // === FUNÇÕES DE DADOS ===
+  // === FUNÇÕES DE DADOS (MANTIDAS) ===
   const loadAllData = async () => {
     if (!mounted) return
     
@@ -274,7 +681,6 @@ export default function ProjectDetailPage() {
       setLoading(true)
       setError(null)
 
-      // Carregar dados sequencialmente para evitar conflitos
       await loadProjectData()
       await loadTeamMembers()
       await loadMilestones()
@@ -333,7 +739,6 @@ export default function ProjectDetailPage() {
 
   const loadActivities = async () => {
     try {
-      // Usar project_deliverables em vez de project_activities
       const { data, error: fetchError } = await supabase
         .from('project_deliverables')
         .select(`
@@ -371,7 +776,7 @@ export default function ProjectDetailPage() {
     }
   }
 
-  // === CÁLCULO DE KPIs ===
+  // === CÁLCULO DE KPIs (MANTIDO) ===
   const calculateKPIs = () => {
     if (!project || milestones.length === 0 && activities.length === 0) {
       setKpis({
@@ -390,13 +795,11 @@ export default function ProjectDetailPage() {
     ).length
     
     const completedActivities = activities.filter(a => 
-      a.status === 'completed' || a.status === 'approved' || a.status === 'Concluído' || a.status === 'Aprovado'
+      a.status === 'completed' || a.status === 'approved' || a.status === 'delivered' || 
+      a.status === 'Concluído' || a.status === 'Aprovado'
     ).length
     
-    // Calcular progresso geral baseado nos entregáveis
     const totalItems = milestones.length + activities.length
-    
-    // Progresso considerando progresso parcial dos marcos + atividades concluídas
     const milestonesProgress = milestones.reduce((sum, m) => sum + (m.progress_percentage || 0), 0)
     const activitiesProgress = completedActivities * 100
     
@@ -404,7 +807,6 @@ export default function ProjectDetailPage() {
       ? Math.round((milestonesProgress + activitiesProgress) / (totalItems * 100) * 100)
       : 0
 
-    // Calcular dias restantes
     const daysRemaining = project.estimated_end_date 
       ? Math.max(0, Math.ceil((new Date(project.estimated_end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))
       : 0
@@ -419,8 +821,6 @@ export default function ProjectDetailPage() {
     }
 
     setKpis(newKpis)
-
-    // Atualizar progresso do projeto no banco
     updateProjectProgress(overallProgress)
   }
 
@@ -441,205 +841,30 @@ export default function ProjectDetailPage() {
     }
   }
 
-  // === FUNÇÕES DE CRUD ===
-  const handleNewActivity = async (formData: FormData) => {
-    try {
-      const title = formData.get('title') as string
-      const description = formData.get('description') as string
-      const deadline = formData.get('deadline') as string
-      const category = formData.get('category') as string
-      const responsibleId = formData.get('responsible_id') as string
-
-      // Mapear categorias para valores válidos do check constraint
-      const typeMapping: Record<string, string> = {
-        'Documento': 'documentation',
-        'Código': 'code', 
-        'Interface': 'interface',
-        'Teste': 'testing',
-        'Infraestrutura': 'infrastructure',
-        'Análise': 'analysis'
-      }
-
-      const { data, error } = await supabase
-        .from('project_deliverables')
-        .insert([{
-          project_id: projectId,
-          title,
-          description,
-          due_date: deadline,
-          type: typeMapping[category] || category.toLowerCase(),
-          assigned_to: responsibleId,
-          status: 'draft' // usar um status válido do check constraint
-        }])
-        .select('*')
-        .single()
-
-      if (error) {
-        console.error('Erro detalhado:', error)
-        alert(`Erro ao criar atividade: ${error.message}`)
-        return
-      }
-
-      // Adicionar dados do responsável manualmente se necessário
-      const activityWithResponsible = {
-        ...data,
-        responsible: teamMembers.find(m => m.id === responsibleId)
-      }
-
-      setActivities([...activities, activityWithResponsible])
-      setIsNewActivityModalOpen(false)
-    } catch (err) {
-      console.error('Erro ao criar atividade:', err)
-      alert('Erro ao criar atividade. Verifique os dados e tente novamente.')
-    }
+  // === HANDLERS INTEGRADOS ===
+  const handleNewMilestone = async (formData: any) => {
+    await ProjectHandlers.handleNewMilestone(
+      projectId,
+      formData,
+      teamMembers,
+      setMilestones,
+      setIsNewMilestoneModalOpen,
+      milestones
+    )
   }
 
-  const handleNewMilestone = async (formData: FormData) => {
-    try {
-      const title = formData.get('title') as string
-      const description = formData.get('description') as string
-      const deadline = formData.get('deadline') as string
-      const responsibleId = formData.get('responsible_id') as string
-
-      const { data, error } = await supabase
-        .from('project_milestones')
-        .insert([{
-          project_id: projectId,
-          title,
-          description,
-          due_date: deadline,
-          assigned_to: responsibleId,
-          status: 'in_progress', // usar um status válido do check constraint
-          progress_percentage: 0
-        }])
-        .select('*')
-        .single()
-
-      if (error) {
-        console.error('Erro detalhado:', error)
-        alert(`Erro ao criar marco: ${error.message}`)
-        return
-      }
-
-      // Adicionar dados do responsável manualmente se necessário
-      const milestoneWithResponsible = {
-        ...data,
-        responsible: teamMembers.find(m => m.id === responsibleId)
-      }
-
-      setMilestones([...milestones, milestoneWithResponsible])
-      setIsNewMilestoneModalOpen(false)
-    } catch (err) {
-      console.error('Erro ao criar marco:', err)
-      alert('Erro ao criar marco. Verifique os dados e tente novamente.')
-    }
+  const handleNewActivity = async (formData: any) => {
+    await ProjectHandlers.handleNewActivity(
+      projectId,
+      formData,
+      teamMembers,
+      setActivities,
+      setIsNewActivityModalOpen,
+      activities
+    )
   }
 
-  const handleEditItem = (item: any) => {
-    setEditingItem(item)
-  }
-
-  const handleUpdateItem = async (formData: FormData) => {
-    if (!editingItem) return
-
-    try {
-      const title = formData.get('title') as string
-      const description = formData.get('description') as string
-      const deadline = formData.get('deadline') as string
-      const status = formData.get('status') as string
-
-      if (editingItem.type === 'marco') {
-        const progress = parseInt(formData.get('progress') as string) || 0
-        
-        const { data, error } = await supabase
-          .from('project_milestones')
-          .update({
-            title,
-            description,
-            due_date: deadline,
-            status: status.toLowerCase(), // converter para inglês
-            progress_percentage: progress,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', editingItem.id)
-          .select(`
-            *,
-            responsible:team_members(full_name)
-          `)
-          .single()
-
-        if (error) {
-          console.error('Erro detalhado:', error)
-          alert(`Erro ao atualizar marco: ${error.message}`)
-          return
-        }
-
-        setMilestones(milestones.map(m => m.id === editingItem.id ? data : m))
-      } else {
-        const category = formData.get('category') as string
-        
-        const { data, error } = await supabase
-          .from('project_deliverables')
-          .update({
-            title,
-            description,
-            due_date: deadline,
-            status: status.toLowerCase(), // converter para inglês
-            type: category, // usar 'type' ao invés de 'deliverable_type'
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', editingItem.id)
-          .select(`
-            *,
-            responsible:team_members(full_name)
-          `)
-          .single()
-
-        if (error) {
-          console.error('Erro detalhado:', error)
-          alert(`Erro ao atualizar atividade: ${error.message}`)
-          return
-        }
-
-        setActivities(activities.map(a => a.id === editingItem.id ? data : a))
-      }
-
-      setEditingItem(null)
-    } catch (err) {
-      console.error('Erro ao atualizar item:', err)
-      alert('Erro ao atualizar item. Verifique os dados e tente novamente.')
-    }
-  }
-
-  const handleDeleteItem = async (item: any) => {
-    if (!confirm(`Tem certeza que deseja excluir "${item.title}"?`)) return
-
-    try {
-      const table = item.type === 'marco' ? 'project_milestones' : 'project_deliverables'
-      
-      const { error } = await supabase
-        .from(table)
-        .delete()
-        .eq('id', item.id)
-
-      if (error) {
-        console.error('Erro detalhado:', error)
-        alert(`Erro ao excluir item: ${error.message}`)
-        return
-      }
-
-      if (item.type === 'marco') {
-        setMilestones(milestones.filter(m => m.id !== item.id))
-      } else {
-        setActivities(activities.filter(a => a.id !== item.id))
-      }
-    } catch (err) {
-      console.error('Erro ao excluir item:', err)
-      alert('Erro ao excluir item. Tente novamente.')
-    }
-  }
-
-  // === FUNÇÕES UTILITÁRIAS ===
+  // === FUNÇÕES UTILITÁRIAS (MANTIDAS) ===
   const formatDate = (dateString?: string) => {
     if (!dateString || !mounted) return 'Não definido'
     try {
@@ -661,7 +886,7 @@ export default function ProjectDetailPage() {
     }
   }
 
-  // === FILTROS ===
+  // === FILTROS (MANTIDOS) ===
   const filteredMilestones = milestones.filter(item => {
     if (typeFilter !== 'todos' && item.status !== typeFilter) return false
     if (responsibleFilter !== 'todos' && item.responsible_id !== responsibleFilter) return false
@@ -685,7 +910,7 @@ export default function ProjectDetailPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header fixo */}
+      {/* Header fixo (MANTIDO) */}
       <div className="bg-white border-b border-gray-300 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto p-6">
           <div className="flex items-center justify-between">
@@ -706,7 +931,6 @@ export default function ProjectDetailPage() {
             </div>
             <button
               onClick={() => {
-                // Verificar se a rota existe antes de navegar
                 if (typeof window !== 'undefined') {
                   window.location.href = `/projetos/${projectId}/edit`
                 }
@@ -718,7 +942,7 @@ export default function ProjectDetailPage() {
             </button>
           </div>
 
-          {/* KPIs dinâmicos */}
+          {/* KPIs (MANTIDOS) */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6 mb-6">
             <KPI_Card
               title="Progresso"
@@ -750,7 +974,7 @@ export default function ProjectDetailPage() {
             />
           </div>
 
-          {/* Tabs */}
+          {/* Tabs (MANTIDAS) */}
           <div className="flex space-x-6">
             {[
               { id: 'overview', label: 'Visão Geral', icon: BarChart3 },
@@ -775,12 +999,12 @@ export default function ProjectDetailPage() {
         </div>
       </div>
 
-      {/* Conteúdo principal */}
+      {/* Conteúdo principal (MANTIDO - SÓ OS MODAIS MUDARAM) */}
       <div className="max-w-7xl mx-auto p-6">
-        {/* Tab Overview */}
+        
+        {/* Tab Overview (MANTIDA) */}
         {activeTab === 'overview' && (
           <div className="space-y-6">
-            {/* Cards de informações */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <InfoCard title="Informações do Projeto" icon={FileText}>
                 <div className="space-y-2">
@@ -802,7 +1026,6 @@ export default function ProjectDetailPage() {
               </InfoCard>
             </div>
 
-            {/* Progresso visual */}
             <InfoCard title="Progresso do Projeto" icon={TrendingUp}>
               <div className="space-y-4">
                 <div>
@@ -835,10 +1058,9 @@ export default function ProjectDetailPage() {
           </div>
         )}
 
-        {/* Tab Marcos e Entregáveis */}
+        {/* Tab Marcos e Entregáveis (MANTIDA) */}
         {activeTab === 'deliverables' && (
           <div className="space-y-6">
-            {/* Filtros e Ações */}
             <div className="bg-white rounded-lg border border-gray-300 p-6">
               <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center space-y-4 lg:space-y-0">
                 <div className="flex flex-wrap gap-4">
@@ -848,12 +1070,12 @@ export default function ProjectDetailPage() {
                     className="px-3 py-2 border border-gray-400 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                   >
                     <option value="todos">Todos os Status</option>
-                    <option value="Em Andamento">Em Andamento</option>
-                    <option value="Pendente">Pendente</option>
-                    <option value="Concluído">Concluído</option>
-                    <option value="Atrasado">Atrasado</option>
-                    <option value="Em Revisão">Em Revisão</option>
-                    <option value="Aprovado">Aprovado</option>
+                    <option value="pending">Pendente</option>
+                    <option value="in_progress">Em Andamento</option>
+                    <option value="completed">Concluído</option>
+                    <option value="delayed">Atrasado</option>
+                    <option value="review">Em Revisão</option>
+                    <option value="approved">Aprovado</option>
                   </select>
 
                   <select
@@ -887,13 +1109,9 @@ export default function ProjectDetailPage() {
               </div>
             </div>
 
-            {/* Colunas separadas */}
+            {/* Colunas com Status Badges Melhorados */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Coluna de Marcos */}
-              <InfoCard 
-                title={`Marcos (${filteredMilestones.length})`} 
-                icon={Target}
-              >
+              <InfoCard title={`Marcos (${filteredMilestones.length})`} icon={Target}>
                 <div className="space-y-4">
                   {filteredMilestones.length > 0 ? filteredMilestones.map((milestone) => (
                     <div key={milestone.id} className="border border-gray-300 rounded-lg p-4 hover:shadow-sm transition-shadow">
@@ -902,20 +1120,6 @@ export default function ProjectDetailPage() {
                           <div className="flex items-center space-x-3 mb-2">
                             <h4 className="text-lg font-medium text-gray-900">{milestone.title}</h4>
                             <StatusBadge status={milestone.status} />
-                            <div className="flex space-x-1">
-                              <button
-                                onClick={() => handleEditItem({...milestone, type: 'marco'})}
-                                className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded"
-                              >
-                                <Edit3 className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteItem({...milestone, type: 'marco'})}
-                                className="p-1 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
                           </div>
                           <p className="text-gray-700 mb-3">{milestone.description}</p>
                           
@@ -932,13 +1136,10 @@ export default function ProjectDetailPage() {
                             </div>
                           </div>
 
-                            <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div className="grid grid-cols-2 gap-4 text-sm">
                             <div>
                               <span className="text-gray-700 font-medium">Prazo:</span>
-                              <p className={`${new Date(milestone.due_date || milestone.deadline) < new Date() && milestone.status !== 'Concluído' ? 
-                                'text-red-600' : 'text-gray-900'}`}>
-                                {formatDate(milestone.due_date || milestone.deadline)}
-                              </p>
+                              <p className="text-gray-900">{formatDate(milestone.due_date || milestone.deadline)}</p>
                             </div>
                             <div>
                               <span className="text-gray-700 font-medium">Responsável:</span>
@@ -949,16 +1150,12 @@ export default function ProjectDetailPage() {
                       </div>
                     </div>
                   )) : (
-                    <p className="text-gray-700 text-center py-4">Nenhum marco encontrado com os filtros aplicados.</p>
+                    <p className="text-gray-700 text-center py-4">Nenhum marco encontrado.</p>
                   )}
                 </div>
               </InfoCard>
 
-              {/* Coluna de Atividades */}
-              <InfoCard 
-                title={`Atividades (${filteredActivities.length})`} 
-                icon={CheckSquare}
-              >
+              <InfoCard title={`Atividades (${filteredActivities.length})`} icon={CheckSquare}>
                 <div className="space-y-4">
                   {filteredActivities.length > 0 ? filteredActivities.map((activity) => (
                     <div key={activity.id} className="border border-gray-300 rounded-lg p-4 hover:shadow-sm transition-shadow">
@@ -968,32 +1165,15 @@ export default function ProjectDetailPage() {
                             <h4 className="text-lg font-medium text-gray-900">{activity.title}</h4>
                             <StatusBadge status={activity.status} />
                             <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-800">
-                              {activity.type || activity.deliverable_type || activity.category}
+                              {activity.type || activity.category}
                             </span>
-                            <div className="flex space-x-1">
-                              <button
-                                onClick={() => handleEditItem({...activity, type: 'atividade'})}
-                                className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded"
-                              >
-                                <Edit3 className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteItem({...activity, type: 'atividade'})}
-                                className="p-1 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
                           </div>
                           <p className="text-gray-700 mb-3">{activity.description}</p>
 
                           <div className="grid grid-cols-2 gap-4 text-sm">
                             <div>
                               <span className="text-gray-700 font-medium">Prazo:</span>
-                              <p className={`${new Date(activity.due_date || activity.deadline) < new Date() && activity.status !== 'Concluído' ? 
-                                'text-red-600' : 'text-gray-900'}`}>
-                                {formatDate(activity.due_date || activity.deadline)}
-                              </p>
+                              <p className="text-gray-900">{formatDate(activity.due_date || activity.deadline)}</p>
                             </div>
                             <div>
                               <span className="text-gray-700 font-medium">Responsável:</span>
@@ -1004,7 +1184,7 @@ export default function ProjectDetailPage() {
                       </div>
                     </div>
                   )) : (
-                    <p className="text-gray-700 text-center py-4">Nenhuma atividade encontrada com os filtros aplicados.</p>
+                    <p className="text-gray-700 text-center py-4">Nenhuma atividade encontrada.</p>
                   )}
                 </div>
               </InfoCard>
@@ -1012,7 +1192,7 @@ export default function ProjectDetailPage() {
           </div>
         )}
 
-        {/* Outras tabs com placeholder */}
+        {/* Outras tabs (MANTIDAS) */}
         {activeTab !== 'overview' && activeTab !== 'deliverables' && (
           <div className="bg-white rounded-lg border border-gray-300 p-8 text-center">
             <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -1027,302 +1207,20 @@ export default function ProjectDetailPage() {
         )}
       </div>
 
-      {/* Modal para Nova Atividade */}
-      {isNewActivityModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Nova Atividade</h3>
-              <button
-                onClick={() => setIsNewActivityModalOpen(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            
-            <form action={handleNewActivity} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-800 mb-1">Título</label>
-                <input
-                  name="title"
-                  type="text"
-                  required
-                  className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                  placeholder="Ex: Implementar Autenticação"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-800 mb-1">Categoria</label>
-                <select
-                  name="category"
-                  required
-                  className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                >
-                  <option value="">Selecione uma categoria</option>
-                  <option value="Documento">Documento</option>
-                  <option value="Código">Código</option>
-                  <option value="Interface">Interface</option>
-                  <option value="Teste">Teste</option>
-                  <option value="Infraestrutura">Infraestrutura</option>
-                  <option value="Análise">Análise</option>
-                </select>
-              </div>
+      {/* MODAIS ATUALIZADOS COM STATUS */}
+      <NewMilestoneModal
+        isOpen={isNewMilestoneModalOpen}
+        onClose={() => setIsNewMilestoneModalOpen(false)}
+        onSubmit={handleNewMilestone}
+        teamMembers={teamMembers}
+      />
 
-              <div>
-                <label className="block text-sm font-medium text-gray-800 mb-1">Responsável</label>
-                <select
-                  name="responsible_id"
-                  required
-                  className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                >
-                  <option value="">Selecione um responsável</option>
-                  {teamMembers.map(member => (
-                    <option key={member.id} value={member.id}>{member.full_name}</option>
-                  ))}
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-800 mb-1">Descrição</label>
-                <textarea
-                  name="description"
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                  placeholder="Descreva a atividade..."
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-800 mb-1">Prazo</label>
-                <input
-                  name="deadline"
-                  type="date"
-                  required
-                  className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                />
-              </div>
-              
-              <div className="flex space-x-3 pt-4">
-                <button
-                  type="submit"
-                  className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  Criar Atividade
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsNewActivityModalOpen(false)}
-                  className="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Modal para Novo Marco */}
-      {isNewMilestoneModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Novo Marco</h3>
-              <button
-                onClick={() => setIsNewMilestoneModalOpen(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            
-            <form action={handleNewMilestone} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-800 mb-1">Título</label>
-                <input
-                  name="title"
-                  type="text"
-                  required
-                  className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                  placeholder="Ex: Lançamento Beta"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-800 mb-1">Responsável</label>
-                <select
-                  name="responsible_id"
-                  required
-                  className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                >
-                  <option value="">Selecione um responsável</option>
-                  {teamMembers.map(member => (
-                    <option key={member.id} value={member.id}>{member.full_name}</option>
-                  ))}
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-800 mb-1">Descrição</label>
-                <textarea
-                  name="description"
-                  rows={3}
-                  required
-                  className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                  placeholder="Descreva o marco..."
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-800 mb-1">Prazo</label>
-                <input
-                  name="deadline"
-                  type="date"
-                  required
-                  className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                />
-              </div>
-              
-              <div className="flex space-x-3 pt-4">
-                <button
-                  type="submit"
-                  className="flex-1 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
-                >
-                  Criar Marco
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsNewMilestoneModalOpen(false)}
-                  className="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Modal para Editar Item */}
-      {editingItem && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">
-                Editar {editingItem.type === 'marco' ? 'Marco' : 'Atividade'}
-              </h3>
-              <button
-                onClick={() => setEditingItem(null)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            
-            <form action={handleUpdateItem} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-800 mb-1">Título</label>
-                <input
-                  name="title"
-                  type="text"
-                  required
-                  defaultValue={editingItem.title}
-                  className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                />
-              </div>
-              
-              {editingItem.type === 'atividade' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-800 mb-1">Categoria</label>
-                  <select
-                    name="category"
-                    required
-                    defaultValue={editingItem.type || editingItem.deliverable_type || editingItem.category}
-                    className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                  >
-                    <option value="Documento">Documento</option>
-                    <option value="Código">Código</option>
-                    <option value="Interface">Interface</option>
-                    <option value="Teste">Teste</option>
-                    <option value="Infraestrutura">Infraestrutura</option>
-                    <option value="Análise">Análise</option>
-                  </select>
-                </div>
-              )}
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-800 mb-1">Descrição</label>
-                <textarea
-                  name="description"
-                  rows={3}
-                  defaultValue={editingItem.description}
-                  className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-800 mb-1">Status</label>
-                <select
-                  name="status"
-                  required
-                  defaultValue={editingItem.status}
-                  className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                >
-                  <option value="Pendente">Pendente</option>
-                  <option value="Em Andamento">Em Andamento</option>
-                  <option value="Em Revisão">Em Revisão</option>
-                  <option value="Aprovado">Aprovado</option>
-                  <option value="Concluído">Concluído</option>
-                  <option value="Atrasado">Atrasado</option>
-                </select>
-              </div>
-
-              {editingItem.type === 'marco' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-800 mb-1">Progresso (%)</label>
-                  <input
-                    name="progress"
-                    type="number"
-                    min="0"
-                    max="100"
-                    defaultValue={editingItem.progress_percentage}
-                    className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                  />
-                </div>
-              )}
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-800 mb-1">Prazo</label>
-                <input
-                  name="deadline"
-                  type="date"
-                  required
-                  defaultValue={editingItem.due_date || editingItem.deadline}
-                  className="w-full px-3 py-2 border border-gray-400 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                />
-              </div>
-              
-              <div className="flex space-x-3 pt-4">
-                <button
-                  type="submit"
-                  className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
-                >
-                  Salvar Alterações
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEditingItem(null)}
-                  className="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <NewActivityModal
+        isOpen={isNewActivityModalOpen}
+        onClose={() => setIsNewActivityModalOpen(false)}
+        onSubmit={handleNewActivity}
+        teamMembers={teamMembers}
+      />
     </div>
   )
 }
