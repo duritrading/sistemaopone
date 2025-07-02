@@ -36,18 +36,16 @@ interface TeamMember {
   id: string
   full_name: string
   email: string
-  primary_specialization: string
+  primary_specialization?: string
 }
 
 interface CommunicationTabProps {
   projectId: string
-  teamMembers: TeamMember[]
+  teamMembers?: TeamMember[]
   loading?: boolean
 }
 
 // === MOCK DATA (comentado para integração real) ===
-// const mockCommunications: Communication[] = []
-
 const mockCommunications: Communication[] = []
 
 // === COMPONENTES ===
@@ -179,6 +177,17 @@ const CommunicationModal = ({
   console.log('CommunicationModal - teamMembers recebidos:', teamMembers)
   console.log('CommunicationModal - teamMembers length:', teamMembers?.length || 0)
 
+  // Dados simulados para quando não há membros reais
+  const mockTeamMembers = [
+    { id: '1', full_name: 'João Silva', email: 'joao@empresa.com', primary_specialization: 'Backend' },
+    { id: '2', full_name: 'Maria Santos', email: 'maria@empresa.com', primary_specialization: 'Frontend' },
+    { id: '3', full_name: 'Pedro Costa', email: 'pedro@empresa.com', primary_specialization: 'DevOps' },
+    { id: '4', full_name: 'Ana Oliveira', email: 'ana@empresa.com', primary_specialization: 'UX/UI' }
+  ]
+
+  // Usar dados reais se disponíveis, senão usar mock
+  const availableMembers = teamMembers && teamMembers.length > 0 ? teamMembers : mockTeamMembers
+
   useEffect(() => {
     if (communication) {
       setFormData({
@@ -309,7 +318,7 @@ const CommunicationModal = ({
                 Participantes (selecione da equipe)
               </label>
               <div className="border border-gray-300 rounded-md p-3 max-h-32 overflow-y-auto bg-white">
-                {membersToUse.map(member => (
+                {availableMembers.map(member => (
                   <label key={member.id} className="flex items-center space-x-2 mb-2">
                     <input
                       type="checkbox"
@@ -396,27 +405,52 @@ const CommunicationModal = ({
 
 // === COMPONENTE PRINCIPAL ===
 export const CommunicationTab = ({ projectId, teamMembers = [], loading = false }: CommunicationTabProps) => {
-  const [communications, setCommunications] = useState<Communication[]>(mockCommunications)
+  const [communications, setCommunications] = useState<Communication[]>([])
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingCommunication, setEditingCommunication] = useState<Communication | null>(null)
   const [filterType, setFilterType] = useState('Todos os tipos')
+  const [allTeamMembers, setAllTeamMembers] = useState<TeamMember[]>([])
+  const [loadingMembers, setLoadingMembers] = useState(false)
 
-  // Debug: Log teamMembers para verificar se está chegando
-  React.useEffect(() => {
-    console.log('CommunicationTab - teamMembers recebidos:', teamMembers)
-    console.log('CommunicationTab - teamMembers length:', teamMembers?.length || 0)
+  // Buscar todos os membros da equipe se não foram fornecidos
+  useEffect(() => {
+    const fetchTeamMembers = async () => {
+      if (teamMembers && teamMembers.length > 0) {
+        setAllTeamMembers(teamMembers)
+        return
+      }
+
+      setLoadingMembers(true)
+      try {
+        // Simular busca dos membros via Supabase
+        // const { data } = await supabase.from('team_members').select('*').eq('is_active', true)
+        
+        // Para demonstração, usar dados simulados
+        const mockMembers = [
+          { id: '1', full_name: 'João Silva', email: 'joao@empresa.com', primary_specialization: 'Backend' },
+          { id: '2', full_name: 'Maria Santos', email: 'maria@empresa.com', primary_specialization: 'Frontend' },
+          { id: '3', full_name: 'Pedro Costa', email: 'pedro@empresa.com', primary_specialization: 'DevOps' },
+          { id: '4', full_name: 'Ana Oliveira', email: 'ana@empresa.com', primary_specialization: 'UX/UI' },
+          { id: '5', full_name: 'Carlos Lima', email: 'carlos@empresa.com', primary_specialization: 'QA' }
+        ]
+        
+        setAllTeamMembers(mockMembers)
+      } catch (error) {
+        console.error('Erro ao buscar membros da equipe:', error)
+        setAllTeamMembers([])
+      } finally {
+        setLoadingMembers(false)
+      }
+    }
+
+    fetchTeamMembers()
   }, [teamMembers])
 
-  // Dados simulados para demonstração quando teamMembers estiver vazio
-  const mockTeamMembers = [
-    { id: '1', full_name: 'João Silva', email: 'joao@empresa.com', primary_specialization: 'Backend' },
-    { id: '2', full_name: 'Maria Santos', email: 'maria@empresa.com', primary_specialization: 'Frontend' },
-    { id: '3', full_name: 'Pedro Costa', email: 'pedro@empresa.com', primary_specialization: 'DevOps' },
-    { id: '4', full_name: 'Ana Oliveira', email: 'ana@empresa.com', primary_specialization: 'UX/UI' }
-  ]
-
-  // Usar dados reais se disponíveis, senão usar mock
-  const membersToUse = teamMembers && teamMembers.length > 0 ? teamMembers : mockTeamMembers
+  // Debug: Log teamMembers para verificar
+  useEffect(() => {
+    console.log('CommunicationTab - teamMembers prop:', teamMembers)
+    console.log('CommunicationTab - allTeamMembers state:', allTeamMembers)
+  }, [teamMembers, allTeamMembers])
 
   // Filtrar comunicações
   const filteredCommunications = communications.filter(comm => 
