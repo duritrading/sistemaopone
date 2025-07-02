@@ -422,10 +422,33 @@ export const CommunicationTab = ({ projectId, teamMembers = [], loading = false 
 
       setLoadingMembers(true)
       try {
-        // Simular busca dos membros via Supabase
-        // const { data } = await supabase.from('team_members').select('*').eq('is_active', true)
+        // Criar instância do Supabase
+        const supabaseUrl = 'https://your-project.supabase.co' // Substitua pela sua URL
+        const supabaseAnonKey = 'your-anon-key' // Substitua pela sua chave
         
-        // Para demonstração, usar dados simulados
+        // Para o ambiente de demonstração, vamos simular a busca real
+        // Em produção, descomente as linhas abaixo e configure as variáveis
+        /*
+        const { createClient } = require('@supabase/supabase-js')
+        const supabase = createClient(supabaseUrl, supabaseAnonKey)
+        
+        const { data, error } = await supabase
+          .from('team_members')
+          .select('id, full_name, email, primary_specialization')
+          .eq('is_active', true)
+          .order('full_name')
+        
+        if (error) {
+          console.error('Erro ao buscar membros da equipe:', error)
+          throw error
+        }
+
+        console.log('Membros encontrados no Supabase:', data)
+        setAllTeamMembers(data || [])
+        */
+        
+        // Simulação de dados reais para demonstração
+        console.log('Simulando busca de membros da equipe...')
         const mockMembers = [
           { id: '1', full_name: 'João Silva', email: 'joao@empresa.com', primary_specialization: 'Backend' },
           { id: '2', full_name: 'Maria Santos', email: 'maria@empresa.com', primary_specialization: 'Frontend' },
@@ -435,9 +458,17 @@ export const CommunicationTab = ({ projectId, teamMembers = [], loading = false 
         ]
         
         setAllTeamMembers(mockMembers)
+        
       } catch (error) {
         console.error('Erro ao buscar membros da equipe:', error)
-        setAllTeamMembers([])
+        
+        // Fallback para dados simulados em caso de erro
+        const mockMembers = [
+          { id: '1', full_name: 'João Silva', email: 'joao@empresa.com', primary_specialization: 'Backend' },
+          { id: '2', full_name: 'Maria Santos', email: 'maria@empresa.com', primary_specialization: 'Frontend' }
+        ]
+        
+        setAllTeamMembers(mockMembers)
       } finally {
         setLoadingMembers(false)
       }
