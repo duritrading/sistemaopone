@@ -259,9 +259,10 @@ const CommunicationModal = ({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-hidden">
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 flex-shrink-0">
           <h2 className="text-xl font-semibold text-gray-900">
             {communication ? 'Editar Comunicação' : 'Nova Comunicação'}
           </h2>
@@ -270,8 +271,8 @@ const CommunicationModal = ({
           </button>
         </div>
 
-        <div className="flex flex-col h-full">
-          <div className="p-6 space-y-4 overflow-y-auto">
+        {/* Content - Scrollable */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-4">
             
             {/* Tipo e Data */}
             <div className="grid grid-cols-2 gap-4">
@@ -306,7 +307,7 @@ const CommunicationModal = ({
                 type="text"
                 value={formData.title}
                 onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Ex: Reunião de alinhamento do projeto"
               />
             </div>
@@ -388,27 +389,26 @@ const CommunicationModal = ({
                 <option value="positivo">Positivo</option>
               </select>
             </div>
-          </div>
+        </div>
 
-          {/* Footer com botões */}
-          <div className="flex justify-end space-x-3 p-6 border-t border-gray-200">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
-              disabled={isSubmitting}
-            >
-              Cancelar
-            </button>
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={isSubmitting || !formData.title.trim() || !formData.content.trim()}
-              className="px-6 py-2 bg-gray-900 text-white rounded-md hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {isSubmitting ? 'Salvando...' : 'Salvar'}
-            </button>
-          </div>
+        {/* Footer - Fixed at bottom */}
+        <div className="flex justify-end space-x-3 p-6 border-t border-gray-200 flex-shrink-0 bg-white">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+            disabled={isSubmitting}
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={isSubmitting || !formData.title.trim() || !formData.content.trim()}
+            className="px-6 py-2 bg-gray-900 text-white rounded-md hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {isSubmitting ? 'Salvando...' : 'Salvar'}
+          </button>
         </div>
       </div>
     </div>
