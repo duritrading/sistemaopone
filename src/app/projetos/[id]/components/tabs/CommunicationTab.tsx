@@ -44,22 +44,10 @@ interface CommunicationTabProps {
   teamMembers: TeamMember[]
 }
 
-// === MOCK DATA (substituir por dados reais do Supabase) ===
-const mockCommunications: Communication[] = [
-  {
-    id: '1',
-    project_id: 'proj-1',
-    type: 'Escalação',
-    title: 'Atraso na Entrega de Dados',
-    content: 'Cliente não forneceu os dados necessários no prazo acordado.',
-    participants: ['João Silva', 'Gerente Cliente'],
-    follow_up_actions: ['Definir novo prazo', 'Ajustar cronograma'],
-    sentiment: 'negativo',
-    communication_date: '2024-03-19',
-    created_at: '2024-03-19T10:00:00Z',
-    updated_at: '2024-03-19T10:00:00Z'
-  }
-]
+// === MOCK DATA (comentado para integração real) ===
+// const mockCommunications: Communication[] = []
+
+const mockCommunications: Communication[] = []
 
 // === COMPONENTES ===
 const CommunicationCard = ({ 
@@ -297,24 +285,29 @@ const CommunicationModal = ({
               />
             </div>
 
-            {/* Participantes */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Participantes (selecione da equipe)
               </label>
               <div className="border border-gray-300 rounded-md p-3 max-h-32 overflow-y-auto">
-                {teamMembers.map(member => (
-                  <label key={member.id} className="flex items-center space-x-2 mb-2">
-                    <input
-                      type="checkbox"
-                      checked={formData.participants.includes(member.full_name)}
-                      onChange={() => handleParticipantToggle(member.full_name)}
-                      className="text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-sm text-gray-700">{member.full_name}</span>
-                    <span className="text-xs text-gray-500">({member.primary_specialization})</span>
-                  </label>
-                ))}
+                {teamMembers && teamMembers.length > 0 ? (
+                  teamMembers.map(member => (
+                    <label key={member.id} className="flex items-center space-x-2 mb-2">
+                      <input
+                        type="checkbox"
+                        checked={formData.participants.includes(member.full_name)}
+                        onChange={() => handleParticipantToggle(member.full_name)}
+                        className="text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-sm text-gray-700">{member.full_name}</span>
+                      <span className="text-xs text-gray-500">({member.primary_specialization})</span>
+                    </label>
+                  ))
+                ) : (
+                  <div className="text-sm text-gray-500 py-2">
+                    Nenhum membro da equipe encontrado
+                  </div>
+                )}
               </div>
               <p className="text-xs text-gray-500 mt-1">
                 Selecionados: {formData.participants.join(', ') || 'Nenhum'}
@@ -405,7 +398,9 @@ export const CommunicationTab = ({ projectId, teamMembers }: CommunicationTabPro
     meetings: communications.filter(c => c.type === 'Reunião').length,
     decisions: communications.filter(c => c.type === 'Decisão').length,
     escalations: communications.filter(c => c.type === 'Escalação').length,
-    positivePercent: Math.round((communications.filter(c => c.sentiment === 'positivo').length / communications.length) * 100) || 0
+    positivePercent: communications.length > 0 
+      ? Math.round((communications.filter(c => c.sentiment === 'positivo').length / communications.length) * 100) 
+      : 0
   }
 
   const handleEdit = (communication: Communication) => {
