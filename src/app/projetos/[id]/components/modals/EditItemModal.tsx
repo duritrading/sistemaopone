@@ -2,15 +2,68 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Target, FileText, Calendar, User } from 'lucide-react'
-import { 
-  TeamMember, 
-  Milestone, 
-  Activity,
-  MILESTONE_STATUSES,
-  ACTIVITY_STATUSES,
-  ACTIVITY_TYPES
-} from '../../types/project.types'
+import { X, Target, FileText, Calendar } from 'lucide-react'
+
+// Definindo as constantes diretamente no arquivo para evitar problemas de import
+const MILESTONE_STATUSES = [
+  { value: 'pending', label: 'Pendente', color: 'bg-yellow-100 text-yellow-800' },
+  { value: 'in_progress', label: 'Em Andamento', color: 'bg-blue-100 text-blue-800' },
+  { value: 'completed', label: 'Concluído', color: 'bg-green-100 text-green-800' },
+  { value: 'delayed', label: 'Atrasado', color: 'bg-red-100 text-red-800' },
+  { value: 'cancelled', label: 'Cancelado', color: 'bg-gray-100 text-gray-600' }
+]
+
+const ACTIVITY_STATUSES = [
+  { value: 'draft', label: 'Rascunho', color: 'bg-gray-100 text-gray-800' },
+  { value: 'in_progress', label: 'Em Progresso', color: 'bg-blue-100 text-blue-800' },
+  { value: 'review', label: 'Em Revisão', color: 'bg-yellow-100 text-yellow-800' },
+  { value: 'approved', label: 'Aprovado', color: 'bg-green-100 text-green-800' },
+  { value: 'delivered', label: 'Entregue', color: 'bg-purple-100 text-purple-800' },
+  { value: 'cancelled', label: 'Cancelado', color: 'bg-red-100 text-red-800' }
+]
+
+const ACTIVITY_TYPES = [
+  { value: 'documentation', label: 'Documento', icon: '📄' },
+  { value: 'code', label: 'Código', icon: '💻' },
+  { value: 'interface', label: 'Interface', icon: '🎨' },
+  { value: 'testing', label: 'Teste', icon: '🧪' },
+  { value: 'infrastructure', label: 'Infraestrutura', icon: '⚙️' },
+  { value: 'analysis', label: 'Análise', icon: '📊' }
+]
+
+interface TeamMember {
+  id: string
+  full_name: string
+  email: string
+}
+
+interface BaseItem {
+  id: string
+  title: string
+  description?: string
+  status: string
+  due_date?: string
+  deadline?: string
+  assigned_to?: string
+  responsible_id?: string
+}
+
+interface Milestone extends BaseItem {
+  progress_percentage: number
+  responsible?: { 
+    id?: string
+    full_name: string 
+  }
+}
+
+interface Activity extends BaseItem {
+  type?: string
+  category?: string
+  responsible?: { 
+    id?: string
+    full_name: string 
+  }
+}
 
 interface EditItemModalProps {
   isOpen: boolean
@@ -39,60 +92,91 @@ export const EditItemModal = ({
 
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // DEBUG: Console log para verificar item
+  // Função para resetar o formulário
+  const resetForm = () => {
+    setFormData({
+      title: '',
+      description: '',
+      deadline: '',
+      status: '',
+      category: 'documentation',
+      responsible_id: '',
+      progress: 0
+    })
+  }
+
+  // Effect para carregar dados do item quando modal abre
   useEffect(() => {
-    console.log('EditItemModal - Item received:', item)
-    console.log('EditItemModal - Modal open:', isOpen)
-  }, [item, isOpen])
-
-  // Load form data when item changes - FIXED
-  useEffect(() => {
-    if (item && isOpen) {
-      console.log('Loading form data for item:', item)
-      
-      // Get deadline with proper formatting
-      const deadline = item.due_date || (item as any).deadline || ''
-      const formattedDeadline = deadline ? new Date(deadline).toISOString().split('T')[0] : ''
-      
-      // Get responsible ID
-      const responsibleId = (item as any).assigned_to || (item as any).responsible_id || ''
-      
-      // Get status - handle milestone vs activity defaults
-      const status = item.status || (item.type === 'marco' ? 'pending' : 'draft')
-      
-      // Get category/type for activities
-      const category = (item as Activity).type || (item as Activity).category || 'documentation'
-      
-      // Get progress for milestones
-      const progress = (item as Milestone).progress_percentage || 0
-
-      const newFormData = {
-        title: item.title || '',
-        description: item.description || '',
-        deadline: formattedDeadline,
-        status: status,
-        category: category,
-        responsible_id: responsibleId,
-        progress: progress
-      }
-
-      console.log('Setting form data:', newFormData)
-      setFormData(newFormData)
-    } else if (!isOpen) {
-      // Reset form when modal closes
-      setFormData({
-        title: '',
-        description: '',
-        deadline: '',
-        status: '',
-        category: 'documentation',
-        responsible_id: '',
-        progress: 0
-      })
+    console.log('🔍 EditItemModal useEffect - isOpen:', isOpen, 'item:', item)
+    
+    if (!isOpen) {
+      resetForm()
+      return
     }
-  }, [item, isOpen])
+
+    if (!item) {
+      console.log('❌ Nenhum item fornecido')
+      resetForm()
+      return
+    }
+
+    console.log('📋 Carregando dados do item:', {
+      id: item.id,
+      title: item.title,
+      type: item.type,
+      status: item.status,
+      due_date: item.due_date,
+      deadline: (item as any).deadline,
+      assigned_to: (item as any).assigned_to,
+      responsible_id: (item as any).responsible_id
+    })
+
+    // Processar deadline
+    const rawDeadline = item.due_date || (item as any).deadline
+    let formattedDeadline = ''
+    
+    if (rawDeadline) {
+      try {
+        const date = new Date(rawDeadline)
+        if (!isNaN(date.getTime())) {
+          formattedDeadline = date.toISOString().split('T')[0]
+        }
+      } catch (error) {
+        console.log('❌ Erro ao formatar data:', error)
+      }
+    }
+
+    // Processar responsável
+    const responsibleId = (item as any).assigned_to || (item as any).responsible_id || ''
+
+    // Processar status
+    const isMilestone = item.type === 'marco'
+    const defaultStatus = isMilestone ? 'pending' : 'draft'
+    const status = item.status || defaultStatus
+
+    // Processar categoria (apenas para atividades)
+    const category = (item as Activity).type || (item as Activity).category || 'documentation'
+
+    // Processar progresso (apenas para marcos)
+    const progress = (item as Milestone).progress_percentage || 0
+
+    const newFormData = {
+      title: item.title || '',
+      description: item.description || '',
+      deadline: formattedDeadline,
+      status: status,
+      category: category,
+      responsible_id: responsibleId,
+      progress: progress
+    }
+
+    console.log('✅ Dados do formulário definidos:', newFormData)
+    setFormData(newFormData)
+  }, [isOpen, item])
 
   const handleSubmit = async () => {
+    console.log('📤 Enviando formulário com dados:', formData)
+    
     if (!formData.title.trim()) {
       alert('Título é obrigatório')
       return
@@ -100,23 +184,20 @@ export const EditItemModal = ({
 
     setIsSubmitting(true)
     try {
-      console.log('Submitting form data:', formData)
       await onSubmit(formData)
+      onClose() // Fechar modal após sucesso
     } catch (error) {
-      console.error('Error submitting form:', error)
+      console.error('❌ Erro ao enviar formulário:', error)
+      alert('Erro ao salvar. Tente novamente.')
     } finally {
       setIsSubmitting(false)
     }
   }
 
-  const handleInputChange = (field: string, value: string | number) => {
-    console.log(`Changing ${field} to:`, value)
-    setFormData(prev => ({ ...prev, [field]: value }))
-  }
-
   if (!isOpen || !item) return null
 
   const isMilestone = item.type === 'marco'
+  console.log('🎯 Renderizando modal para:', isMilestone ? 'Marco' : 'Atividade')
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -153,9 +234,9 @@ export const EditItemModal = ({
             <input
               type="text"
               value={formData.title}
-              onChange={(e) => handleInputChange('title', e.target.value)}
+              onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
               placeholder="Digite o título..."
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-gray-900 placeholder-gray-500"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-gray-900 placeholder-gray-500 bg-white"
               disabled={isSubmitting}
             />
           </div>
@@ -167,8 +248,8 @@ export const EditItemModal = ({
             </label>
             <select
               value={formData.status}
-              onChange={(e) => handleInputChange('status', e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-gray-900"
+              onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value }))}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-gray-900 bg-white"
               disabled={isSubmitting}
             >
               {(isMilestone ? MILESTONE_STATUSES : ACTIVITY_STATUSES).map((status) => (
@@ -190,8 +271,8 @@ export const EditItemModal = ({
                 min="0"
                 max="100"
                 value={formData.progress}
-                onChange={(e) => handleInputChange('progress', Number(e.target.value))}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-gray-900"
+                onChange={(e) => setFormData(prev => ({ ...prev, progress: Number(e.target.value) }))}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-gray-900 bg-white"
                 disabled={isSubmitting}
               />
             </div>
@@ -205,13 +286,13 @@ export const EditItemModal = ({
               </label>
               <select
                 value={formData.category}
-                onChange={(e) => handleInputChange('category', e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-gray-900"
+                onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-gray-900 bg-white"
                 disabled={isSubmitting}
               >
                 {ACTIVITY_TYPES.map((type) => (
                   <option key={type.value} value={type.value} className="text-gray-900">
-                    {type.label}
+                    {type.icon} {type.label}
                   </option>
                 ))}
               </select>
@@ -225,8 +306,8 @@ export const EditItemModal = ({
             </label>
             <select
               value={formData.responsible_id}
-              onChange={(e) => handleInputChange('responsible_id', e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-gray-900"
+              onChange={(e) => setFormData(prev => ({ ...prev, responsible_id: e.target.value }))}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-gray-900 bg-white"
               disabled={isSubmitting}
             >
               <option value="" className="text-gray-500">Selecione um responsável</option>
@@ -245,10 +326,10 @@ export const EditItemModal = ({
             </label>
             <textarea
               value={formData.description}
-              onChange={(e) => handleInputChange('description', e.target.value)}
+              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
               placeholder="Descreva..."
               rows={3}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none text-gray-900 placeholder-gray-500"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none text-gray-900 placeholder-gray-500 bg-white"
               disabled={isSubmitting}
             />
           </div>
@@ -262,23 +343,27 @@ export const EditItemModal = ({
               <input
                 type="date"
                 value={formData.deadline}
-                onChange={(e) => handleInputChange('deadline', e.target.value)}
-                className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-gray-900"
+                onChange={(e) => setFormData(prev => ({ ...prev, deadline: e.target.value }))}
+                className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-gray-900 bg-white"
                 disabled={isSubmitting}
               />
               <Calendar className="absolute right-3 top-3.5 w-5 h-5 text-gray-400 pointer-events-none" />
             </div>
           </div>
 
-          {/* Debug Info (remove in production) */}
+          {/* Debug Info (apenas em desenvolvimento) */}
           {process.env.NODE_ENV === 'development' && (
-            <div className="p-3 bg-gray-100 rounded-lg text-xs">
-              <strong>Debug Info:</strong>
-              <pre className="mt-1 text-gray-700">
+            <div className="p-3 bg-gray-100 rounded-lg text-xs overflow-auto max-h-32">
+              <strong className="text-gray-900">Debug Info:</strong>
+              <pre className="mt-1 text-gray-700 whitespace-pre-wrap">
                 {JSON.stringify({ 
                   itemType: item.type,
                   itemId: item.id,
-                  formData 
+                  itemTitle: item.title,
+                  formDataTitle: formData.title,
+                  formDataStatus: formData.status,
+                  formDataDeadline: formData.deadline,
+                  formDataResponsible: formData.responsible_id
                 }, null, 2)}
               </pre>
             </div>
@@ -288,7 +373,7 @@ export const EditItemModal = ({
           <div className="flex space-x-3 pt-4">
             <button
               onClick={handleSubmit}
-              disabled={isSubmitting}
+              disabled={isSubmitting || !formData.title.trim()}
               className="flex-1 bg-green-600 text-white py-3 rounded-lg font-medium hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
               {isSubmitting ? 'Salvando...' : 'Salvar Alterações'}
