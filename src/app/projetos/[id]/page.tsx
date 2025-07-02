@@ -1,4 +1,4 @@
-// src/app/projetos/[id]/page.tsx - VERSÃO REFATORADA
+// src/app/projetos/[id]/page.tsx - DEBUG E CORREÇÃO
 'use client'
 
 import { useState, useEffect, Suspense, lazy } from 'react'
@@ -90,15 +90,18 @@ export default function ProjectDetailPage() {
 
   // === HANDLERS DE MODAL ===
   const openModal = (modalType: keyof ModalState, value: any = true) => {
+    console.log('🔓 Abrindo modal:', modalType, 'com valor:', value)
     setModals(prev => ({ ...prev, [modalType]: value }))
   }
 
   const closeModal = (modalType: keyof ModalState) => {
+    console.log('🔒 Fechando modal:', modalType)
     setModals(prev => ({ ...prev, [modalType]: modalType === 'editingItem' ? null : false }))
   }
 
   // === HANDLERS DE MILESTONE ===
   const handleNewMilestone = async (formData: MilestoneFormData) => {
+    console.log('📝 Criando novo marco:', formData)
     const result = await MilestoneHandlers.create(projectId, formData)
     
     if (result.error) {
@@ -114,11 +117,18 @@ export default function ProjectDetailPage() {
   }
 
   const handleEditMilestone = (milestone: Milestone) => {
-    openModal('editingItem', { ...milestone, type: 'marco' })
+    console.log('✏️ Editando marco:', milestone)
+    const milestoneWithType = { ...milestone, type: 'marco' as const }
+    console.log('📋 Marco com type:', milestoneWithType)
+    openModal('editingItem', milestoneWithType)
   }
 
   const handleUpdateMilestone = async (formData: any) => {
-    if (!modals.editingItem) return
+    console.log('💾 Atualizando marco:', formData)
+    if (!modals.editingItem) {
+      console.log('❌ Nenhum item sendo editado')
+      return
+    }
 
     const result = await MilestoneHandlers.update(modals.editingItem.id, formData)
     
@@ -150,6 +160,7 @@ export default function ProjectDetailPage() {
 
   // === HANDLERS DE ACTIVITY ===
   const handleNewActivity = async (formData: ActivityFormData) => {
+    console.log('📝 Criando nova atividade:', formData)
     const result = await ActivityHandlers.create(projectId, formData)
     
     if (result.error) {
@@ -165,11 +176,18 @@ export default function ProjectDetailPage() {
   }
 
   const handleEditActivity = (activity: Activity) => {
-    openModal('editingItem', { ...activity, type: 'atividade' })
+    console.log('✏️ Editando atividade:', activity)
+    const activityWithType = { ...activity, type: 'atividade' as const }
+    console.log('📋 Atividade com type:', activityWithType)
+    openModal('editingItem', activityWithType)
   }
 
   const handleUpdateActivity = async (formData: any) => {
-    if (!modals.editingItem) return
+    console.log('💾 Atualizando atividade:', formData)
+    if (!modals.editingItem) {
+      console.log('❌ Nenhum item sendo editado')
+      return
+    }
 
     const result = await ActivityHandlers.update(modals.editingItem.id, formData)
     
@@ -201,11 +219,21 @@ export default function ProjectDetailPage() {
 
   // === HANDLERS UNIFICADOS PARA MODAL DE EDIÇÃO ===
   const handleUpdateItem = async (formData: any) => {
-    if (!modals.editingItem) return
+    console.log('🔄 Handler unificado para atualização:', {
+      editingItem: modals.editingItem,
+      formData: formData
+    })
+    
+    if (!modals.editingItem) {
+      console.log('❌ Nenhum item sendo editado')
+      return
+    }
 
     if (modals.editingItem.type === 'marco') {
+      console.log('📍 Atualizando como marco')
       await handleUpdateMilestone(formData)
     } else {
+      console.log('📝 Atualizando como atividade')
       await handleUpdateActivity(formData)
     }
   }
@@ -243,105 +271,87 @@ export default function ProjectDetailPage() {
       component: TimelineTab,
       props: { milestones, activities }
     },
-   
     { 
-  id: 'communication' as TabId, 
-  label: 'Comunicação', 
-  icon: MessageSquare,
-  component: CommunicationTab,
-  props: { 
-    projectId, 
-    teamMembers  // ← Esta linha deve existir
-  }
-}
+      id: 'communication' as TabId, 
+      label: 'Comunicação', 
+      icon: MessageSquare,
+      component: CommunicationTab,
+      props: { 
+        projectId, 
+        teamMembers
+      }
+    }
   ]
-  // === RENDER CONDITIONAL ===
+
+  // === RENDERS ===
   if (!mounted) {
-    return <div className="min-h-screen bg-gray-50"></div>
+    return <LoadingSpinner />
   }
-  
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <LoadingSpinner message="Carregando projeto..." />
-      </div>
-    )
-  }
-  
+
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <ErrorDisplay 
-          error={error} 
-          onRetry={refetchAll}
-          title="Erro ao carregar projeto"
-        />
-      </div>
-    )
-  }
-  
-  if (!project) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <ErrorDisplay 
-          error="Projeto não encontrado" 
-          onRetry={refetchAll}
-        />
-      </div>
+      <ErrorDisplay 
+        message={error} 
+        onRetry={refetchAll}
+      />
     )
   }
 
-  // === RENDER PRINCIPAL ===
+  if (loading && !project) {
+    return <LoadingSpinner />
+  }
+
+  if (!project) {
+    return (
+      <ErrorDisplay 
+        message="Projeto não encontrado" 
+        onRetry={() => router.push('/projetos')}
+      />
+    )
+  }
+
+  // Debug do estado dos modais
+  console.log('🎭 Estado dos modais:', modals)
+
   return (
     <div className="min-h-screen bg-gray-50">
-      
-      {/* Header Fixo */}
-      <div className="bg-white border-b border-gray-300 sticky top-0 z-10">
+      {/* Header do Projeto */}
+      <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto p-6">
-          
-          {/* Navegação e Título */}
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <button
                 onClick={() => router.push('/projetos')}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                aria-label="Voltar para projetos"
               >
-                <ArrowLeft className="w-5 h-5 text-gray-700" />
+                <ArrowLeft className="w-5 h-5 text-gray-600" />
               </button>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">{project.name}</h1>
-                <div className="flex items-center space-x-3 mt-1">
-                  <StatusBadge status={project.status} type="generic" />
-                  <StatusBadge status={project.health} type="health" />
+                <div className="flex items-center space-x-4 mt-1">
+                  <StatusBadge status={project.status} />
+                  <span className="text-sm text-gray-600">
+                    {project.project_type}
+                  </span>
                 </div>
               </div>
             </div>
-            
-            {/* Ação Principal */}
-            <button
-              onClick={() => {
-                if (typeof window !== 'undefined') {
-                  window.location.href = `/projetos/${projectId}/edit`
-                }
-              }}
-              className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-            >
+            <button className="flex items-center space-x-2 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors">
               <Edit className="w-4 h-4" />
               <span>Editar Projeto</span>
             </button>
           </div>
 
-          {/* Navegação de Tabs */}
-          <div className="flex space-x-6">
-            {tabs.map(tab => (
+          {/* Tabs */}
+          <div className="flex space-x-8 mt-6">
+            {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                className={`flex items-center space-x-2 pb-3 border-b-2 transition-colors ${
                   activeTab === tab.id
-                    ? 'bg-blue-100 text-blue-700'
-                    : 'text-gray-700 hover:text-gray-900 hover:bg-gray-100'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
                 aria-current={activeTab === tab.id ? 'page' : undefined}
               >
@@ -393,6 +403,16 @@ export default function ProjectDetailPage() {
         item={modals.editingItem}
         teamMembers={teamMembers}
       />
+
+      {/* Debug Info em desenvolvimento */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="fixed bottom-4 right-4 bg-gray-900 text-white p-4 rounded-lg text-xs max-w-sm">
+          <div><strong>Editing Item:</strong></div>
+          <pre className="mt-1 overflow-auto max-h-32">
+            {JSON.stringify(modals.editingItem, null, 2)}
+          </pre>
+        </div>
+      )}
     </div>
   )
 }

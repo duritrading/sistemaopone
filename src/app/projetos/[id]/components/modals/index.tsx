@@ -1,7 +1,7 @@
 // src/app/projetos/[id]/components/modals/index.tsx
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { X, Target, FileText, Calendar, User } from 'lucide-react'
 import { 
   MilestoneFormData, 
@@ -72,45 +72,44 @@ export const NewMilestoneModal = ({
             </div>
             <h2 className="text-xl font-semibold text-gray-900">Novo Marco</h2>
           </div>
-          <button 
+          <button
             onClick={onClose}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            disabled={isSubmitting}
           >
-            <X className="w-5 h-5 text-gray-500" />
+            <X className="w-5 h-5 text-gray-400" />
           </button>
         </div>
 
         {/* Form */}
-        <div className="p-6 space-y-5">
+        <div className="p-6 space-y-6">
           {/* Título */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-900 mb-2">
               Título *
             </label>
             <input
               type="text"
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              placeholder="Ex: Lançamento Beta"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors"
+              placeholder="Digite o título do marco..."
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-gray-900 placeholder-gray-500 bg-white"
               disabled={isSubmitting}
             />
           </div>
 
           {/* Status */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Status Inicial
+            <label className="block text-sm font-medium text-gray-900 mb-2">
+              Status
             </label>
             <select
               value={formData.status}
               onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors bg-white"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-gray-900 bg-white"
               disabled={isSubmitting}
             >
-              {MILESTONE_STATUSES.map(status => (
-                <option key={status.value} value={status.value}>
+              {MILESTONE_STATUSES.map((status) => (
+                <option key={status.value} value={status.value} className="text-gray-900">
                   {status.label}
                 </option>
               ))}
@@ -119,18 +118,18 @@ export const NewMilestoneModal = ({
 
           {/* Responsável */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-900 mb-2">
               Responsável
             </label>
             <select
               value={formData.responsible_id}
               onChange={(e) => setFormData({ ...formData, responsible_id: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors bg-white"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-gray-900 bg-white"
               disabled={isSubmitting}
             >
-              <option value="">Selecione um responsável</option>
-              {teamMembers.map(member => (
-                <option key={member.id} value={member.id}>
+              <option value="" className="text-gray-500">Selecione um responsável</option>
+              {teamMembers.map((member) => (
+                <option key={member.id} value={member.id} className="text-gray-900">
                   {member.full_name}
                 </option>
               ))}
@@ -139,7 +138,7 @@ export const NewMilestoneModal = ({
 
           {/* Descrição */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-900 mb-2">
               Descrição
             </label>
             <textarea
@@ -147,14 +146,14 @@ export const NewMilestoneModal = ({
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               placeholder="Descreva o marco..."
               rows={3}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors resize-none"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none text-gray-900 placeholder-gray-500 bg-white"
               disabled={isSubmitting}
             />
           </div>
 
           {/* Prazo */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-900 mb-2">
               Prazo
             </label>
             <div className="relative">
@@ -162,7 +161,7 @@ export const NewMilestoneModal = ({
                 type="date"
                 value={formData.deadline}
                 onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
-                className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors"
+                className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-gray-900 bg-white"
                 disabled={isSubmitting}
               />
               <Calendar className="absolute right-3 top-3.5 w-5 h-5 text-gray-400 pointer-events-none" />
@@ -181,7 +180,7 @@ export const NewMilestoneModal = ({
             <button
               onClick={onClose}
               disabled={isSubmitting}
-              className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-200 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+              className="flex-1 bg-gray-100 text-gray-900 py-3 rounded-lg font-medium hover:bg-gray-200 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
             >
               Cancelar
             </button>
@@ -208,9 +207,9 @@ export const NewActivityModal = ({
 }: NewActivityModalProps) => {
   const [formData, setFormData] = useState<ActivityFormData>({
     title: '',
-    category: '',
-    responsible_id: '',
     description: '',
+    category: 'documentation',
+    responsible_id: '',
     deadline: '',
     status: 'draft'
   })
@@ -222,19 +221,15 @@ export const NewActivityModal = ({
       alert('Título é obrigatório')
       return
     }
-    if (!formData.category) {
-      alert('Categoria é obrigatória')
-      return
-    }
 
     setIsSubmitting(true)
     try {
       await onSubmit(formData)
       setFormData({
         title: '',
-        category: '',
-        responsible_id: '',
         description: '',
+        category: 'documentation',
+        responsible_id: '',
         deadline: '',
         status: 'draft'
       })
@@ -256,66 +251,64 @@ export const NewActivityModal = ({
             </div>
             <h2 className="text-xl font-semibold text-gray-900">Nova Atividade</h2>
           </div>
-          <button 
+          <button
             onClick={onClose}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            disabled={isSubmitting}
           >
-            <X className="w-5 h-5 text-gray-500" />
+            <X className="w-5 h-5 text-gray-400" />
           </button>
         </div>
 
         {/* Form */}
-        <div className="p-6 space-y-5">
+        <div className="p-6 space-y-6">
           {/* Título */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-900 mb-2">
               Título *
             </label>
             <input
               type="text"
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              placeholder="Ex: Implementar Autenticação"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+              placeholder="Digite o título da atividade..."
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-gray-900 placeholder-gray-500 bg-white"
               disabled={isSubmitting}
             />
           </div>
 
-          {/* Categoria */}
+          {/* Status */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Categoria *
+            <label className="block text-sm font-medium text-gray-900 mb-2">
+              Status
             </label>
             <select
-              value={formData.category}
-              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white"
+              value={formData.status}
+              onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-gray-900 bg-white"
               disabled={isSubmitting}
             >
-              <option value="">Selecione uma categoria</option>
-              {ACTIVITY_TYPES.map(type => (
-                <option key={type.value} value={type.value}>
-                  {type.icon} {type.label}
+              {ACTIVITY_STATUSES.map((status) => (
+                <option key={status.value} value={status.value} className="text-gray-900">
+                  {status.label}
                 </option>
               ))}
             </select>
           </div>
 
-          {/* Status */}
+          {/* Categoria */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Status Inicial
+            <label className="block text-sm font-medium text-gray-900 mb-2">
+              Categoria
             </label>
             <select
-              value={formData.status}
-              onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white"
+              value={formData.category}
+              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-gray-900 bg-white"
               disabled={isSubmitting}
             >
-              {ACTIVITY_STATUSES.map(status => (
-                <option key={status.value} value={status.value}>
-                  {status.label}
+              {ACTIVITY_TYPES.map((type) => (
+                <option key={type.value} value={type.value} className="text-gray-900">
+                  {type.icon} {type.label}
                 </option>
               ))}
             </select>
@@ -323,18 +316,18 @@ export const NewActivityModal = ({
 
           {/* Responsável */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-900 mb-2">
               Responsável
             </label>
             <select
               value={formData.responsible_id}
               onChange={(e) => setFormData({ ...formData, responsible_id: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-gray-900 bg-white"
               disabled={isSubmitting}
             >
-              <option value="">Selecione um responsável</option>
-              {teamMembers.map(member => (
-                <option key={member.id} value={member.id}>
+              <option value="" className="text-gray-500">Selecione um responsável</option>
+              {teamMembers.map((member) => (
+                <option key={member.id} value={member.id} className="text-gray-900">
                   {member.full_name}
                 </option>
               ))}
@@ -343,7 +336,7 @@ export const NewActivityModal = ({
 
           {/* Descrição */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-900 mb-2">
               Descrição
             </label>
             <textarea
@@ -351,14 +344,14 @@ export const NewActivityModal = ({
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               placeholder="Descreva a atividade..."
               rows={3}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none text-gray-900 placeholder-gray-500 bg-white"
               disabled={isSubmitting}
             />
           </div>
 
           {/* Prazo */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-900 mb-2">
               Prazo
             </label>
             <div className="relative">
@@ -366,7 +359,7 @@ export const NewActivityModal = ({
                 type="date"
                 value={formData.deadline}
                 onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
-                className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-gray-900 bg-white"
                 disabled={isSubmitting}
               />
               <Calendar className="absolute right-3 top-3.5 w-5 h-5 text-gray-400 pointer-events-none" />
@@ -385,7 +378,7 @@ export const NewActivityModal = ({
             <button
               onClick={onClose}
               disabled={isSubmitting}
-              className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-200 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+              className="flex-1 bg-gray-100 text-gray-900 py-3 rounded-lg font-medium hover:bg-gray-200 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
             >
               Cancelar
             </button>
@@ -424,22 +417,87 @@ export const EditItemModal = ({
 
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // Reset form data when item changes
-  useState(() => {
-    if (item) {
+  // CORREÇÃO CRÍTICA: Usar useEffect em vez de useState
+  useEffect(() => {
+    console.log('🔍 EditItemModal useEffect - isOpen:', isOpen, 'item:', item)
+    
+    if (!isOpen) {
+      // Reset form when modal closes
       setFormData({
-        title: item.title || '',
-        description: item.description || '',
-        deadline: item.due_date || (item as any).deadline || '',
-        status: item.status || (item.type === 'marco' ? 'pending' : 'draft'),
-        category: (item as Activity).type || (item as Activity).category || 'documentation',
-        responsible_id: (item as any).assigned_to || (item as any).responsible_id || '',
-        progress: (item as Milestone).progress_percentage || 0
+        title: '',
+        description: '',
+        deadline: '',
+        status: '',
+        category: 'documentation',
+        responsible_id: '',
+        progress: 0
       })
+      return
     }
-  })
+
+    if (!item) {
+      console.log('❌ Nenhum item fornecido')
+      return
+    }
+
+    console.log('📋 Carregando dados do item:', {
+      id: item.id,
+      title: item.title,
+      type: item.type,
+      status: item.status,
+      due_date: item.due_date,
+      deadline: (item as any).deadline,
+      assigned_to: (item as any).assigned_to,
+      responsible_id: (item as any).responsible_id,
+      progress_percentage: (item as Milestone).progress_percentage
+    })
+
+    // Processar deadline
+    const rawDeadline = item.due_date || (item as any).deadline
+    let formattedDeadline = ''
+    
+    if (rawDeadline) {
+      try {
+        const date = new Date(rawDeadline)
+        if (!isNaN(date.getTime())) {
+          formattedDeadline = date.toISOString().split('T')[0]
+        }
+      } catch (error) {
+        console.log('❌ Erro ao formatar data:', error)
+      }
+    }
+
+    // Processar responsável
+    const responsibleId = (item as any).assigned_to || (item as any).responsible_id || ''
+
+    // Processar status
+    const isMilestone = item.type === 'marco'
+    const defaultStatus = isMilestone ? 'pending' : 'draft'
+    const status = item.status || defaultStatus
+
+    // Processar categoria (apenas para atividades)
+    const category = (item as Activity).type || (item as Activity).category || 'documentation'
+
+    // Processar progresso (apenas para marcos)
+    const progress = (item as Milestone).progress_percentage || 0
+
+    const newFormData = {
+      title: item.title || '',
+      description: item.description || '',
+      deadline: formattedDeadline,
+      status: status,
+      category: category,
+      responsible_id: responsibleId,
+      progress: progress
+    }
+
+    console.log('✅ Dados do formulário definidos:', newFormData)
+    setFormData(newFormData)
+  }, [isOpen, item]) // Dependencies corretas
 
   const handleSubmit = async () => {
+    console.log('📤 Enviando formulário com dados:', formData)
+    
     if (!formData.title.trim()) {
       alert('Título é obrigatório')
       return
@@ -448,6 +506,10 @@ export const EditItemModal = ({
     setIsSubmitting(true)
     try {
       await onSubmit(formData)
+      onClose() // Fechar modal após sucesso
+    } catch (error) {
+      console.error('❌ Erro ao enviar formulário:', error)
+      alert('Erro ao salvar. Tente novamente.')
     } finally {
       setIsSubmitting(false)
     }
@@ -456,6 +518,7 @@ export const EditItemModal = ({
   if (!isOpen || !item) return null
 
   const isMilestone = item.type === 'marco'
+  console.log('🎯 Renderizando modal para:', isMilestone ? 'Marco' : 'Atividade')
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -474,78 +537,54 @@ export const EditItemModal = ({
               Editar {isMilestone ? 'Marco' : 'Atividade'}
             </h2>
           </div>
-          <button 
+          <button
             onClick={onClose}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            disabled={isSubmitting}
           >
-            <X className="w-5 h-5 text-gray-500" />
+            <X className="w-5 h-5 text-gray-400" />
           </button>
         </div>
 
         {/* Form */}
-        <div className="p-6 space-y-5">
+        <div className="p-6 space-y-6">
           {/* Título */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-900 mb-2">
               Título *
             </label>
             <input
               type="text"
               value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+              onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+              placeholder="Digite o título..."
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-gray-900 placeholder-gray-500 bg-white"
               disabled={isSubmitting}
             />
           </div>
 
           {/* Status */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-900 mb-2">
               Status
             </label>
             <select
               value={formData.status}
-              onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white"
+              onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value }))}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-gray-900 bg-white"
               disabled={isSubmitting}
             >
-              {isMilestone 
-                ? MILESTONE_STATUSES.map(status => (
-                    <option key={status.value} value={status.value}>{status.label}</option>
-                  ))
-                : ACTIVITY_STATUSES.map(status => (
-                    <option key={status.value} value={status.value}>{status.label}</option>
-                  ))
-              }
+              {(isMilestone ? MILESTONE_STATUSES : ACTIVITY_STATUSES).map((status) => (
+                <option key={status.value} value={status.value} className="text-gray-900">
+                  {status.label}
+                </option>
+              ))}
             </select>
           </div>
 
-          {/* Categoria (só para atividades) */}
-          {!isMilestone && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Categoria
-              </label>
-              <select
-                value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white"
-                disabled={isSubmitting}
-              >
-                {ACTIVITY_TYPES.map(type => (
-                  <option key={type.value} value={type.value}>
-                    {type.icon} {type.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {/* Progresso (só para marcos) */}
+          {/* Progress (apenas para marcos) */}
           {isMilestone && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-900 mb-2">
                 Progresso (%)
               </label>
               <input
@@ -553,27 +592,48 @@ export const EditItemModal = ({
                 min="0"
                 max="100"
                 value={formData.progress}
-                onChange={(e) => setFormData({ ...formData, progress: parseInt(e.target.value) || 0 })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                onChange={(e) => setFormData(prev => ({ ...prev, progress: Number(e.target.value) }))}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-gray-900 bg-white"
                 disabled={isSubmitting}
               />
             </div>
           )}
 
+          {/* Categoria (apenas para atividades) */}
+          {!isMilestone && (
+            <div>
+              <label className="block text-sm font-medium text-gray-900 mb-2">
+                Categoria
+              </label>
+              <select
+                value={formData.category}
+                onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-gray-900 bg-white"
+                disabled={isSubmitting}
+              >
+                {ACTIVITY_TYPES.map((type) => (
+                  <option key={type.value} value={type.value} className="text-gray-900">
+                    {type.icon} {type.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {/* Responsável */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-900 mb-2">
               Responsável
             </label>
             <select
               value={formData.responsible_id}
-              onChange={(e) => setFormData({ ...formData, responsible_id: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white"
+              onChange={(e) => setFormData(prev => ({ ...prev, responsible_id: e.target.value }))}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-gray-900 bg-white"
               disabled={isSubmitting}
             >
-              <option value="">Selecione um responsável</option>
-              {teamMembers.map(member => (
-                <option key={member.id} value={member.id}>
+              <option value="" className="text-gray-500">Selecione um responsável</option>
+              {teamMembers.map((member) => (
+                <option key={member.id} value={member.id} className="text-gray-900">
                   {member.full_name}
                 </option>
               ))}
@@ -582,40 +642,59 @@ export const EditItemModal = ({
 
           {/* Descrição */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-900 mb-2">
               Descrição
             </label>
             <textarea
               value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+              placeholder="Descreva..."
               rows={3}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none text-gray-900 placeholder-gray-500 bg-white"
               disabled={isSubmitting}
             />
           </div>
 
           {/* Prazo */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-900 mb-2">
               Prazo
             </label>
             <div className="relative">
               <input
                 type="date"
                 value={formData.deadline}
-                onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
-                className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                onChange={(e) => setFormData(prev => ({ ...prev, deadline: e.target.value }))}
+                className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-gray-900 bg-white"
                 disabled={isSubmitting}
               />
               <Calendar className="absolute right-3 top-3.5 w-5 h-5 text-gray-400 pointer-events-none" />
             </div>
           </div>
 
+          {/* Debug Info (apenas em desenvolvimento) */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="p-3 bg-gray-100 rounded-lg text-xs overflow-auto max-h-32">
+              <strong className="text-gray-900">Debug Info:</strong>
+              <pre className="mt-1 text-gray-700 whitespace-pre-wrap">
+                {JSON.stringify({ 
+                  itemType: item.type,
+                  itemId: item.id,
+                  itemTitle: item.title,
+                  formDataTitle: formData.title,
+                  formDataStatus: formData.status,
+                  formDataDeadline: formData.deadline,
+                  formDataResponsible: formData.responsible_id
+                }, null, 2)}
+              </pre>
+            </div>
+          )}
+
           {/* Buttons */}
           <div className="flex space-x-3 pt-4">
             <button
               onClick={handleSubmit}
-              disabled={isSubmitting}
+              disabled={isSubmitting || !formData.title.trim()}
               className="flex-1 bg-green-600 text-white py-3 rounded-lg font-medium hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
               {isSubmitting ? 'Salvando...' : 'Salvar Alterações'}
@@ -623,7 +702,7 @@ export const EditItemModal = ({
             <button
               onClick={onClose}
               disabled={isSubmitting}
-              className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-200 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+              className="flex-1 bg-gray-100 text-gray-900 py-3 rounded-lg font-medium hover:bg-gray-200 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
             >
               Cancelar
             </button>
