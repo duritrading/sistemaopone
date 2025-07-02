@@ -316,9 +316,7 @@ const CommunicationModal = ({
                 Participantes (selecione da equipe)
               </label>
               <div className="border border-gray-300 rounded-md p-3 max-h-32 overflow-y-auto bg-white">
-                {loadingMembers ? (
-                  <div className="text-sm text-gray-500 py-2">Carregando membros da equipe...</div>
-                ) : (teamMembers && teamMembers.length > 0) ? (
+                {(teamMembers && teamMembers.length > 0) ? (
                   teamMembers.map(member => (
                     <label key={member.id} className="flex items-center space-x-2 mb-2">
                       <input
@@ -416,17 +414,16 @@ export const CommunicationTab = ({ projectId, teamMembers = [], loading = false 
   const [editingCommunication, setEditingCommunication] = useState<Communication | null>(null)
   const [filterType, setFilterType] = useState('Todos os tipos')
   const [allTeamMembers, setAllTeamMembers] = useState<TeamMember[]>([])
-  const [loadingMembers, setLoadingMembers] = useState(false)
 
   // Buscar todos os membros da equipe se não foram fornecidos
   useEffect(() => {
     const fetchTeamMembers = async () => {
+      // Se já temos teamMembers via props, usar eles
       if (teamMembers && teamMembers.length > 0) {
         setAllTeamMembers(teamMembers)
         return
       }
 
-      setLoadingMembers(true)
       try {
         // Tentar acessar instância global do Supabase se disponível
         // @ts-ignore
@@ -440,26 +437,25 @@ export const CommunicationTab = ({ projectId, teamMembers = [], loading = false 
 
           if (error) {
             console.error('Erro ao buscar membros da equipe:', error)
-            throw error
+            setAllTeamMembers([])
+            return
           }
 
           console.log('Membros encontrados no Supabase:', data)
           setAllTeamMembers(data || [])
         } else {
-          console.warn('Supabase não está disponível. Verifique se foi inicializado corretamente.')
+          console.warn('Supabase não está disponível.')
           setAllTeamMembers([])
         }
         
       } catch (error) {
         console.error('Erro ao buscar membros da equipe:', error)
         setAllTeamMembers([])
-      } finally {
-        setLoadingMembers(false)
       }
     }
 
     fetchTeamMembers()
-  }, [teamMembers])
+  }, []) // Dependência vazia para executar apenas uma vez
 
   // Debug: Log teamMembers para verificar
   useEffect(() => {
