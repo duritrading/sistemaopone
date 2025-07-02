@@ -243,15 +243,18 @@ export default function ProjectDetailPage() {
       component: TimelineTab,
       props: { milestones, activities }
     },
+   
     { 
-      id: 'communication' as TabId, 
-      label: 'Comunicação', 
-      icon: MessageSquare,
-      component: CommunicationTab,
-      props: { projectId, teamMembers  // ← Esta linha deve existir
+  id: 'communication' as TabId, 
+  label: 'Comunicação', 
+  icon: MessageSquare,
+  component: CommunicationTab,
+  props: { 
+    projectId, 
+    teamMembers  // ← Esta linha deve existir
   }
 }
-
+  ]
   // === RENDER CONDITIONAL ===
   if (!mounted) {
     return <div className="min-h-screen bg-gray-50"></div>
