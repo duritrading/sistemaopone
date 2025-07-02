@@ -1,44 +1,45 @@
 'use client'
 
-import React, { useState } from 'react'
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import React, { useState } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { 
   LayoutDashboard, 
-  FolderOpen,
-  Building2, 
-  Users,
-  DollarSign,
   TrendingUp,
+  FolderOpen, 
+  Building2, 
+  DollarSign,
+  Users, 
   Settings,
   ChevronLeft,
   ChevronRight
-} from 'lucide-react'
+} from 'lucide-react';
 
 interface AppLayoutProps {
-  children: React.ReactNode
+  children: React.ReactNode;
 }
 
 const AppLayout = ({ children }: AppLayoutProps) => {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const pathname = usePathname()
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const pathname = usePathname();
 
+  // Ordem exata da imagem: Dashboard, Vendas, Projetos, Clientes, Financeiro, Equipe
   const navigationItems = [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
+    { icon: TrendingUp, label: 'Vendas', href: '/vendas' },
     { icon: FolderOpen, label: 'Projetos', href: '/projetos' },
     { icon: Building2, label: 'Clientes', href: '/clientes' },
-    { icon: Users, label: 'Equipe', href: '/equipe' },
     { icon: DollarSign, label: 'Financeiro', href: '/financeiro' },
-    { icon: TrendingUp, label: 'Vendas', href: '/vendas' },
-  ]
+    { icon: Users, label: 'Equipe', href: '/equipe' },
+  ];
 
   const isActiveRoute = (href: string) => {
-    return pathname.startsWith(href)
-  }
+    return pathname.startsWith(href);
+  };
 
   return (
     <div className="flex h-screen bg-gray-50">
-      {/* Sidebar */}
+      {/* Sidebar - Design escuro igual à imagem */}
       <div className={`
         bg-slate-900 text-white transition-all duration-300 ease-in-out flex flex-col
         ${sidebarCollapsed ? 'w-16' : 'w-80'}
@@ -84,8 +85,8 @@ const AppLayout = ({ children }: AppLayoutProps) => {
           
           <nav className="px-4 space-y-2">
             {navigationItems.map((item) => {
-              const Icon = item.icon
-              const isActive = isActiveRoute(item.href)
+              const Icon = item.icon;
+              const isActive = isActiveRoute(item.href);
               
               return (
                 <Link
@@ -115,7 +116,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
                     </div>
                   )}
                 </Link>
-              )
+              );
             })}
           </nav>
         </div>
@@ -177,7 +178,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
         </main>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default AppLayout
+export default AppLayout;
