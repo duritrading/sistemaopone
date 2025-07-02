@@ -318,18 +318,28 @@ const CommunicationModal = ({
                 Participantes (selecione da equipe)
               </label>
               <div className="border border-gray-300 rounded-md p-3 max-h-32 overflow-y-auto bg-white">
-                {availableMembers.map(member => (
-                  <label key={member.id} className="flex items-center space-x-2 mb-2">
-                    <input
-                      type="checkbox"
-                      checked={formData.participants.includes(member.full_name)}
-                      onChange={() => handleParticipantToggle(member.full_name)}
-                      className="text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-sm text-gray-700">{member.full_name}</span>
-                    <span className="text-xs text-gray-500">({member.primary_specialization})</span>
-                  </label>
-                ))}
+                {loadingMembers ? (
+                  <div className="text-sm text-gray-500 py-2">Carregando membros da equipe...</div>
+                ) : allTeamMembers.length > 0 ? (
+                  allTeamMembers.map(member => (
+                    <label key={member.id} className="flex items-center space-x-2 mb-2">
+                      <input
+                        type="checkbox"
+                        checked={formData.participants.includes(member.full_name)}
+                        onChange={() => handleParticipantToggle(member.full_name)}
+                        className="text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-sm text-gray-700">{member.full_name}</span>
+                      <span className="text-xs text-gray-500">({member.primary_specialization})</span>
+                    </label>
+                  ))
+                ) : (
+                  <div className="text-sm text-gray-500 py-2">
+                    Nenhum membro da equipe encontrado. 
+                    <br />
+                    <span className="text-xs">Verifique se há membros ativos cadastrados.</span>
+                  </div>
+                )}
               </div>
               <p className="text-xs text-gray-500 mt-1">
                 Selecionados: {formData.participants.join(', ') || 'Nenhum'}
@@ -422,53 +432,59 @@ export const CommunicationTab = ({ projectId, teamMembers = [], loading = false 
 
       setLoadingMembers(true)
       try {
-        // Criar instância do Supabase
-        const supabaseUrl = 'https://your-project.supabase.co' // Substitua pela sua URL
-        const supabaseAnonKey = 'your-anon-key' // Substitua pela sua chave
-        
-        // Para o ambiente de demonstração, vamos simular a busca real
-        // Em produção, descomente as linhas abaixo e configure as variáveis
-        /*
-        const { createClient } = require('@supabase/supabase-js')
-        const supabase = createClient(supabaseUrl, supabaseAnonKey)
-        
-        const { data, error } = await supabase
-          .from('team_members')
-          .select('id, full_name, email, primary_specialization')
-          .eq('is_active', true)
-          .order('full_name')
-        
-        if (error) {
-          console.error('Erro ao buscar membros da equipe:', error)
-          throw error
+        // Buscar membros reais do Supabase usando fetch
+        const response = await fetch('/api/team-members', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        })
+
+        if (!response.ok) {
+          throw new Error('Falha ao buscar membros da equipe')
         }
 
-        console.log('Membros encontrados no Supabase:', data)
-        setAllTeamMembers(data || [])
-        */
+        const data = await response.json()
+        console.log('Membros reais encontrados:', data)
         
-        // Simulação de dados reais para demonstração
-        console.log('Simulando busca de membros da equipe...')
-        const mockMembers = [
-          { id: '1', full_name: 'João Silva', email: 'joao@empresa.com', primary_specialization: 'Backend' },
-          { id: '2', full_name: 'Maria Santos', email: 'maria@empresa.com', primary_specialization: 'Frontend' },
-          { id: '3', full_name: 'Pedro Costa', email: 'pedro@empresa.com', primary_specialization: 'DevOps' },
-          { id: '4', full_name: 'Ana Oliveira', email: 'ana@empresa.com', primary_specialization: 'UX/UI' },
-          { id: '5', full_name: 'Carlos Lima', email: 'carlos@empresa.com', primary_specialization: 'QA' }
-        ]
-        
-        setAllTeamMembers(mockMembers)
+        // Mapear os dados do Supabase para o formato esperado
+        const formattedMembers = data.map((member: any) => ({
+          id: member.id,
+          full_name: member.full_name,
+          email: member.email,
+          primary_specialization: member.primary_specialization
+        }))
+
+        setAllTeamMembers(formattedMembers)
         
       } catch (error) {
         console.error('Erro ao buscar membros da equipe:', error)
         
-        // Fallback para dados simulados em caso de erro
-        const mockMembers = [
-          { id: '1', full_name: 'João Silva', email: 'joao@empresa.com', primary_specialization: 'Backend' },
-          { id: '2', full_name: 'Maria Santos', email: 'maria@empresa.com', primary_specialization: 'Frontend' }
-        ]
+        // Em caso de erro da API, buscar diretamente via window.supabase se disponível
+        try {
+          // @ts-ignore
+          if (typeof window !== 'undefined' && window.supabase) {
+            // @ts-ignore
+            const { data: supabaseData, error: supabaseError } = await window.supabase
+              .from('team_members')
+              .select('id, full_name, email, primary_specialization, is_active')
+              .eq('is_active', true)
+              .order('full_name')
+
+            if (supabaseError) {
+              throw supabaseError
+            }
+
+            console.log('Membros do Supabase (direto):', supabaseData)
+            setAllTeamMembers(supabaseData || [])
+            return
+          }
+        } catch (supabaseError) {
+          console.error('Erro no Supabase direto:', supabaseError)
+        }
         
-        setAllTeamMembers(mockMembers)
+        // Último fallback: usar dados vazios e mostrar mensagem
+        setAllTeamMembers([])
       } finally {
         setLoadingMembers(false)
       }
