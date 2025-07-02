@@ -1,13 +1,13 @@
-// src/app/layout.tsx
-import './globals.css'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
+import './globals.css'
+import AppLayout from '@/components/layout/AppLayout'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Sistema OpOne - Consultoria IA',
-  description: 'Sistema interno para gestão de consultoria em IA',
+  title: 'Sistema OpOne',
+  description: 'Sistema de Gestão OpOne',
 }
 
 export default function RootLayout({
@@ -16,8 +16,12 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="pt-BR" suppressHydrationWarning={true}>
-      <body className={inter.className}>{children}</body>
+    <html lang="pt-BR">
+      <body className={inter.className}>
+        <AppLayout>
+          {children}
+        </AppLayout>
+      </body>
     </html>
   )
 }
