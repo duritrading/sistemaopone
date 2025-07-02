@@ -248,9 +248,9 @@ export default function ProjectDetailPage() {
       label: 'Comunicação', 
       icon: MessageSquare,
       component: CommunicationTab,
-      props: { projectId }
-    }
-  ]
+      props: { projectId, teamMembers  // ← Esta linha deve existir
+  }
+}
 
   // === RENDER CONDITIONAL ===
   if (!mounted) {
