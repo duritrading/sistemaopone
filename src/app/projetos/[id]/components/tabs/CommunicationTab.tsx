@@ -175,6 +175,9 @@ const CommunicationModal = ({
 
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  // Debug: Log teamMembers
+  console.log('CommunicationModal - teamMembers:', teamMembers)
+
   useEffect(() => {
     if (communication) {
       setFormData({
@@ -269,7 +272,7 @@ const CommunicationModal = ({
                 <select
                   value={formData.type}
                   onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value as Communication['type'] }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-gray-100"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                 >
                   <option value="Reunião">Reunião</option>
                   <option value="E-mail">E-mail</option>
@@ -283,7 +286,7 @@ const CommunicationModal = ({
                   type="date"
                   value={formData.communication_date}
                   onChange={(e) => setFormData(prev => ({ ...prev, communication_date: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-gray-100"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                 />
               </div>
             </div>
@@ -304,7 +307,7 @@ const CommunicationModal = ({
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Participantes (selecione da equipe)
               </label>
-              <div className="border border-gray-300 rounded-md p-3 max-h-32 overflow-y-auto bg-gray-100">
+              <div className="border border-gray-300 rounded-md p-3 max-h-32 overflow-y-auto bg-white">
                 {teamMembers && teamMembers.length > 0 ? (
                   teamMembers.map(member => (
                     <label key={member.id} className="flex items-center space-x-2 mb-2">
@@ -336,7 +339,7 @@ const CommunicationModal = ({
                 value={formData.content}
                 onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
                 rows={4}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-gray-100"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-500"
                 placeholder="Descreva o que foi discutido, decidido ou comunicado..."
               />
             </div>
@@ -350,7 +353,7 @@ const CommunicationModal = ({
                 value={formData.follow_up_actions}
                 onChange={(e) => setFormData(prev => ({ ...prev, follow_up_actions: e.target.value }))}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-gray-100"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-500"
                 placeholder="Finalizar documento&#10;Preparar apresentação&#10;Agendar próxima reunião"
               />
             </div>
@@ -363,7 +366,7 @@ const CommunicationModal = ({
               <select
                 value={formData.sentiment}
                 onChange={(e) => setFormData(prev => ({ ...prev, sentiment: e.target.value as Communication['sentiment'] }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-gray-100"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
               >
                 <option value="negativo">Negativo</option>
                 <option value="neutro">Neutro</option>
@@ -402,6 +405,9 @@ export const CommunicationTab = ({ projectId, teamMembers = [], loading = false 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingCommunication, setEditingCommunication] = useState<Communication | null>(null)
   const [filterType, setFilterType] = useState('Todos os tipos')
+
+  // Debug: Log teamMembers para verificar se está chegando
+  console.log('CommunicationTab - teamMembers:', teamMembers)
 
   // Filtrar comunicações
   const filteredCommunications = communications.filter(comm => 
