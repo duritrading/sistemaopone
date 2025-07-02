@@ -174,8 +174,8 @@ const CommunicationModal = ({
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Debug: Log teamMembers
-  console.log('CommunicationModal - teamMembers recebidos:', teamMembers)
-  console.log('CommunicationModal - teamMembers length:', teamMembers?.length || 0)
+  console.log('🔍 CommunicationModal - teamMembers recebidos:', teamMembers)
+  console.log('🎯 teamMembers.length:', teamMembers?.length || 0)
 
   // Dados simulados para quando não há membros reais
   const mockTeamMembers = [
@@ -316,22 +316,29 @@ const CommunicationModal = ({
                 Participantes (selecione da equipe)
               </label>
               <div className="border border-gray-300 rounded-md p-3 max-h-32 overflow-y-auto bg-white">
-                {(teamMembers && teamMembers.length > 0) ? (
-                  teamMembers.map(member => (
-                    <label key={member.id} className="flex items-center space-x-2 mb-2">
-                      <input
-                        type="checkbox"
-                        checked={formData.participants.includes(member.full_name)}
-                        onChange={() => handleParticipantToggle(member.full_name)}
-                        className="text-blue-600 focus:ring-blue-500"
-                      />
-                      <span className="text-sm text-gray-700">{member.full_name}</span>
-                      <span className="text-xs text-gray-500">({member.primary_specialization})</span>
-                    </label>
-                  ))
+                {console.log('🎨 Renderizando participantes - teamMembers:', teamMembers)}
+                {teamMembers && teamMembers.length > 0 ? (
+                  teamMembers.map(member => {
+                    console.log('👤 Renderizando membro:', member)
+                    return (
+                      <label key={member.id} className="flex items-center space-x-2 mb-2">
+                        <input
+                          type="checkbox"
+                          checked={formData.participants.includes(member.full_name)}
+                          onChange={() => handleParticipantToggle(member.full_name)}
+                          className="text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-sm text-gray-700">{member.full_name}</span>
+                        <span className="text-xs text-gray-500">({member.primary_specialization})</span>
+                      </label>
+                    )
+                  })
                 ) : (
                   <div className="text-sm text-gray-500 py-2">
+                    {console.log('❌ Nenhum membro encontrado - teamMembers:', teamMembers)}
                     Nenhum membro da equipe encontrado
+                    <br />
+                    <span className="text-xs">Debug: teamMembers.length = {teamMembers?.length || 0}</span>
                   </div>
                 )}
               </div>
@@ -413,83 +420,13 @@ export const CommunicationTab = ({ projectId, teamMembers = [], loading = false 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingCommunication, setEditingCommunication] = useState<Communication | null>(null)
   const [filterType, setFilterType] = useState('Todos os tipos')
-  const [allTeamMembers, setAllTeamMembers] = useState<TeamMember[]>([])
-
-  // Buscar todos os membros da equipe se não foram fornecidos
-  useEffect(() => {
-    const fetchTeamMembers = async () => {
-      console.log('🔍 Iniciando busca de membros da equipe...')
-      console.log('📥 teamMembers prop recebida:', teamMembers)
-      
-      // Se já temos teamMembers via props, usar eles
-      if (teamMembers && teamMembers.length > 0) {
-        console.log('✅ Usando teamMembers da prop:', teamMembers)
-        setAllTeamMembers(teamMembers)
-        return
-      }
-
-      console.log('🔄 teamMembers prop vazia, buscando do Supabase...')
-
-      try {
-        // Verificar se window.supabase está disponível
-        console.log('🌐 Verificando window.supabase...', typeof window !== 'undefined' ? !!window.supabase : 'window não disponível')
-        
-        // @ts-ignore
-        if (typeof window !== 'undefined' && window.supabase) {
-          console.log('📡 Fazendo query no Supabase...')
-          // @ts-ignore
-          const { data, error } = await window.supabase
-            .from('team_members')
-            .select('id, full_name, email, primary_specialization')
-            .eq('is_active', true)
-            .order('full_name')
-
-          console.log('📊 Resultado da query - data:', data)
-          console.log('📊 Resultado da query - error:', error)
-
-          if (error) {
-            console.error('❌ Erro ao buscar membros da equipe:', error)
-            setAllTeamMembers([])
-            return
-          }
-
-          console.log('✅ Membros encontrados no Supabase:', data)
-          setAllTeamMembers(data || [])
-        } else {
-          console.warn('⚠️ window.supabase não está disponível')
-          // Para teste, vamos definir membros temporários baseados nos dados reais
-          const testMembers = [
-            { 
-              id: '37230609-a393-49c7-8366-155ef5f41cc1', 
-              full_name: 'Eduarda Simas', 
-              email: 'eduarda@opone.com', 
-              primary_specialization: 'Produto' 
-            },
-            { 
-              id: '41ce6a3f-f523-42d7-9de5-1e26037f51a9', 
-              full_name: 'Carlos Leal', 
-              email: 'carlos@opone.com', 
-              primary_specialization: 'Machine Learning/IA' 
-            }
-          ]
-          console.log('🧪 Usando membros de teste:', testMembers)
-          setAllTeamMembers(testMembers)
-        }
-        
-      } catch (error) {
-        console.error('💥 Erro geral ao buscar membros da equipe:', error)
-        setAllTeamMembers([])
-      }
-    }
-
-    fetchTeamMembers()
-  }, []) // Dependência vazia para executar apenas uma vez
 
   // Debug: Log teamMembers para verificar
   useEffect(() => {
-    console.log('CommunicationTab - teamMembers prop:', teamMembers)
-    console.log('CommunicationTab - allTeamMembers state:', allTeamMembers)
-  }, [teamMembers, allTeamMembers])
+    console.log('🔍 CommunicationTab - Debug logs:')
+    console.log('📥 teamMembers prop:', teamMembers)
+    console.log('🎯 teamMembers.length:', teamMembers?.length || 0)
+  }, [teamMembers])
 
   // Filtrar comunicações
   const filteredCommunications = communications.filter(comm => 
