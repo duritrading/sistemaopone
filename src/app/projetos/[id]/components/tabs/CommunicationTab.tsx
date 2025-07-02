@@ -306,7 +306,7 @@ const CommunicationModal = ({
                 type="text"
                 value={formData.title}
                 onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-500"
                 placeholder="Ex: Reunião de alinhamento do projeto"
               />
             </div>
@@ -390,20 +390,21 @@ const CommunicationModal = ({
             </div>
           </div>
 
-          {/* Footer */}
+          {/* Footer com botões */}
           <div className="flex justify-end space-x-3 p-6 border-t border-gray-200">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50"
+              className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+              disabled={isSubmitting}
             >
               Cancelar
             </button>
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={isSubmitting}
-              className="px-6 py-2 bg-gray-900 text-white rounded-md hover:bg-gray-800 disabled:opacity-50"
+              disabled={isSubmitting || !formData.title.trim() || !formData.content.trim()}
+              className="px-6 py-2 bg-gray-900 text-white rounded-md hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {isSubmitting ? 'Salvando...' : 'Salvar'}
             </button>
