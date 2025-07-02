@@ -104,23 +104,36 @@ export const TimelineTab = ({ milestones, activities, loading = false }: Timelin
       ['completed', 'Concluído'].includes(m.status)
     ).length
     
+    const totalActivities = activities.length
+    const completedActivities = activities.filter(a => 
+      ['completed', 'Concluído', 'approved', 'delivered'].includes(a.status)
+    ).length
+    
     const now = new Date()
-    const delayedItems = [...milestones, ...activities].filter(item => {
+    const delayedMilestones = milestones.filter(item => {
       const due = item.due_date || item.deadline
       return due && new Date(due) < now && !['completed', 'Concluído'].includes(item.status)
     }).length
 
-    const daysRemaining = timelineData ? Math.max(0, 
-      Math.ceil((timelineData.endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-    ) : 0
+    const inProgressActivities = activities.filter(a => 
+      ['in_progress', 'pending'].includes(a.status) && 
+      !['completed', 'Concluído', 'approved', 'delivered'].includes(a.status)
+    ).length
+
+    const delayedActivities = activities.filter(item => {
+      const due = item.due_date || item.deadline
+      return due && new Date(due) < now && !['completed', 'Concluído', 'approved', 'delivered'].includes(item.status)
+    }).length
 
     return {
       completedMilestones,
       inProgressMilestones: totalMilestones - completedMilestones,
-      daysRemaining,
-      delayedItems
+      completedActivities,
+      inProgressActivities,
+      delayedMilestones,
+      delayedActivities
     }
-  }, [milestones, activities, timelineData])
+  }, [milestones, activities])
 
   if (loading) {
     return (
@@ -189,16 +202,16 @@ export const TimelineTab = ({ milestones, activities, loading = false }: Timelin
           
           <div className="bg-white border border-gray-200 rounded-lg p-4">
             <div className="flex items-center mb-2">
-              <Calendar className="w-5 h-5 text-orange-600 mr-2" />
-              <span className="text-2xl font-bold text-gray-900">{stats.daysRemaining}</span>
+              <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
+              <span className="text-2xl font-bold text-gray-900">{stats.completedActivities}</span>
             </div>
-            <p className="text-sm text-gray-600">Dias Restantes</p>
+            <p className="text-sm text-gray-600">Atividades Concluídas</p>
           </div>
           
           <div className="bg-white border border-gray-200 rounded-lg p-4">
             <div className="flex items-center mb-2">
               <AlertTriangle className="w-5 h-5 text-red-600 mr-2" />
-              <span className="text-2xl font-bold text-gray-900">{stats.delayedItems}</span>
+              <span className="text-2xl font-bold text-gray-900">{stats.delayedMilestones}</span>
             </div>
             <p className="text-sm text-gray-600">Marcos Atrasados</p>
           </div>
@@ -206,26 +219,26 @@ export const TimelineTab = ({ milestones, activities, loading = false }: Timelin
       </div>
 
       {/* Gantt Chart */}
-      <div className="bg-white rounded-lg border">
+      <div className="bg-white rounded-lg border overflow-hidden">
         <div className="p-6 border-b border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900">Gráfico de Gantt</h3>
         </div>
         
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto relative">
           {/* Timeline Header */}
-          <div className="min-w-[800px] border-b border-gray-200">
+          <div className="min-w-[1000px] border-b border-gray-200 bg-gray-50">
             <div className="flex">
-              <div className="w-80 p-4 bg-gray-50 border-r border-gray-200">
-                <span className="font-medium text-gray-900">Tarefa</span>
+              <div className="w-96 p-4 bg-gray-50 border-r border-gray-200 font-semibold text-gray-700">
+                Tarefa
               </div>
-              <div className="flex-1 relative">
-                <div className="flex border-b border-gray-200">
+              <div className="flex-1 relative bg-white">
+                <div className="flex">
                   {timelineData.weeks.map((week, index) => (
-                    <div key={index} className="flex-1 text-center p-2 border-r border-gray-100 text-xs text-gray-600">
-                      <div className="font-medium">
-                        {week.toLocaleDateString('pt-BR', { day: '2-digit' })} de
+                    <div key={index} className="flex-1 min-w-[80px] text-center py-3 px-2 border-r border-gray-200 text-xs">
+                      <div className="font-semibold text-gray-800">
+                        {week.getDate().toString().padStart(2, '0')} de
                       </div>
-                      <div>
+                      <div className="text-gray-600">
                         {week.toLocaleDateString('pt-BR', { month: 'short' })}
                       </div>
                     </div>
@@ -236,7 +249,7 @@ export const TimelineTab = ({ milestones, activities, loading = false }: Timelin
           </div>
 
           {/* Timeline Items */}
-          <div className="min-w-[800px]">
+          <div className="min-w-[1000px] bg-white">
             {timelineData.items.map((item, index) => {
               const itemDate = new Date(item.due_date || item.deadline!)
               const position = calculatePosition(itemDate, timelineData.startDate, timelineData.totalDays)
@@ -245,26 +258,27 @@ export const TimelineTab = ({ milestones, activities, loading = false }: Timelin
                               ['completed', 'Concluído'].includes(item.status) ? 100 : 0
 
               return (
-                <div key={item.id} className="flex border-b border-gray-100 hover:bg-gray-50">
+                <div key={item.id} className={`flex border-b border-gray-100 hover:bg-blue-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`}>
                   {/* Task Info */}
-                  <div className="w-80 p-4 border-r border-gray-200">
-                    <div className="flex items-start">
-                      {item.type === 'milestone' ? (
-                        <Target className="w-4 h-4 text-purple-600 mr-2 mt-0.5 flex-shrink-0" />
-                      ) : (
-                        <CheckCircle className="w-4 h-4 text-blue-600 mr-2 mt-0.5 flex-shrink-0" />
-                      )}
+                  <div className="w-96 p-4 border-r border-gray-200">
+                    <div className="flex items-start space-x-3">
+                      <div className="flex-shrink-0 mt-1">
+                        {item.type === 'milestone' ? (
+                          <div className="w-3 h-3 bg-purple-600 rounded-full"></div>
+                        ) : (
+                          <div className="w-3 h-3 bg-blue-600 rounded-sm"></div>
+                        )}
+                      </div>
                       <div className="min-w-0 flex-1">
-                        <p className="font-medium text-gray-900 text-sm leading-tight">{item.title}</p>
+                        <p className="font-medium text-gray-900 text-sm leading-relaxed mb-1">{item.title}</p>
                         {item.responsible?.full_name && (
-                          <p className="text-xs text-gray-600 mt-1 flex items-center">
+                          <p className="text-xs text-gray-600 flex items-center mb-2">
                             <User className="w-3 h-3 mr-1" />
                             {item.responsible.full_name}
                           </p>
                         )}
-                        <div className="flex items-center mt-2">
-                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${statusConfig.textColor} bg-opacity-10`} 
-                                style={{ backgroundColor: statusConfig.color.replace('bg-', '').replace('-500', '') + '20' }}>
+                        <div className="flex items-center">
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium text-white ${statusConfig.color}`}>
                             {statusConfig.label}
                           </span>
                         </div>
@@ -273,51 +287,48 @@ export const TimelineTab = ({ milestones, activities, loading = false }: Timelin
                   </div>
 
                   {/* Timeline Bar */}
-                  <div className="flex-1 relative p-4">
-                    <div className="relative h-8">
-                      <div 
-                        className={`absolute top-1 h-6 rounded ${statusConfig.color} opacity-80 min-w-[4px] flex items-center justify-center`}
-                        style={{ 
-                          left: `${position}%`,
-                          width: item.type === 'milestone' ? '8px' : `${Math.max(2, progress)}%`
-                        }}
-                      >
-                        {item.type === 'activity' && progress > 15 && (
-                          <span className="text-white text-xs font-medium px-1">
-                            {progress}%
-                          </span>
-                        )}
-                      </div>
-                      
-                      {/* Date Label */}
-                      <div 
-                        className="absolute top-8 text-xs text-gray-600 whitespace-nowrap"
-                        style={{ left: `${position}%`, transform: 'translateX(-50%)' }}
-                      >
-                        {itemDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
-                      </div>
+                  <div className="flex-1 relative py-6 px-4">
+                    <div className="relative h-6">
+                      {item.type === 'milestone' ? (
+                        <div 
+                          className="absolute top-0 w-3 h-6 transform -translate-x-1/2"
+                          style={{ left: `${position}%` }}
+                        >
+                          <div className={`w-3 h-3 rounded-full ${statusConfig.color} border-2 border-white shadow-md`}></div>
+                          <div className="absolute top-4 left-1/2 transform -translate-x-1/2 text-xs text-gray-600 whitespace-nowrap">
+                            {itemDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                          </div>
+                        </div>
+                      ) : (
+                        <div 
+                          className={`absolute top-1 h-4 rounded-full ${statusConfig.color} shadow-sm flex items-center`}
+                          style={{ 
+                            left: `${Math.max(0, position - 5)}%`,
+                            width: `${Math.max(8, Math.min(progress / 5, 15))}%`
+                          }}
+                        >
+                          {progress > 25 && (
+                            <span className="text-white text-xs font-medium px-2 truncate">
+                              {progress}%
+                            </span>
+                          )}
+                          <div className="absolute top-5 left-0 text-xs text-gray-600 whitespace-nowrap">
+                            {itemDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
 
                   {/* Actions */}
-                  <div className="w-12 p-4 border-l border-gray-200">
-                    <button className="text-gray-400 hover:text-gray-600">
+                  <div className="w-12 p-4 border-l border-gray-200 flex items-center justify-center">
+                    <button className="text-gray-400 hover:text-gray-600 p-1 rounded">
                       <MoreHorizontal className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
               )
             })}
-          </div>
-        </div>
-        
-        {/* Today Indicator */}
-        <div className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-10 pointer-events-none"
-             style={{ 
-               left: `${320 + (calculatePosition(new Date(), timelineData.startDate, timelineData.totalDays) / 100) * (window.innerWidth - 400)}px` 
-             }}>
-          <div className="absolute -top-2 left-1/2 transform -translate-x-1/2">
-            <div className="w-3 h-3 bg-red-500 rounded-full border-2 border-white"></div>
           </div>
         </div>
       </div>
