@@ -140,13 +140,13 @@ export const DeliverablesTab = ({
 
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div className="flex items-center">
-                <Calendar className="w-4 h-4 text-gray-500 mr-2" />
+                <Calendar className="w-4 h-4 text-gray-900 mr-2" />
                 <div>
                   <span className="text-gray-700 font-medium">Prazo:</span>
                   <p className={`${isOverdue ? 'text-red-600 font-medium' : 'text-gray-900'}`}>
                     {formatDate(milestone.due_date || milestone.deadline)}
                     {daysUntilDue !== null && daysUntilDue >= 0 && (
-                      <span className="text-xs text-gray-500 ml-1">
+                      <span className="text-xs text-gray-900 ml-1">
                         ({daysUntilDue} dias)
                       </span>
                     )}
@@ -154,7 +154,7 @@ export const DeliverablesTab = ({
                 </div>
               </div>
               <div className="flex items-center">
-                <User className="w-4 h-4 text-gray-500 mr-2" />
+                <User className="w-4 h-4 text-gray-900 mr-2" />
                 <div>
                   <span className="text-gray-700 font-medium">Responsável:</span>
                   <p className="text-gray-900">{milestone.responsible?.full_name || 'Não atribuído'}</p>
@@ -216,13 +216,13 @@ export const DeliverablesTab = ({
 
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div className="flex items-center">
-                <Calendar className="w-4 h-4 text-gray-500 mr-2" />
+                <Calendar className="w-4 h-4 text-gray-900 mr-2" />
                 <div>
                   <span className="text-gray-700 font-medium">Prazo:</span>
                   <p className={`${isOverdue ? 'text-red-600 font-medium' : 'text-gray-900'}`}>
                     {formatDate(activity.due_date || activity.deadline)}
                     {daysUntilDue !== null && daysUntilDue >= 0 && (
-                      <span className="text-xs text-gray-500 ml-1">
+                      <span className="text-xs text-gray-900 ml-1">
                         ({daysUntilDue} dias)
                       </span>
                     )}
@@ -230,7 +230,7 @@ export const DeliverablesTab = ({
                 </div>
               </div>
               <div className="flex items-center">
-                <User className="w-4 h-4 text-gray-500 mr-2" />
+                <User className="w-4 h-4 text-gray-900 mr-2" />
                 <div>
                   <span className="text-gray-700 font-medium">Responsável:</span>
                   <p className="text-gray-900">{activity.responsible?.full_name || 'Não atribuído'}</p>
