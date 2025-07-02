@@ -42,6 +42,7 @@ interface TeamMember {
 interface CommunicationTabProps {
   projectId: string
   teamMembers: TeamMember[]
+  loading?: boolean
 }
 
 // === MOCK DATA (comentado para integração real) ===
@@ -160,7 +161,7 @@ const CommunicationModal = ({
   teamMembers: TeamMember[]
   projectId: string
   communication?: Communication | null
-  onSuccess: () => void
+  onSuccess: (newCommunication?: Communication) => void
 }) => {
   const [formData, setFormData] = useState({
     type: 'Reunião' as Communication['type'],
@@ -207,11 +208,25 @@ const CommunicationModal = ({
     setIsSubmitting(true)
 
     try {
-      // Aqui implementar a lógica do Supabase
-      // const { error } = await supabase.from('project_communications')...
+      const newCommunication: Communication = {
+        id: Date.now().toString(), // Usar UUID real em produção
+        project_id: projectId,
+        type: formData.type,
+        title: formData.title,
+        content: formData.content,
+        participants: formData.participants,
+        follow_up_actions: formData.follow_up_actions.split('\n').filter(action => action.trim()),
+        sentiment: formData.sentiment,
+        communication_date: formData.communication_date,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+
+      // Simular salvar no Supabase - substituir por lógica real
+      // await supabase.from('project_communications').insert([newCommunication])
       
+      onSuccess(newCommunication)
       alert(communication ? 'Comunicação atualizada!' : 'Comunicação criada!')
-      onSuccess()
       onClose()
     } catch (error) {
       console.error('Erro:', error)
@@ -254,7 +269,7 @@ const CommunicationModal = ({
                 <select
                   value={formData.type}
                   onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value as Communication['type'] }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-gray-100"
                 >
                   <option value="Reunião">Reunião</option>
                   <option value="E-mail">E-mail</option>
@@ -268,7 +283,7 @@ const CommunicationModal = ({
                   type="date"
                   value={formData.communication_date}
                   onChange={(e) => setFormData(prev => ({ ...prev, communication_date: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-gray-100"
                 />
               </div>
             </div>
@@ -289,7 +304,7 @@ const CommunicationModal = ({
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Participantes (selecione da equipe)
               </label>
-              <div className="border border-gray-300 rounded-md p-3 max-h-32 overflow-y-auto">
+              <div className="border border-gray-300 rounded-md p-3 max-h-32 overflow-y-auto bg-gray-100">
                 {teamMembers && teamMembers.length > 0 ? (
                   teamMembers.map(member => (
                     <label key={member.id} className="flex items-center space-x-2 mb-2">
@@ -321,7 +336,7 @@ const CommunicationModal = ({
                 value={formData.content}
                 onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
                 rows={4}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-gray-100"
                 placeholder="Descreva o que foi discutido, decidido ou comunicado..."
               />
             </div>
@@ -335,7 +350,7 @@ const CommunicationModal = ({
                 value={formData.follow_up_actions}
                 onChange={(e) => setFormData(prev => ({ ...prev, follow_up_actions: e.target.value }))}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-gray-100"
                 placeholder="Finalizar documento&#10;Preparar apresentação&#10;Agendar próxima reunião"
               />
             </div>
@@ -348,7 +363,7 @@ const CommunicationModal = ({
               <select
                 value={formData.sentiment}
                 onChange={(e) => setFormData(prev => ({ ...prev, sentiment: e.target.value as Communication['sentiment'] }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-gray-100"
               >
                 <option value="negativo">Negativo</option>
                 <option value="neutro">Neutro</option>
@@ -382,7 +397,7 @@ const CommunicationModal = ({
 }
 
 // === COMPONENTE PRINCIPAL ===
-export const CommunicationTab = ({ projectId, teamMembers }: CommunicationTabProps) => {
+export const CommunicationTab = ({ projectId, teamMembers = [], loading = false }: CommunicationTabProps) => {
   const [communications, setCommunications] = useState<Communication[]>(mockCommunications)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingCommunication, setEditingCommunication] = useState<Communication | null>(null)
@@ -416,8 +431,11 @@ export const CommunicationTab = ({ projectId, teamMembers }: CommunicationTabPro
     }
   }
 
-  const handleModalSuccess = () => {
-    // Recarregar dados
+  const handleModalSuccess = (newCommunication?: Communication) => {
+    if (newCommunication && !editingCommunication) {
+      // Adicionar nova comunicação à lista
+      setCommunications(prev => [newCommunication, ...prev])
+    }
     setEditingCommunication(null)
   }
 
