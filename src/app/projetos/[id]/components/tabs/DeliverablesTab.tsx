@@ -1,35 +1,24 @@
-// src/app/projetos/[id]/components/tabs/DeliverablesTab.tsx
+// src/app/projetos/[id]/components/tabs/DeliverablesTab.tsx - IMPORT FIX
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { 
   Target, 
   CheckSquare, 
   Plus, 
   Search, 
   Filter, 
+  Calendar, 
+  User, 
   Edit3, 
-  Trash2, 
-  Calendar,
-  User,
-  AlertCircle
+  Trash2,
+  Clock,
+  CheckCircle,
+  AlertCircle 
 } from 'lucide-react'
-import { 
-  InfoCard, 
-  StatusBadge, 
-  ProgressBar, 
-  EmptyState, 
-  formatDate 
-} from '../shared'
-import { 
-  Milestone, 
-  Activity, 
-  TeamMember, 
-  FilterState,
-  MILESTONE_STATUSES,
-  ACTIVITY_STATUSES 
-} from '../../types/project.types'
-import { ProjectUtils } from '../../handlers/ProjectHandlers'
+import { InfoCard, EmptyState, StatusBadge, ProgressBar } from '../shared'
+import { Milestone, Activity, TeamMember } from '../../types/project.types'
+import { ProjectUtils } from '../../utils/ProjectUtils' // Fixed import path
 
 interface DeliverablesTabProps {
   milestones: Milestone[]
@@ -41,10 +30,9 @@ interface DeliverablesTabProps {
   onEditActivity: (activity: Activity) => void
   onDeleteMilestone: (id: string, title: string) => void
   onDeleteActivity: (id: string, title: string) => void
-  loading?: boolean
 }
 
-export const DeliverablesTab = ({
+export default function DeliverablesTab({
   milestones,
   activities,
   teamMembers,
@@ -53,55 +41,48 @@ export const DeliverablesTab = ({
   onEditMilestone,
   onEditActivity,
   onDeleteMilestone,
-  onDeleteActivity,
-  loading = false
-}: DeliverablesTabProps) => {
+  onDeleteActivity
+}: DeliverablesTabProps) {
+  const [searchTerm, setSearchTerm] = useState('')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [responsibleFilter, setResponsibleFilter] = useState<string>('all')
 
-  // === ESTADOS DE FILTRO ===
-  const [filters, setFilters] = useState<FilterState>({
-    typeFilter: 'todos',
-    responsibleFilter: 'todos',
-    statusFilter: 'todos',
-    searchTerm: ''
-  })
-
-  // === FILTROS APLICADOS ===
-  const filteredMilestones = useMemo(() => {
-    return milestones.filter(milestone => {
-      const matchesSearch = milestone.title.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
-                           milestone.description?.toLowerCase().includes(filters.searchTerm.toLowerCase())
-      const matchesStatus = filters.statusFilter === 'todos' || milestone.status === filters.statusFilter
-      const matchesResponsible = filters.responsibleFilter === 'todos' || 
-                                 milestone.assigned_to === filters.responsibleFilter ||
-                                 milestone.responsible_id === filters.responsibleFilter
-      return matchesSearch && matchesStatus && matchesResponsible
-    })
-  }, [milestones, filters])
-
-  const filteredActivities = useMemo(() => {
-    return activities.filter(activity => {
-      const matchesSearch = activity.title.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
-                           activity.description?.toLowerCase().includes(filters.searchTerm.toLowerCase())
-      const matchesStatus = filters.statusFilter === 'todos' || activity.status === filters.statusFilter
-      const matchesResponsible = filters.responsibleFilter === 'todos' || 
-                                 activity.assigned_to === filters.responsibleFilter ||
-                                 activity.responsible_id === filters.responsibleFilter
-      return matchesSearch && matchesStatus && matchesResponsible
-    })
-  }, [activities, filters])
-
-  // === HANDLERS DE FILTRO ===
-  const updateFilter = (key: keyof FilterState, value: string) => {
-    setFilters(prev => ({ ...prev, [key]: value }))
+  // Helper function para formatar data
+  const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString) return 'Sem prazo'
+    try {
+      return new Date(dateString).toLocaleDateString('pt-BR')
+    } catch {
+      return 'Data inválida'
+    }
   }
 
+  // Filtros aplicados
+  const { filteredMilestones, filteredActivities } = useMemo(() => {
+    const filterItems = <T extends Milestone | Activity>(items: T[]) => {
+      return items.filter(item => {
+        const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase())
+        const matchesStatus = statusFilter === 'all' || item.status === statusFilter
+        const responsibleId = (item as any).assigned_to || (item as any).responsible_id
+        const matchesResponsible = responsibleFilter === 'all' || responsibleId === responsibleFilter
+        
+        return matchesSearch && matchesStatus && matchesResponsible
+      })
+    }
+
+    return {
+      filteredMilestones: filterItems(milestones),
+      filteredActivities: filterItems(activities)
+    }
+  }, [milestones, activities, searchTerm, statusFilter, responsibleFilter])
+
+  // Verificar se tem filtros ativos
+  const hasActiveFilters = searchTerm || statusFilter !== 'all' || responsibleFilter !== 'all'
+
   const clearFilters = () => {
-    setFilters({
-      typeFilter: 'todos',
-      responsibleFilter: 'todos', 
-      statusFilter: 'todos',
-      searchTerm: ''
-    })
+    setSearchTerm('')
+    setStatusFilter('all')
+    setResponsibleFilter('all')
   }
 
   // === MILESTONE CARD ===
@@ -111,39 +92,38 @@ export const DeliverablesTab = ({
 
     return (
       <div className={`border rounded-lg p-4 hover:shadow-sm transition-shadow ${
-        isOverdue ? 'border-red-200 bg-red-50' : 'border-gray-300'
+        isOverdue ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-white'
       }`}>
-        <div className="flex justify-between items-start">
+        <div className="flex items-start justify-between">
           <div className="flex-1">
-            <div className="flex items-center space-x-3 mb-2">
-              <h4 className="text-lg font-medium text-gray-900">{milestone.title}</h4>
+            <div className="flex items-center space-x-2 mb-2">
+              <h3 className="font-semibold text-gray-900">{milestone.title}</h3>
               <StatusBadge status={milestone.status} type="milestone" />
-              {isOverdue && (
-                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                  <AlertCircle className="w-3 h-3 mr-1" />
-                  Atrasado
-                </span>
-              )}
             </div>
             
             {milestone.description && (
-              <p className="text-gray-700 mb-3">{milestone.description}</p>
+              <p className="text-sm text-gray-900 mb-3 leading-relaxed">
+                {milestone.description}
+              </p>
             )}
-            
+
+            {/* Progress Bar */}
             <div className="mb-3">
-              <ProgressBar 
-                value={milestone.progress_percentage} 
-                color="bg-purple-600"
+              <ProgressBar
+                value={milestone.progress_percentage || 0}
+                className={isOverdue && milestone.progress_percentage !== 100 ? "bg-red-600" : "bg-green-600"}
                 showLabel={true}
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            {/* Info Row */}
+            <div className="flex flex-col space-y-2 text-sm">
               <div className="flex items-center">
                 <Calendar className="w-4 h-4 text-gray-900 mr-2" />
                 <div>
                   <span className="text-gray-700 font-medium">Prazo:</span>
-                  <p className={`${isOverdue ? 'text-red-600 font-medium' : 'text-gray-900'}`}>
+                  <p className={`${isOverdue && milestone.status !== 'completed' ? 
+                    'text-red-600 font-medium' : 'text-gray-900'}`}>
                     {formatDate(milestone.due_date || milestone.deadline)}
                     {daysUntilDue !== null && daysUntilDue >= 0 && (
                       <span className="text-xs text-gray-900 ml-1">
@@ -163,7 +143,7 @@ export const DeliverablesTab = ({
             </div>
           </div>
           
-          {/* Botões de Ação */}
+          {/* Action Buttons */}
           <div className="flex space-x-2 ml-4 opacity-80 hover:opacity-100 transition-opacity">
             <button
               onClick={() => onEditMilestone(milestone)}
@@ -192,34 +172,36 @@ export const DeliverablesTab = ({
 
     return (
       <div className={`border rounded-lg p-4 hover:shadow-sm transition-shadow ${
-        isOverdue ? 'border-red-200 bg-red-50' : 'border-gray-300'
+        isOverdue ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-white'
       }`}>
-        <div className="flex justify-between items-start">
+        <div className="flex items-start justify-between">
           <div className="flex-1">
-            <div className="flex items-center space-x-3 mb-2">
-              <h4 className="text-lg font-medium text-gray-900">{activity.title}</h4>
+            <div className="flex items-center space-x-2 mb-2">
+              <h3 className="font-semibold text-gray-900">{activity.title}</h3>
               <StatusBadge status={activity.status} type="activity" />
-              <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-800">
-                {ProjectUtils.getTypeIcon(activity.type || activity.category || '')} {ProjectUtils.translateType(activity.type || activity.category || '')}
-              </span>
-              {isOverdue && (
-                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                  <AlertCircle className="w-3 h-3 mr-1" />
-                  Atrasado
-                </span>
-              )}
             </div>
             
             {activity.description && (
-              <p className="text-gray-700 mb-3">{activity.description}</p>
+              <p className="text-sm text-gray-900 mb-3 leading-relaxed">
+                {activity.description}
+              </p>
             )}
 
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            {/* Activity Type Badge */}
+            <div className="mb-2">
+              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                {ProjectUtils.getTypeIcon(activity.type || activity.category || '')} {ProjectUtils.translateType(activity.type || activity.category || '')}
+              </span>
+            </div>
+
+            {/* Info Row */}
+            <div className="flex flex-col space-y-2 text-sm">
               <div className="flex items-center">
                 <Calendar className="w-4 h-4 text-gray-900 mr-2" />
                 <div>
                   <span className="text-gray-700 font-medium">Prazo:</span>
-                  <p className={`${isOverdue ? 'text-red-600 font-medium' : 'text-gray-900'}`}>
+                  <p className={`${isOverdue && !['completed', 'approved', 'delivered'].includes(activity.status) ? 
+                    'text-red-600 font-medium' : 'text-gray-900'}`}>
                     {formatDate(activity.due_date || activity.deadline)}
                     {daysUntilDue !== null && daysUntilDue >= 0 && (
                       <span className="text-xs text-gray-900 ml-1">
@@ -239,7 +221,7 @@ export const DeliverablesTab = ({
             </div>
           </div>
           
-          {/* Botões de Ação */}
+          {/* Action Buttons */}
           <div className="flex space-x-2 ml-4 opacity-80 hover:opacity-100 transition-opacity">
             <button
               onClick={() => onEditActivity(activity)}
@@ -261,103 +243,61 @@ export const DeliverablesTab = ({
     )
   }
 
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="bg-white rounded-lg border p-6 animate-pulse">
-          <div className="flex justify-between items-center mb-4">
-            <div className="h-6 bg-gray-200 rounded w-1/4" />
-            <div className="flex space-x-3">
-              <div className="h-10 bg-gray-200 rounded w-32" />
-              <div className="h-10 bg-gray-200 rounded w-32" />
-            </div>
-          </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {Array.from({ length: 4 }, (_, i) => (
-              <div key={i} className="border rounded-lg p-4 space-y-3">
-                <div className="h-6 bg-gray-200 rounded w-3/4" />
-                <div className="h-4 bg-gray-200 rounded w-full" />
-                <div className="h-2 bg-gray-200 rounded w-full" />
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="h-4 bg-gray-200 rounded" />
-                  <div className="h-4 bg-gray-200 rounded" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="space-y-6">
-      
-      {/* Filtros e Ações */}
-      <div className="bg-white rounded-lg border border-gray-300 p-6">
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center space-y-4 lg:space-y-0">
-          
-          {/* Filtros */}
-          <div className="flex flex-wrap gap-4 flex-1">
-            {/* Busca */}
+      {/* Header com Filtros e Ações */}
+      <div className="bg-white rounded-lg border p-6">
+        {/* Controles de Filtro */}
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0 mb-6">
+          {/* Busca */}
+          <div className="flex-1 max-w-md">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Search className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
               <input
                 type="text"
                 placeholder="Buscar marcos e atividades..."
-                value={filters.searchTerm}
-                onChange={(e) => updateFilter('searchTerm', e.target.value)}
-                className="pl-10 pr-4 py-2 border border-gray-400 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 text-gray-900 w-64"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
               />
             </div>
+          </div>
 
-            {/* Filtro por Status */}
+          {/* Filtros */}
+          <div className="flex flex-wrap items-center space-x-4">
             <select
-              value={filters.statusFilter}
-              onChange={(e) => updateFilter('statusFilter', e.target.value)}
-              className="px-3 py-2 border border-gray-400 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900"
             >
-              <option value="todos">Todos os Status</option>
-              <optgroup label="Status de Marcos">
-                {MILESTONE_STATUSES.map(status => (
-                  <option key={`milestone-${status.value}`} value={status.value}>
-                    {status.label}
-                  </option>
-                ))}
-              </optgroup>
-              <optgroup label="Status de Atividades">
-                {ACTIVITY_STATUSES.map(status => (
-                  <option key={`activity-${status.value}`} value={status.value}>
-                    {status.label}
-                  </option>
-                ))}
-              </optgroup>
+              <option value="all">Todos os status</option>
+              <option value="pending">Pendente</option>
+              <option value="in_progress">Em andamento</option>
+              <option value="completed">Concluído</option>
             </select>
 
-            {/* Filtro por Responsável */}
             <select
-              value={filters.responsibleFilter}
-              onChange={(e) => updateFilter('responsibleFilter', e.target.value)}
-              className="px-3 py-2 border border-gray-400 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+              value={responsibleFilter}
+              onChange={(e) => setResponsibleFilter(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900"
             >
-              <option value="todos">Todos os Responsáveis</option>
-              {teamMembers.map(member => (
+              <option value="all">Todos os responsáveis</option>
+              {teamMembers.map((member) => (
                 <option key={member.id} value={member.id}>{member.full_name}</option>
               ))}
             </select>
 
-            {/* Limpar Filtros */}
-            {(filters.searchTerm || filters.statusFilter !== 'todos' || filters.responsibleFilter !== 'todos') && (
+            {hasActiveFilters && (
               <button
                 onClick={clearFilters}
-                className="px-3 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+                className="text-sm text-blue-600 hover:text-gray-800 transition-colors"
               >
                 Limpar filtros
               </button>
             )}
           </div>
 
-          {/* Ações */}
+          {/* Action Buttons */}
           <div className="flex space-x-3">
             <button
               onClick={onNewMilestone}
@@ -376,7 +316,7 @@ export const DeliverablesTab = ({
           </div>
         </div>
 
-        {/* Indicadores de Filtro */}
+        {/* Filter Indicators */}
         {(filteredMilestones.length !== milestones.length || filteredActivities.length !== activities.length) && (
           <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
             <div className="flex items-center">
@@ -390,10 +330,10 @@ export const DeliverablesTab = ({
         )}
       </div>
 
-      {/* Colunas de Marcos e Atividades */}
+      {/* Milestones and Activities Columns */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
-        {/* Coluna de Marcos */}
+        {/* Milestones Column */}
         <InfoCard 
           title={`Marcos (${filteredMilestones.length})`} 
           icon={Target}
@@ -423,7 +363,7 @@ export const DeliverablesTab = ({
           </div>
         </InfoCard>
 
-        {/* Coluna de Atividades */}
+        {/* Activities Column */}
         <InfoCard 
           title={`Atividades (${filteredActivities.length})`} 
           icon={CheckSquare}
@@ -456,5 +396,3 @@ export const DeliverablesTab = ({
     </div>
   )
 }
-
-export default DeliverablesTab
