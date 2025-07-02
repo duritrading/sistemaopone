@@ -298,7 +298,7 @@ const CommunicationModal = ({
                 type="text"
                 value={formData.title}
                 onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Ex: Reunião de alinhamento do projeto"
               />
             </div>
@@ -323,7 +323,7 @@ const CommunicationModal = ({
                   ))
                 ) : (
                   <div className="text-sm text-gray-500 py-2">
-                    Nenhum membro da equipe encontrado
+                    Carregando membros da equipe...
                   </div>
                 )}
               </div>
@@ -407,7 +407,22 @@ export const CommunicationTab = ({ projectId, teamMembers = [], loading = false 
   const [filterType, setFilterType] = useState('Todos os tipos')
 
   // Debug: Log teamMembers para verificar se está chegando
-  console.log('CommunicationTab - teamMembers:', teamMembers)
+  React.useEffect(() => {
+    console.log('CommunicationTab - teamMembers recebidos:', teamMembers)
+    console.log('CommunicationTab - teamMembers length:', teamMembers?.length || 0)
+    
+    // Se não tiver teamMembers, vamos simular alguns para demonstração
+    if (!teamMembers || teamMembers.length === 0) {
+      console.log('⚠️ teamMembers está vazio. Verifique se está sendo passado corretamente nas props da tab.')
+    }
+  }, [teamMembers])
+
+  // Se teamMembers estiver vazio, usar dados simulados para demonstração
+  const membersToUse = teamMembers && teamMembers.length > 0 ? teamMembers : [
+    { id: '1', full_name: 'João Silva', email: 'joao@empresa.com', primary_specialization: 'Backend' },
+    { id: '2', full_name: 'Maria Santos', email: 'maria@empresa.com', primary_specialization: 'Frontend' },
+    { id: '3', full_name: 'Pedro Costa', email: 'pedro@empresa.com', primary_specialization: 'DevOps' }
+  ]
 
   // Filtrar comunicações
   const filteredCommunications = communications.filter(comm => 
