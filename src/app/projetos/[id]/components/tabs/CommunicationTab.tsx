@@ -418,16 +418,25 @@ export const CommunicationTab = ({ projectId, teamMembers = [], loading = false 
   // Buscar todos os membros da equipe se não foram fornecidos
   useEffect(() => {
     const fetchTeamMembers = async () => {
+      console.log('🔍 Iniciando busca de membros da equipe...')
+      console.log('📥 teamMembers prop recebida:', teamMembers)
+      
       // Se já temos teamMembers via props, usar eles
       if (teamMembers && teamMembers.length > 0) {
+        console.log('✅ Usando teamMembers da prop:', teamMembers)
         setAllTeamMembers(teamMembers)
         return
       }
 
+      console.log('🔄 teamMembers prop vazia, buscando do Supabase...')
+
       try {
-        // Tentar acessar instância global do Supabase se disponível
+        // Verificar se window.supabase está disponível
+        console.log('🌐 Verificando window.supabase...', typeof window !== 'undefined' ? !!window.supabase : 'window não disponível')
+        
         // @ts-ignore
         if (typeof window !== 'undefined' && window.supabase) {
+          console.log('📡 Fazendo query no Supabase...')
           // @ts-ignore
           const { data, error } = await window.supabase
             .from('team_members')
@@ -435,21 +444,40 @@ export const CommunicationTab = ({ projectId, teamMembers = [], loading = false 
             .eq('is_active', true)
             .order('full_name')
 
+          console.log('📊 Resultado da query - data:', data)
+          console.log('📊 Resultado da query - error:', error)
+
           if (error) {
-            console.error('Erro ao buscar membros da equipe:', error)
+            console.error('❌ Erro ao buscar membros da equipe:', error)
             setAllTeamMembers([])
             return
           }
 
-          console.log('Membros encontrados no Supabase:', data)
+          console.log('✅ Membros encontrados no Supabase:', data)
           setAllTeamMembers(data || [])
         } else {
-          console.warn('Supabase não está disponível.')
-          setAllTeamMembers([])
+          console.warn('⚠️ window.supabase não está disponível')
+          // Para teste, vamos definir membros temporários baseados nos dados reais
+          const testMembers = [
+            { 
+              id: '37230609-a393-49c7-8366-155ef5f41cc1', 
+              full_name: 'Eduarda Simas', 
+              email: 'eduarda@opone.com', 
+              primary_specialization: 'Produto' 
+            },
+            { 
+              id: '41ce6a3f-f523-42d7-9de5-1e26037f51a9', 
+              full_name: 'Carlos Leal', 
+              email: 'carlos@opone.com', 
+              primary_specialization: 'Machine Learning/IA' 
+            }
+          ]
+          console.log('🧪 Usando membros de teste:', testMembers)
+          setAllTeamMembers(testMembers)
         }
         
       } catch (error) {
-        console.error('Erro ao buscar membros da equipe:', error)
+        console.error('💥 Erro geral ao buscar membros da equipe:', error)
         setAllTeamMembers([])
       }
     }
