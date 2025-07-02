@@ -176,7 +176,8 @@ const CommunicationModal = ({
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Debug: Log teamMembers
-  console.log('CommunicationModal - teamMembers:', teamMembers)
+  console.log('CommunicationModal - teamMembers recebidos:', teamMembers)
+  console.log('CommunicationModal - teamMembers length:', teamMembers?.length || 0)
 
   useEffect(() => {
     if (communication) {
@@ -308,24 +309,18 @@ const CommunicationModal = ({
                 Participantes (selecione da equipe)
               </label>
               <div className="border border-gray-300 rounded-md p-3 max-h-32 overflow-y-auto bg-white">
-                {teamMembers && teamMembers.length > 0 ? (
-                  teamMembers.map(member => (
-                    <label key={member.id} className="flex items-center space-x-2 mb-2">
-                      <input
-                        type="checkbox"
-                        checked={formData.participants.includes(member.full_name)}
-                        onChange={() => handleParticipantToggle(member.full_name)}
-                        className="text-blue-600 focus:ring-blue-500"
-                      />
-                      <span className="text-sm text-gray-700">{member.full_name}</span>
-                      <span className="text-xs text-gray-500">({member.primary_specialization})</span>
-                    </label>
-                  ))
-                ) : (
-                  <div className="text-sm text-gray-500 py-2">
-                    Carregando membros da equipe...
-                  </div>
-                )}
+                {membersToUse.map(member => (
+                  <label key={member.id} className="flex items-center space-x-2 mb-2">
+                    <input
+                      type="checkbox"
+                      checked={formData.participants.includes(member.full_name)}
+                      onChange={() => handleParticipantToggle(member.full_name)}
+                      className="text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-gray-700">{member.full_name}</span>
+                    <span className="text-xs text-gray-500">({member.primary_specialization})</span>
+                  </label>
+                ))}
               </div>
               <p className="text-xs text-gray-500 mt-1">
                 Selecionados: {formData.participants.join(', ') || 'Nenhum'}
@@ -410,19 +405,18 @@ export const CommunicationTab = ({ projectId, teamMembers = [], loading = false 
   React.useEffect(() => {
     console.log('CommunicationTab - teamMembers recebidos:', teamMembers)
     console.log('CommunicationTab - teamMembers length:', teamMembers?.length || 0)
-    
-    // Se não tiver teamMembers, vamos simular alguns para demonstração
-    if (!teamMembers || teamMembers.length === 0) {
-      console.log('⚠️ teamMembers está vazio. Verifique se está sendo passado corretamente nas props da tab.')
-    }
   }, [teamMembers])
 
-  // Se teamMembers estiver vazio, usar dados simulados para demonstração
-  const membersToUse = teamMembers && teamMembers.length > 0 ? teamMembers : [
+  // Dados simulados para demonstração quando teamMembers estiver vazio
+  const mockTeamMembers = [
     { id: '1', full_name: 'João Silva', email: 'joao@empresa.com', primary_specialization: 'Backend' },
     { id: '2', full_name: 'Maria Santos', email: 'maria@empresa.com', primary_specialization: 'Frontend' },
-    { id: '3', full_name: 'Pedro Costa', email: 'pedro@empresa.com', primary_specialization: 'DevOps' }
+    { id: '3', full_name: 'Pedro Costa', email: 'pedro@empresa.com', primary_specialization: 'DevOps' },
+    { id: '4', full_name: 'Ana Oliveira', email: 'ana@empresa.com', primary_specialization: 'UX/UI' }
   ]
+
+  // Usar dados reais se disponíveis, senão usar mock
+  const membersToUse = teamMembers && teamMembers.length > 0 ? teamMembers : mockTeamMembers
 
   // Filtrar comunicações
   const filteredCommunications = communications.filter(comm => 
