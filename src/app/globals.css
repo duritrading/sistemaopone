@@ -48,3 +48,37 @@ body {
 .gantt-container .task-list-table .task-list-row {
   @apply hover:bg-gray-100 transition-colors;
 }
+
+/* Melhorar legibilidade - adicionar ao final do src/app/globals.css */
+
+/* Cards de clientes - textos mais escuros */
+.bg-white .text-gray-600 {
+  color: rgb(31 41 55) !important; /* gray-800 */
+}
+
+.bg-white .text-gray-500 {
+  color: rgb(55 65 81) !important; /* gray-700 */
+}
+
+/* Labels de formulários */
+label {
+  color: rgb(17 24 39) !important; /* gray-900 */
+  font-weight: 500;
+}
+
+/* Textos pequenos em cards */
+.text-sm.text-gray-600,
+.text-sm.text-gray-500 {
+  color: rgb(31 41 55) !important; /* gray-800 */
+}
+
+/* Informações nos modais */
+.modal-content .text-gray-600,
+.fixed .bg-white .text-gray-600 {
+  color: rgb(31 41 55) !important; /* gray-800 */
+}
+
+/* Placeholders mantém mais claros */
+::placeholder {
+  color: rgb(107 114 128) !important; /* gray-500 */
+}
