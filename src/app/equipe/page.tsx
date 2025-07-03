@@ -2,7 +2,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-// ❌ REMOVIDO: import DashboardLayout from '@/components/layout/DashboardLayout'
 import NewMemberModal from '@/components/modals/NewMemberModal'
 import EditMemberModal from '@/components/modals/EditMemberModal'
 import { supabase } from '@/lib/supabase'
@@ -233,16 +232,13 @@ export default function EquipePage() {
 
   if (loading) {
     return (
-      // ❌ REMOVIDO: <DashboardLayout>
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
       </div>
-      // ❌ REMOVIDO: </DashboardLayout>
     )
   }
 
   return (
-    // ❌ REMOVIDO: <DashboardLayout>
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="sm:flex sm:items-center sm:justify-between">
@@ -270,11 +266,11 @@ export default function EquipePage() {
           {/* Search */}
           <div className="flex-1">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
               <input
                 type="text"
                 placeholder="Buscar por nome ou email..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-500"
                 value={filters.search}
                 onChange={(e) => handleFilterChange('search', e.target.value)}
               />
@@ -307,7 +303,7 @@ export default function EquipePage() {
                         checked={filters.seniority.includes(level)}
                         onChange={() => handleFilterChange('seniority', level)}
                       />
-                      <span className="ml-2 text-sm text-gray-700">
+                      <span className="ml-2 text-sm text-gray-800">
                         {level} ({counts.seniority[level] || 0})
                       </span>
                     </label>
@@ -327,7 +323,7 @@ export default function EquipePage() {
                         checked={filters.specialization.includes(spec)}
                         onChange={() => handleFilterChange('specialization', spec)}
                       />
-                      <span className="ml-2 text-sm text-gray-700">
+                      <span className="ml-2 text-sm text-gray-800">
                         {spec} ({counts.specialization[spec] || 0})
                       </span>
                     </label>
@@ -347,7 +343,7 @@ export default function EquipePage() {
                         checked={filters.availability.includes(status)}
                         onChange={() => handleFilterChange('availability', status)}
                       />
-                      <span className="ml-2 text-sm text-gray-700">
+                      <span className="ml-2 text-sm text-gray-800">
                         {status} ({counts.availability[status] || 0})
                       </span>
                     </label>
@@ -361,7 +357,7 @@ export default function EquipePage() {
 
       {/* Results Summary */}
       <div className="flex items-center justify-between">
-        <p className="text-sm text-gray-700">
+        <p className="text-sm text-gray-800">
           Mostrando {filteredMembers.length} de {teamMembers.length} membros
         </p>
       </div>
@@ -382,7 +378,7 @@ export default function EquipePage() {
                   />
                 ) : (
                   <div className="h-12 w-12 rounded-full bg-gray-200 flex items-center justify-center">
-                    <User className="h-6 w-6 text-gray-400" />
+                    <User className="h-6 w-6 text-gray-500" />
                   </div>
                 )}
               </div>
@@ -393,8 +389,8 @@ export default function EquipePage() {
                   {member.full_name}
                 </h3>
                 <div className="flex items-center mt-1">
-                  <Mail className="h-4 w-4 text-gray-400 mr-1" />
-                  <p className="text-sm text-gray-600 truncate">{member.email}</p>
+                  <Mail className="h-4 w-4 text-gray-500 mr-1" />
+                  <p className="text-sm text-gray-700 truncate">{member.email}</p>
                 </div>
               </div>
 
@@ -402,7 +398,7 @@ export default function EquipePage() {
               <div className="flex items-center space-x-2">
                 <button
                   onClick={() => handleEditMember(member)}
-                  className="p-2 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-md transition-colors"
+                  className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
                   title="Editar membro"
                 >
                   <Edit2 className="h-4 w-4" />
@@ -410,7 +406,7 @@ export default function EquipePage() {
                 <button
                   onClick={() => handleDeleteMember(member.id)}
                   disabled={deletingMember === member.id}
-                  className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50"
+                  className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50"
                   title="Excluir membro"
                 >
                   {deletingMember === member.id ? (
@@ -427,27 +423,27 @@ export default function EquipePage() {
               {/* Seniority & Specialization */}
               <div>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-gray-500">SENIORIDADE</span>
+                  <span className="text-xs font-medium text-gray-600">SENIORIDADE</span>
                   <span className="text-sm font-medium text-gray-900">{member.seniority_level}</span>
                 </div>
                 <div className="flex items-center justify-between mt-1">
-                  <span className="text-xs font-medium text-gray-500">ESPECIALIZAÇÃO</span>
-                  <span className="text-sm text-gray-700">{member.primary_specialization}</span>
+                  <span className="text-xs font-medium text-gray-600">ESPECIALIZAÇÃO</span>
+                  <span className="text-sm text-gray-800">{member.primary_specialization}</span>
                 </div>
               </div>
 
               {/* Work Modality */}
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-gray-500">MODALIDADE</span>
+                <span className="text-xs font-medium text-gray-600">MODALIDADE</span>
                 <div className="flex items-center">
-                  <MapPin className="h-4 w-4 text-gray-400 mr-1" />
-                  <span className="text-sm text-gray-700">{member.work_modality}</span>
+                  <MapPin className="h-4 w-4 text-gray-500 mr-1" />
+                  <span className="text-sm text-gray-800">{member.work_modality}</span>
                 </div>
               </div>
 
               {/* Availability Status */}
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-gray-500">STATUS</span>
+                <span className="text-xs font-medium text-gray-600">STATUS</span>
                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getAvailabilityColor(member.availability_status, member.allocation_percentage)}`}>
                   {member.availability_status} ({member.allocation_percentage}%)
                 </span>
@@ -455,19 +451,19 @@ export default function EquipePage() {
 
               {/* Last Access */}
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-gray-500">ÚLTIMO ACESSO</span>
+                <span className="text-xs font-medium text-gray-600">ÚLTIMO ACESSO</span>
                 <div className="flex items-center">
-                  <Clock className="h-4 w-4 text-gray-400 mr-1" />
-                  <span className="text-sm text-gray-700">{formatDate(member.last_access)}</span>
+                  <Clock className="h-4 w-4 text-gray-500 mr-1" />
+                  <span className="text-sm text-gray-800">{formatDate(member.last_access)}</span>
                 </div>
               </div>
 
               {/* Projects Allocated (placeholder) */}
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-gray-500">PROJETOS</span>
+                <span className="text-xs font-medium text-gray-600">PROJETOS</span>
                 <div className="flex items-center">
-                  <FolderOpen className="h-4 w-4 text-gray-400 mr-1" />
-                  <span className="text-sm text-gray-700">-</span>
+                  <FolderOpen className="h-4 w-4 text-gray-500 mr-1" />
+                  <span className="text-sm text-gray-800">-</span>
                 </div>
               </div>
             </div>
@@ -478,9 +474,9 @@ export default function EquipePage() {
       {/* Empty State */}
       {filteredMembers.length === 0 && (
         <div className="text-center py-12">
-          <User className="mx-auto h-12 w-12 text-gray-400" />
+          <User className="mx-auto h-12 w-12 text-gray-500" />
           <h3 className="mt-2 text-sm font-medium text-gray-900">Nenhum membro encontrado</h3>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm text-gray-600">
             Tente ajustar seus filtros ou adicione um novo membro à equipe.
           </p>
         </div>
@@ -508,6 +504,5 @@ export default function EquipePage() {
         }}
       />
     </div>
-    // ❌ REMOVIDO: </DashboardLayout>
   )
 }

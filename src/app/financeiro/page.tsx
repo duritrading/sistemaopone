@@ -1,4 +1,4 @@
-// src/app/financeiro/page.tsx - VERSÃO PREMIUM COMPLETA
+// src/app/financeiro/page.tsx - VERSÃO COM CONTRASTE MELHORADO
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -62,16 +62,35 @@ function FinanceiroPageContent() {
   const [showReconciliation, setShowReconciliation] = useState<Account | null>(null)
   const [showCashFlowProjection, setShowCashFlowProjection] = useState(false)
   
-  // Estados do formulário
+  // Estados do formulário - ATUALIZADO COM NOVOS CAMPOS
   const [formData, setFormData] = useState({
+    // Campos básicos
     description: '',
     category: 'receitas_servicos',
     type: 'receita' as 'receita' | 'despesa',
     amount: '',
     account_id: '',
+    transaction_date: new Date().toISOString().split('T')[0],
+    
+    // Campos específicos das imagens
+    client_id: '', // Cliente (receita)
+    supplier_id: '', // Fornecedor (despesa)
+    enable_split: false, // Habilitar rateio
+    cost_center: '',
+    reference_code: '',
+    repeat_transaction: false,
+    
+    // Condição de pagamento
+    installments: 1,
     due_date: '',
-    company: '',
-    notes: ''
+    payment_method: '',
+    is_paid: false, // Recebido/Pago
+    is_scheduled: false, // Agendado (despesa)
+    nsu: '', // NSU (receita)
+    
+    // Observações e anexos
+    notes: '',
+    attachments: [] as File[]
   })
 
   // Hooks customizados para seleção e ações
@@ -235,7 +254,7 @@ function FinanceiroPageContent() {
     selection.clearSelection()
   }, [selectedYear, selectedAccount, searchTerm])
 
-  // Funções de ação
+  // Funções de ação - ATUALIZADA PARA NOVOS CAMPOS
   const handleCreateTransaction = async () => {
     try {
       if (!formData.description.trim()) {
@@ -253,6 +272,11 @@ function FinanceiroPageContent() {
         return
       }
 
+      // Determinar status baseado no checkbox is_paid
+      const status = formData.is_paid 
+        ? (formData.type === 'receita' ? 'recebido' : 'pago')
+        : 'pendente'
+
       const { data, error } = await supabase
         .from('financial_transactions')
         .insert([{
@@ -261,10 +285,23 @@ function FinanceiroPageContent() {
           type: formData.type,
           amount: parseFloat(formData.amount),
           account_id: formData.account_id,
+          transaction_date: formData.transaction_date,
           due_date: formData.due_date || null,
-          company: formData.company?.trim() || null,
           notes: formData.notes?.trim() || null,
-          status: 'pendente'
+          status: status,
+          payment_date: formData.is_paid ? new Date().toISOString() : null,
+          
+          // Novos campos
+          client_id: formData.client_id || null,
+          supplier_id: formData.supplier_id || null,
+          enable_split: formData.enable_split,
+          cost_center: formData.cost_center || null,
+          reference_code: formData.reference_code || null,
+          repeat_transaction: formData.repeat_transaction,
+          installments: formData.installments,
+          payment_method: formData.payment_method || null,
+          is_scheduled: formData.is_scheduled,
+          nsu: formData.nsu || null
         }])
         .select()
 
@@ -277,9 +314,21 @@ function FinanceiroPageContent() {
         type: 'receita',
         amount: '',
         account_id: '',
+        transaction_date: new Date().toISOString().split('T')[0],
+        client_id: '',
+        supplier_id: '',
+        enable_split: false,
+        cost_center: '',
+        reference_code: '',
+        repeat_transaction: false,
+        installments: 1,
         due_date: '',
-        company: '',
-        notes: ''
+        payment_method: '',
+        is_paid: false,
+        is_scheduled: false,
+        nsu: '',
+        notes: '',
+        attachments: []
       })
 
       setShowNewTransactionModal(false)
@@ -498,7 +547,7 @@ function FinanceiroPageContent() {
                 <select 
                   value={selectedYear}
                   onChange={(e) => setSelectedYear(Number(e.target.value))}
-                  className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-center font-medium"
+                  className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-center font-medium text-gray-900"
                 >
                   <option value={2024}>2024</option>
                   <option value={2025}>2025</option>
@@ -519,13 +568,13 @@ function FinanceiroPageContent() {
                 Pesquisar no período selecionado
               </label>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-4 h-4" />
                 <input
                   type="text"
                   placeholder="Pesquisar"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-gray-600"
                 />
               </div>
             </div>
@@ -538,7 +587,7 @@ function FinanceiroPageContent() {
               <select 
                 value={selectedAccount}
                 onChange={(e) => setSelectedAccount(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900"
               >
                 <option value="all">Selecionar todas</option>
                 {accounts.map(account => (
@@ -577,21 +626,21 @@ function FinanceiroPageContent() {
             {/* Selection shortcuts */}
             {transactions.length > 0 && (
               <div className="flex items-center space-x-2 text-sm">
-                <span className="text-gray-500">Selecionar:</span>
+                <span className="text-gray-600">Selecionar:</span>
                 <button 
                   onClick={() => selection.selectByStatus('pendente')}
                   className="text-blue-600 hover:text-blue-700"
                 >
                   Pendentes
                 </button>
-                <span className="text-gray-300">|</span>
+                <span className="text-gray-400">|</span>
                 <button 
                   onClick={() => selection.selectByType('receita')}
                   className="text-blue-600 hover:text-blue-700"
                 >
                   Receitas
                 </button>
-                <span className="text-gray-300">|</span>
+                <span className="text-gray-400">|</span>
                 <button 
                   onClick={() => selection.selectByType('despesa')}
                   className="text-blue-600 hover:text-blue-700"
@@ -606,31 +655,31 @@ function FinanceiroPageContent() {
         {/* Metrics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
           <div className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow" suppressHydrationWarning>
-            <h3 className="text-sm font-medium text-gray-600 mb-2">Receitas em aberto (R$)</h3>
+            <h3 className="text-sm font-medium text-gray-700 mb-2">Receitas em aberto (R$)</h3>
             <p className="text-2xl font-bold text-green-600">
               {formatCurrency(metrics.receitas_em_aberto)}
             </p>
           </div>
           <div className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow" suppressHydrationWarning>
-            <h3 className="text-sm font-medium text-gray-600 mb-2">Receitas realizadas (R$)</h3>
+            <h3 className="text-sm font-medium text-gray-700 mb-2">Receitas realizadas (R$)</h3>
             <p className="text-2xl font-bold text-green-600">
               {formatCurrency(metrics.receitas_realizadas)}
             </p>
           </div>
           <div className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow" suppressHydrationWarning>
-            <h3 className="text-sm font-medium text-gray-600 mb-2">Despesas em aberto (R$)</h3>
+            <h3 className="text-sm font-medium text-gray-700 mb-2">Despesas em aberto (R$)</h3>
             <p className="text-2xl font-bold text-red-600">
               {formatCurrency(metrics.despesas_em_aberto)}
             </p>
           </div>
           <div className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow" suppressHydrationWarning>
-            <h3 className="text-sm font-medium text-gray-600 mb-2">Despesas realizadas (R$)</h3>
+            <h3 className="text-sm font-medium text-gray-700 mb-2">Despesas realizadas (R$)</h3>
             <p className="text-2xl font-bold text-red-600">
               {formatCurrency(metrics.despesas_realizadas)}
             </p>
           </div>
           <div className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow" suppressHydrationWarning>
-            <h3 className="text-sm font-medium text-gray-600 mb-2">Total do período (R$)</h3>
+            <h3 className="text-sm font-medium text-gray-700 mb-2">Total do período (R$)</h3>
             <p className={`text-2xl font-bold ${metrics.total_periodo >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
               {formatCurrency(metrics.total_periodo)}
             </p>
@@ -682,22 +731,22 @@ function FinanceiroPageContent() {
                         className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                       />
                     </th>
-                    <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="text-left px-6 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">
                       Data
                     </th>
-                    <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="text-left px-6 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">
                       Descrição
                     </th>
-                    <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="text-left px-6 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">
                       Situação
                     </th>
-                    <th className="text-right px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="text-right px-6 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">
                       Valor (R$)
                     </th>
-                    <th className="text-right px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="text-right px-6 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">
                       Conta
                     </th>
-                    <th className="text-center px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="text-center px-6 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">
                       Anexos
                     </th>
                     <th className="w-16 px-6 py-3"></th>
@@ -727,11 +776,11 @@ function FinanceiroPageContent() {
                           <p className="text-sm font-medium text-gray-900">
                             {transaction.description}
                           </p>
-                          <p className="text-sm text-gray-500">
+                          <p className="text-sm text-gray-600">
                             {allCategories[transaction.type][transaction.category] || transaction.category}
                           </p>
                           {transaction.company && (
-                            <p className="text-xs text-gray-400">
+                            <p className="text-xs text-gray-500">
                               {transaction.company}
                             </p>
                           )}
@@ -753,7 +802,7 @@ function FinanceiroPageContent() {
                       <td className="px-6 py-4 text-center">
                         <button
                           onClick={() => setShowAttachmentsModal(transaction.id)}
-                          className="text-gray-400 hover:text-blue-600 transition-colors relative"
+                          className="text-gray-500 hover:text-blue-600 transition-colors relative"
                           title="Ver anexos"
                         >
                           <Paperclip className="w-4 h-4" />
@@ -779,169 +828,395 @@ function FinanceiroPageContent() {
         </div>
       </div>
 
-      {/* MODAL NOVA TRANSAÇÃO */}
+      {/* MODAL NOVA TRANSAÇÃO - VERSÃO COMPLETA COM CONTRASTE MELHORADO */}
       {showNewTransactionModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
               <div className="flex items-center space-x-3">
                 <div className="w-10 h-10 bg-gradient-to-r from-green-400 to-blue-500 rounded-lg flex items-center justify-center">
                   <DollarSign className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-semibold text-gray-900">Nova Transação</h2>
-                  <p className="text-sm text-gray-500">Registre uma nova receita ou despesa</p>
+                  <h2 className="text-xl font-semibold text-gray-900">
+                    Nova {formData.type === 'receita' ? 'Receita' : 'Despesa'}
+                  </h2>
+                  <p className="text-sm text-gray-600">Preencha as informações do lançamento</p>
                 </div>
               </div>
               <button
                 onClick={() => setShowNewTransactionModal(false)}
                 className="text-gray-400 hover:text-gray-600"
               >
-                <X className="w-5 h-5" />
+                <X className="w-6 h-6" />
               </button>
             </div>
 
-            <div className="p-6 space-y-6">
-              {/* Tipo */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">Tipo</label>
-                <div className="grid grid-cols-2 gap-3">
+            <div className="p-6">
+              <form onSubmit={(e) => { e.preventDefault(); handleCreateTransaction(); }}>
+                {/* Toggle Receita/Despesa */}
+                <div className="mb-6">
+                  <div className="flex bg-gray-100 rounded-lg p-1">
+                    <button
+                      type="button"
+                      onClick={() => setFormData({...formData, type: 'receita', category: 'receitas_servicos'})}
+                      className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                        formData.type === 'receita'
+                          ? 'bg-green-600 text-white'
+                          : 'text-gray-700 hover:text-gray-900'
+                      }`}
+                    >
+                      Receita
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({...formData, type: 'despesa', category: 'despesas_operacionais'})}
+                      className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                        formData.type === 'despesa'
+                          ? 'bg-red-600 text-white'
+                          : 'text-gray-700 hover:text-gray-900'
+                      }`}
+                    >
+                      Despesa
+                    </button>
+                  </div>
+                </div>
+
+                {/* Informações do lançamento */}
+                <div className="mb-6">
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">Informações do lançamento</h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {/* Cliente/Fornecedor */}
+                    <div className="lg:col-span-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        {formData.type === 'receita' ? 'Cliente' : 'Fornecedor'}
+                      </label>
+                      <select
+                        value={formData.type === 'receita' ? formData.client_id : formData.supplier_id}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          [formData.type === 'receita' ? 'client_id' : 'supplier_id']: e.target.value
+                        })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                      >
+                        <option value="" className="text-gray-700">Selecione...</option>
+                        {/* Carregar clientes/fornecedores da base */}
+                      </select>
+                      {formData.type === 'receita' && (
+                        <button type="button" className="mt-1 text-xs text-blue-600 hover:text-blue-800">
+                          📋 Consultar cliente no Serasa
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Data de competência */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Data de competência *
+                      </label>
+                      <input
+                        type="date"
+                        value={formData.transaction_date}
+                        onChange={(e) => setFormData({...formData, transaction_date: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                        required
+                      />
+                    </div>
+
+                    {/* Valor */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Valor *
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-2 text-gray-600">R$</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={formData.amount}
+                          onChange={(e) => setFormData({...formData, amount: e.target.value})}
+                          className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-600"
+                          placeholder="0,00"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    {/* Descrição */}
+                    <div className="lg:col-span-3">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Descrição *
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.description}
+                        onChange={(e) => setFormData({...formData, description: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-600"
+                        placeholder="Digite a descrição do lançamento"
+                        required
+                      />
+                    </div>
+
+                    {/* Habilitar rateio */}
+                    <div className="lg:col-span-1">
+                      <label className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={formData.enable_split}
+                          onChange={(e) => setFormData({...formData, enable_split: e.target.checked})}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-sm text-gray-700">Habilitar rateio</span>
+                      </label>
+                    </div>
+
+                    {/* Categoria */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Categoria *
+                      </label>
+                      <select
+                        value={formData.category}
+                        onChange={(e) => setFormData({...formData, category: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                        required
+                      >
+                        {formData.type === 'receita' ? (
+                          <>
+                            <option value="receitas_servicos" className="text-gray-700">Receitas de Serviços</option>
+                            <option value="receitas_produtos" className="text-gray-700">Receitas de Produtos</option>
+                            <option value="receitas_outras" className="text-gray-700">Outras Receitas</option>
+                          </>
+                        ) : (
+                          <>
+                            <option value="despesas_operacionais" className="text-gray-700">Despesas Operacionais</option>
+                            <option value="despesas_administrativas" className="text-gray-700">Despesas Administrativas</option>
+                            <option value="despesas_pessoal" className="text-gray-700">Despesas com Pessoal</option>
+                            <option value="despesas_marketing" className="text-gray-700">Despesas de Marketing</option>
+                            <option value="despesas_tecnologia" className="text-gray-700">Despesas de Tecnologia</option>
+                            <option value="despesas_outras" className="text-gray-700">Outras Despesas</option>
+                          </>
+                        )}
+                      </select>
+                    </div>
+
+                    {/* Centro de custo */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Centro de custo
+                      </label>
+                      <select
+                        value={formData.cost_center}
+                        onChange={(e) => setFormData({...formData, cost_center: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                      >
+                        <option value="" className="text-gray-700">Selecione...</option>
+                        <option value="administrativo" className="text-gray-700">Administrativo</option>
+                        <option value="comercial" className="text-gray-700">Comercial</option>
+                        <option value="operacional" className="text-gray-700">Operacional</option>
+                        <option value="tecnologia" className="text-gray-700">Tecnologia</option>
+                      </select>
+                    </div>
+
+                    {/* Código de referência */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Código de referência
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.reference_code}
+                        onChange={(e) => setFormData({...formData, reference_code: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-600"
+                        placeholder="Ex: NF-2025-001"
+                      />
+                    </div>
+
+                    {/* Repetir lançamento */}
+                    <div className="lg:col-span-1">
+                      <label className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={formData.repeat_transaction}
+                          onChange={(e) => setFormData({...formData, repeat_transaction: e.target.checked})}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-sm text-gray-700">Repetir lançamento?</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Condição de pagamento */}
+                <div className="mb-6">
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">Condição de pagamento</h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {/* Parcelamento */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Parcelamento *
+                      </label>
+                      <select
+                        value={formData.installments}
+                        onChange={(e) => setFormData({...formData, installments: parseInt(e.target.value)})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                      >
+                        <option value={1} className="text-gray-700">À vista</option>
+                        {Array.from({length: 12}, (_, i) => (
+                          <option key={i+2} value={i+2} className="text-gray-700">{i+2}x</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Vencimento */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Vencimento *
+                      </label>
+                      <input
+                        type="date"
+                        value={formData.due_date}
+                        onChange={(e) => setFormData({...formData, due_date: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                        required
+                      />
+                    </div>
+
+                    {/* Forma de pagamento */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Forma de pagamento
+                      </label>
+                      <select
+                        value={formData.payment_method}
+                        onChange={(e) => setFormData({...formData, payment_method: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                      >
+                        <option value="" className="text-gray-700">Selecione...</option>
+                        <option value="dinheiro" className="text-gray-700">Dinheiro</option>
+                        <option value="pix" className="text-gray-700">PIX</option>
+                        <option value="cartao_credito" className="text-gray-700">Cartão de Crédito</option>
+                        <option value="cartao_debito" className="text-gray-700">Cartão de Débito</option>
+                        <option value="transferencia" className="text-gray-700">Transferência</option>
+                        <option value="boleto" className="text-gray-700">Boleto</option>
+                      </select>
+                    </div>
+
+                    {/* Conta */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Conta de {formData.type === 'receita' ? 'recebimento' : 'pagamento'}
+                      </label>
+                      <select
+                        value={formData.account_id}
+                        onChange={(e) => setFormData({...formData, account_id: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                      >
+                        <option value="" className="text-gray-700">Selecione...</option>
+                        {accounts.map(account => (
+                          <option key={account.id} value={account.id} className="text-gray-700">
+                            {account.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Checkboxes de status */}
+                  <div className="mt-4 flex items-center space-x-4">
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={formData.is_paid}
+                        onChange={(e) => setFormData({...formData, is_paid: e.target.checked})}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-sm text-gray-700">
+                        {formData.type === 'receita' ? 'Recebido' : 'Pago'}
+                      </span>
+                    </label>
+                    
+                    {formData.type === 'despesa' && (
+                      <label className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={formData.is_scheduled}
+                          onChange={(e) => setFormData({...formData, is_scheduled: e.target.checked})}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-sm text-gray-700">Agendado</span>
+                      </label>
+                    )}
+                  </div>
+                </div>
+
+                {/* NSU (apenas para receitas) */}
+                {formData.type === 'receita' && (
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Informar NSU
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.nsu}
+                      onChange={(e) => setFormData({...formData, nsu: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-600"
+                      placeholder="Número sequencial único"
+                    />
+                  </div>
+                )}
+
+                {/* Observações e Anexos */}
+                <div className="mb-6">
+                  <div className="flex border-b">
+                    <button
+                      type="button"
+                      className="px-4 py-2 border-b-2 border-blue-600 text-blue-600 font-medium"
+                    >
+                      Observações
+                    </button>
+                    <button
+                      type="button"
+                      className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                    >
+                      Anexo
+                    </button>
+                  </div>
+                  
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Observações
+                    </label>
+                    <textarea
+                      value={formData.notes}
+                      onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                      rows={4}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-600"
+                      placeholder="Descreva observações relevantes sobre esse lançamento financeiro"
+                    />
+                  </div>
+                </div>
+
+                {/* Botões */}
+                <div className="flex justify-end space-x-3">
                   <button
                     type="button"
-                    onClick={() => setFormData(prev => ({ ...prev, type: 'receita', category: 'receitas_servicos' }))}
-                    className={`p-3 border rounded-lg text-left transition-colors ${
-                      formData.type === 'receita'
-                        ? 'border-green-500 bg-green-50 text-green-700'
-                        : 'border-gray-300 hover:border-gray-400'
-                    }`}
+                    onClick={() => setShowNewTransactionModal(false)}
+                    className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
                   >
-                    <div className="flex items-center space-x-2">
-                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      <span className="font-medium">Receita</span>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">Dinheiro que entra</p>
+                    Voltar
                   </button>
                   <button
-                    type="button"
-                    onClick={() => setFormData(prev => ({ ...prev, type: 'despesa', category: 'despesas_operacionais' }))}
-                    className={`p-3 border rounded-lg text-left transition-colors ${
-                      formData.type === 'despesa'
-                        ? 'border-red-500 bg-red-50 text-red-700'
-                        : 'border-gray-300 hover:border-gray-400'
-                    }`}
+                    type="submit"
+                    className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center space-x-2"
                   >
-                    <div className="flex items-center space-x-2">
-                      <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                      <span className="font-medium">Despesa</span>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">Dinheiro que sai</p>
+                    <span>Salvar</span>
+                    <ChevronDown className="w-4 h-4" />
                   </button>
                 </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Descrição *</label>
-                  <input
-                    type="text"
-                    value={formData.description}
-                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Ex: Pagamento do projeto XYZ"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Categoria *</label>
-                  <select 
-                    value={formData.category}
-                    onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    {Object.entries(allCategories[formData.type]).map(([key, label]) => (
-                      <option key={key} value={key}>{label}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Valor (R$) *</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.amount}
-                    onChange={(e) => setFormData(prev => ({ ...prev, amount: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="0,00"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Conta *</label>
-                  <select 
-                    value={formData.account_id}
-                    onChange={(e) => setFormData(prev => ({ ...prev, account_id: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="">Selecione uma conta</option>
-                    {accounts.map(account => (
-                      <option key={account.id} value={account.id}>
-                        {account.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {formData.type === 'receita' ? 'Data de Recebimento' : 'Data de Vencimento'}
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.due_date}
-                    onChange={(e) => setFormData(prev => ({ ...prev, due_date: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Empresa/Cliente</label>
-                  <input
-                    type="text"
-                    value={formData.company}
-                    onChange={(e) => setFormData(prev => ({ ...prev, company: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Nome da empresa ou cliente"
-                  />
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Observações</label>
-                  <textarea
-                    rows={3}
-                    value={formData.notes}
-                    onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Informações adicionais..."
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="flex space-x-3 p-6 border-t border-gray-200">
-              <button
-                onClick={handleCreateTransaction}
-                className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-colors"
-              >
-                Criar Transação
-              </button>
-              <button
-                onClick={() => setShowNewTransactionModal(false)}
-                className="flex-1 bg-gray-100 text-gray-900 py-3 rounded-lg font-medium hover:bg-gray-200 transition-colors"
-              >
-                Cancelar
-              </button>
+              </form>
             </div>
           </div>
         </div>
@@ -959,7 +1234,7 @@ function FinanceiroPageContent() {
             </div>
 
             <div className="p-6">
-              <p className="text-gray-600 mb-4">
+              <p className="text-gray-700 mb-4">
                 Exportar {transactions.length} transação(ões) do período selecionado.
               </p>
             </div>

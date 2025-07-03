@@ -100,9 +100,9 @@ export default function EditMemberModal({ isOpen, member, onClose, onSuccess }: 
     resolver: zodResolver(editMemberSchema)
   })
 
-  // Populate form when member changes
+  // Load member data when modal opens
   useEffect(() => {
-    if (member) {
+    if (isOpen && member) {
       setValue('full_name', member.full_name)
       setValue('email', member.email)
       setValue('seniority_level', member.seniority_level)
@@ -112,7 +112,7 @@ export default function EditMemberModal({ isOpen, member, onClose, onSuccess }: 
       setValue('allocation_percentage', member.allocation_percentage)
       setValue('profile_photo_url', member.profile_photo_url || '')
     }
-  }, [member, setValue])
+  }, [isOpen, member, setValue])
 
   const onSubmit = async (data: EditMemberForm) => {
     if (!member) return
@@ -137,6 +137,8 @@ export default function EditMemberModal({ isOpen, member, onClose, onSuccess }: 
 
       if (error) throw error
 
+      // Reset form and close modal
+      reset()
       onClose()
       onSuccess()
       
@@ -171,7 +173,7 @@ export default function EditMemberModal({ isOpen, member, onClose, onSuccess }: 
             <h3 className="text-lg font-medium text-gray-900">Editar Membro - {member.full_name}</h3>
             <button
               onClick={handleClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
+              className="text-gray-500 hover:text-gray-700 transition-colors"
             >
               <X className="h-6 w-6" />
             </button>
@@ -190,13 +192,13 @@ export default function EditMemberModal({ isOpen, member, onClose, onSuccess }: 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Nome Completo */}
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-800 mb-1">
                       Nome Completo
                     </label>
                     <input
                       type="text"
                       {...register('full_name')}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-600"
                       placeholder="Digite o nome completo"
                     />
                     {errors.full_name && (
@@ -206,30 +208,30 @@ export default function EditMemberModal({ isOpen, member, onClose, onSuccess }: 
 
                   {/* Email */}
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-800 mb-1">
                       <Mail className="h-4 w-4 inline mr-1" />
                       Email
                     </label>
                     <input
                       type="email"
                       {...register('email')}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="email@opone.com"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-600"
+                      placeholder="exemplo@opone.com.br"
                     />
                     {errors.email && (
                       <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
                     )}
                   </div>
 
-                  {/* Foto do Perfil */}
+                  {/* URL da Foto */}
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-800 mb-1">
                       URL da Foto (opcional)
                     </label>
                     <input
                       type="url"
                       {...register('profile_photo_url')}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-600"
                       placeholder="https://exemplo.com/foto.jpg"
                     />
                     {errors.profile_photo_url && (
@@ -246,17 +248,17 @@ export default function EditMemberModal({ isOpen, member, onClose, onSuccess }: 
                   Hierarquia Profissional
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Senioridade */}
+                  {/* Nível de Senioridade */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-800 mb-1">
                       Nível de Senioridade
                     </label>
                     <select
                       {...register('seniority_level')}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                     >
                       {seniorityOptions.map(option => (
-                        <option key={option.value} value={option.value}>
+                        <option key={option.value} value={option.value} className="text-gray-900">
                           {option.label}
                         </option>
                       ))}
@@ -266,17 +268,17 @@ export default function EditMemberModal({ isOpen, member, onClose, onSuccess }: 
                     )}
                   </div>
 
-                  {/* Especialização */}
+                  {/* Especialização Principal */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-800 mb-1">
                       Especialização Principal
                     </label>
                     <select
                       {...register('primary_specialization')}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                     >
                       {specializationOptions.map(option => (
-                        <option key={option.value} value={option.value}>
+                        <option key={option.value} value={option.value} className="text-gray-900">
                           {option.label}
                         </option>
                       ))}
@@ -288,7 +290,7 @@ export default function EditMemberModal({ isOpen, member, onClose, onSuccess }: 
                 </div>
               </div>
 
-              {/* Modalidade e Status */}
+              {/* Modalidade e Disponibilidade */}
               <div>
                 <h4 className="text-sm font-medium text-gray-900 mb-4 flex items-center">
                   <MapPin className="h-4 w-4 mr-2" />
@@ -297,15 +299,15 @@ export default function EditMemberModal({ isOpen, member, onClose, onSuccess }: 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {/* Modalidade de Trabalho */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-800 mb-1">
                       Modalidade de Trabalho
                     </label>
                     <select
                       {...register('work_modality')}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                     >
                       {modalityOptions.map(option => (
-                        <option key={option.value} value={option.value}>
+                        <option key={option.value} value={option.value} className="text-gray-900">
                           {option.label}
                         </option>
                       ))}
@@ -315,18 +317,18 @@ export default function EditMemberModal({ isOpen, member, onClose, onSuccess }: 
                     )}
                   </div>
 
-                  {/* Status de Disponibilidade */}
+                  {/* Status */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-800 mb-1">
                       <Activity className="h-4 w-4 inline mr-1" />
                       Status
                     </label>
                     <select
                       {...register('availability_status')}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                     >
                       {availabilityOptions.map(option => (
-                        <option key={option.value} value={option.value}>
+                        <option key={option.value} value={option.value} className="text-gray-900">
                           {option.label}
                         </option>
                       ))}
@@ -336,9 +338,9 @@ export default function EditMemberModal({ isOpen, member, onClose, onSuccess }: 
                     )}
                   </div>
 
-                  {/* Percentual de Alocação */}
+                  {/* Alocação */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-800 mb-1">
                       <Percent className="h-4 w-4 inline mr-1" />
                       Alocação (%)
                     </label>
@@ -347,7 +349,7 @@ export default function EditMemberModal({ isOpen, member, onClose, onSuccess }: 
                       min="0"
                       max="100"
                       {...register('allocation_percentage', { valueAsNumber: true })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-600"
                       placeholder="0"
                     />
                     {errors.allocation_percentage && (
@@ -359,18 +361,19 @@ export default function EditMemberModal({ isOpen, member, onClose, onSuccess }: 
             </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200">
+            <div className="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50">
               <button
                 type="button"
                 onClick={handleClose}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                className="px-4 py-2 text-sm font-medium text-gray-800 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={isSubmitting}
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? 'Salvando...' : 'Salvar Alterações'}
               </button>
