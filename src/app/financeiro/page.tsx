@@ -1,12 +1,13 @@
-// src/app/financeiro/page.tsx - VERSÃO COM CONTRASTE MELHORADO
+// src/app/financeiro/page.tsx - VERSÃO COMPLETA COM MENUS REORGANIZADOS
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { 
-  Plus, Search, Filter, ChevronDown, ChevronLeft, ChevronRight,
+  Plus, Search, ChevronDown, ChevronLeft, ChevronRight,
   FileDown, Printer, Upload, X, AlertCircle, DollarSign, Bell,
-  Settings, Building2, Paperclip, TrendingUp, Zap
+  Settings, Building2, Paperclip, TrendingUp, Zap, Calendar,
+  Check, MoreHorizontal, Edit2, Trash2, CreditCard, Wallet
 } from 'lucide-react'
 
 // Imports dos componentes base
@@ -31,6 +32,318 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
+// Hook para debounce
+function useDebounce(value: string, delay: number) {
+  const [debouncedValue, setDebouncedValue] = useState(value)
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value)
+    }, delay)
+
+    return () => {
+      clearTimeout(handler)
+    }
+  }, [value, delay])
+
+  return debouncedValue
+}
+
+// Componente para Gerenciar Contas
+function AccountsManager({ 
+  accounts, 
+  onClose, 
+  onAccountUpdate 
+}: { 
+  accounts: Account[]
+  onClose: () => void
+  onAccountUpdate: () => void
+}) {
+  const [formData, setFormData] = useState({
+    name: '',
+    type: 'conta_corrente',
+    bank: '',
+    balance: ''
+  })
+  const [editingAccount, setEditingAccount] = useState<Account | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  const accountTypes = [
+    { value: 'conta_corrente', label: 'Conta Corrente' },
+    { value: 'conta_poupanca', label: 'Conta Poupança' },
+    { value: 'cartao_credito', label: 'Cartão de Crédito' },
+    { value: 'cartao_debito', label: 'Cartão de Débito' },
+    { value: 'dinheiro', label: 'Dinheiro' },
+    { value: 'investimento', label: 'Investimento' },
+    { value: 'outros', label: 'Outros' }
+  ]
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!formData.name.trim()) {
+      alert('Nome da conta é obrigatório')
+      return
+    }
+
+    setLoading(true)
+    try {
+      if (editingAccount) {
+        // Atualizar conta existente
+        const { error } = await supabase
+          .from('accounts')
+          .update({
+            name: formData.name.trim(),
+            type: formData.type,
+            bank: formData.bank.trim() || null,
+            balance: parseFloat(formData.balance) || 0
+          })
+          .eq('id', editingAccount.id)
+
+        if (error) throw error
+        alert('Conta atualizada com sucesso!')
+      } else {
+        // Criar nova conta
+        const { error } = await supabase
+          .from('accounts')
+          .insert({
+            name: formData.name.trim(),
+            type: formData.type,
+            bank: formData.bank.trim() || null,
+            balance: parseFloat(formData.balance) || 0,
+            is_active: true
+          })
+
+        if (error) throw error
+        alert('Conta criada com sucesso!')
+      }
+
+      // Reset form
+      setFormData({ name: '', type: 'conta_corrente', bank: '', balance: '' })
+      setEditingAccount(null)
+      onAccountUpdate()
+    } catch (err: any) {
+      console.error('Erro ao salvar conta:', err)
+      alert('Erro ao salvar conta: ' + err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleEdit = (account: Account) => {
+    setEditingAccount(account)
+    setFormData({
+      name: account.name,
+      type: account.type,
+      bank: account.bank || '',
+      balance: account.balance.toString()
+    })
+  }
+
+  const handleDelete = async (accountId: string, accountName: string) => {
+    if (!confirm(`Tem certeza que deseja excluir a conta "${accountName}"?`)) {
+      return
+    }
+
+    setLoading(true)
+    try {
+      const { error } = await supabase
+        .from('accounts')
+        .update({ is_active: false })
+        .eq('id', accountId)
+
+      if (error) throw error
+      
+      alert('Conta excluída com sucesso!')
+      onAccountUpdate()
+    } catch (err: any) {
+      console.error('Erro ao excluir conta:', err)
+      alert('Erro ao excluir conta: ' + err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const cancelEdit = () => {
+    setEditingAccount(null)
+    setFormData({ name: '', type: 'conta_corrente', bank: '', balance: '' })
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+              <Wallet className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">Gerenciar Contas</h2>
+              <p className="text-sm text-gray-600">Adicione, edite ou remova contas bancárias</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        <div className="p-6">
+          {/* Formulário */}
+          <div className="mb-8">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">
+              {editingAccount ? 'Editar Conta' : 'Nova Conta'}
+            </h3>
+            
+            <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nome da Conta *
+                </label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  placeholder="Ex: Conta Corrente Principal"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Tipo de Conta *
+                </label>
+                <select
+                  value={formData.type}
+                  onChange={(e) => setFormData({...formData, type: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  required
+                >
+                  {accountTypes.map(type => (
+                    <option key={type.value} value={type.value}>
+                      {type.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Banco
+                </label>
+                <input
+                  type="text"
+                  value={formData.bank}
+                  onChange={(e) => setFormData({...formData, bank: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  placeholder="Ex: Itaú, Bradesco, Nubank"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Saldo Inicial
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2 text-gray-600">R$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={formData.balance}
+                    onChange={(e) => setFormData({...formData, balance: e.target.value})}
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    placeholder="0,00"
+                  />
+                </div>
+              </div>
+
+              <div className="md:col-span-2 flex justify-end space-x-3">
+                {editingAccount && (
+                  <button
+                    type="button"
+                    onClick={cancelEdit}
+                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                  >
+                    Cancelar
+                  </button>
+                )}
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {loading ? 'Salvando...' : editingAccount ? 'Atualizar' : 'Criar Conta'}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Lista de Contas */}
+          <div>
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Contas Existentes</h3>
+            
+            {accounts.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                Nenhuma conta cadastrada
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {accounts.map(account => (
+                  <div
+                    key={account.id}
+                    className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
+                  >
+                    <div className="flex items-center space-x-4">
+                      <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                        {account.type === 'cartao_credito' || account.type === 'cartao_debito' ? (
+                          <CreditCard className="w-5 h-5 text-gray-600" />
+                        ) : (
+                          <Wallet className="w-5 h-5 text-gray-600" />
+                        )}
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-gray-900">{account.name}</h4>
+                        <div className="text-sm text-gray-600">
+                          <span className="capitalize">
+                            {accountTypes.find(t => t.value === account.type)?.label || account.type}
+                          </span>
+                          {account.bank && ` • ${account.bank}`}
+                        </div>
+                        <p className="text-sm font-medium text-gray-900">
+                          Saldo: R$ {account.balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => handleEdit(account)}
+                        className="p-2 text-gray-400 hover:text-blue-600 rounded"
+                        title="Editar conta"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(account.id, account.name)}
+                        className="p-2 text-gray-400 hover:text-red-600 rounded"
+                        title="Excluir conta"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function FinanceiroPageContent() {
   // Estados principais
   const [transactions, setTransactions] = useState<Transaction[]>([])
@@ -44,56 +357,66 @@ function FinanceiroPageContent() {
     total_periodo: 0
   })
   
+  // Estados de filtros
   const [selectedYear, setSelectedYear] = useState(2025)
+  const [selectedMonth, setSelectedMonth] = useState('all')
+  const [dateFilterType, setDateFilterType] = useState<'year' | 'month' | 'custom'>('year')
+  const [customDateRange, setCustomDateRange] = useState({
+    start: '',
+    end: ''
+  })
   const [searchTerm, setSearchTerm] = useState('')
-  const [selectedAccount, setSelectedAccount] = useState('all')
+  const [selectedAccounts, setSelectedAccounts] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   
+  // Estados dos dropdowns
+  const [showNewDropdown, setShowNewDropdown] = useState(false)
+  const [showReportsDropdown, setShowReportsDropdown] = useState(false)
+  const [showAccountSelector, setShowAccountSelector] = useState(false)
+  
   // Estados dos modais
   const [showNewTransactionModal, setShowNewTransactionModal] = useState(false)
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
   const [showExportModal, setShowExportModal] = useState(false)
-  
-  // Estados dos modais premium
   const [showCategoriesManager, setShowCategoriesManager] = useState(false)
+  const [showAccountsManager, setShowAccountsManager] = useState(false)
   const [showAttachmentsModal, setShowAttachmentsModal] = useState<string | null>(null)
   const [showNotifications, setShowNotifications] = useState(false)
   const [showReconciliation, setShowReconciliation] = useState<Account | null>(null)
   const [showCashFlowProjection, setShowCashFlowProjection] = useState(false)
   
-  // Estados do formulário - ATUALIZADO COM NOVOS CAMPOS
+  // Refs para os dropdowns
+  const newDropdownRef = useRef<HTMLDivElement>(null)
+  const reportsDropdownRef = useRef<HTMLDivElement>(null)
+  
+  // Estados do formulário
   const [formData, setFormData] = useState({
-    // Campos básicos
     description: '',
     category: 'receitas_servicos',
     type: 'receita' as 'receita' | 'despesa',
     amount: '',
     account_id: '',
     transaction_date: new Date().toISOString().split('T')[0],
-    
-    // Campos específicos das imagens
-    client_id: '', // Cliente (receita)
-    supplier_id: '', // Fornecedor (despesa)
-    enable_split: false, // Habilitar rateio
+    client_id: '',
+    supplier_id: '',
+    enable_split: false,
     cost_center: '',
     reference_code: '',
     repeat_transaction: false,
-    
-    // Condição de pagamento
     installments: 1,
     due_date: '',
     payment_method: '',
-    is_paid: false, // Recebido/Pago
-    is_scheduled: false, // Agendado (despesa)
-    nsu: '', // NSU (receita)
-    
-    // Observações e anexos
+    is_paid: false,
+    is_scheduled: false,
+    nsu: '',
     notes: '',
     attachments: [] as File[]
   })
 
-  // Hooks customizados para seleção e ações
+  // Debounce para pesquisa
+  const debouncedSearchTerm = useDebounce(searchTerm, 500)
+
+  // Hooks customizados
   const selection = useTransactionSelection(transactions)
   const { loadingState } = useTransactionActions(refreshData)
 
@@ -105,7 +428,24 @@ function FinanceiroPageContent() {
     cancelado: { label: 'Cancelado', color: 'bg-gray-100 text-gray-800' }
   }
 
-  // Categorias combinadas (padrão + personalizadas)
+  // Meses do ano
+  const months = [
+    { value: 'all', label: 'Todos os meses' },
+    { value: '01', label: 'Janeiro' },
+    { value: '02', label: 'Fevereiro' },
+    { value: '03', label: 'Março' },
+    { value: '04', label: 'Abril' },
+    { value: '05', label: 'Maio' },
+    { value: '06', label: 'Junho' },
+    { value: '07', label: 'Julho' },
+    { value: '08', label: 'Agosto' },
+    { value: '09', label: 'Setembro' },
+    { value: '10', label: 'Outubro' },
+    { value: '11', label: 'Novembro' },
+    { value: '12', label: 'Dezembro' }
+  ]
+
+  // Categorias combinadas
   const allCategories = {
     receita: {
       'receitas_servicos': 'Receitas de Serviços',
@@ -127,6 +467,40 @@ function FinanceiroPageContent() {
         .reduce((acc, c) => ({ ...acc, [c.id]: c.name }), {})
     }
   }
+
+  // Verificar se há filtros ativos
+  const hasActiveFilters = () => {
+    return (
+      debouncedSearchTerm.trim() !== '' ||
+      selectedAccounts.length > 0 ||
+      (dateFilterType === 'month' && selectedMonth !== 'all') ||
+      (dateFilterType === 'custom' && (customDateRange.start || customDateRange.end))
+    )
+  }
+
+  // Função para limpar filtros
+  const clearFilters = () => {
+    setSearchTerm('')
+    setSelectedAccounts([])
+    setSelectedMonth('all')
+    setDateFilterType('year')
+    setCustomDateRange({ start: '', end: '' })
+  }
+
+  // Click outside para fechar dropdowns
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (newDropdownRef.current && !newDropdownRef.current.contains(event.target as Node)) {
+        setShowNewDropdown(false)
+      }
+      if (reportsDropdownRef.current && !reportsDropdownRef.current.contains(event.target as Node)) {
+        setShowReportsDropdown(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   // Função centralizada de refresh
   async function refreshData() {
@@ -150,21 +524,32 @@ function FinanceiroPageContent() {
         `)
         .order('transaction_date', { ascending: false })
 
-      // Filtro por ano
-      if (selectedYear) {
+      // Filtros de data
+      if (dateFilterType === 'year') {
         const startDate = `${selectedYear}-01-01`
         const endDate = `${selectedYear}-12-31`
         query = query.gte('transaction_date', startDate).lte('transaction_date', endDate)
+      } else if (dateFilterType === 'month' && selectedMonth !== 'all') {
+        const startDate = `${selectedYear}-${selectedMonth}-01`
+        const endDate = `${selectedYear}-${selectedMonth}-31`
+        query = query.gte('transaction_date', startDate).lte('transaction_date', endDate)
+      } else if (dateFilterType === 'custom') {
+        if (customDateRange.start) {
+          query = query.gte('transaction_date', customDateRange.start)
+        }
+        if (customDateRange.end) {
+          query = query.lte('transaction_date', customDateRange.end)
+        }
       }
 
-      // Filtro por conta
-      if (selectedAccount !== 'all') {
-        query = query.eq('account_id', selectedAccount)
+      // Filtro por contas
+      if (selectedAccounts.length > 0) {
+        query = query.in('account_id', selectedAccounts)
       }
 
       // Filtro por busca
-      if (searchTerm) {
-        query = query.or(`description.ilike.%${searchTerm}%,company.ilike.%${searchTerm}%`)
+      if (debouncedSearchTerm) {
+        query = query.or(`description.ilike.%${debouncedSearchTerm}%,company.ilike.%${debouncedSearchTerm}%`)
       }
 
       const { data, error } = await query
@@ -247,14 +632,14 @@ function FinanceiroPageContent() {
     }
     
     loadData()
-  }, [selectedYear, selectedAccount, searchTerm])
+  }, [selectedYear, selectedMonth, dateFilterType, customDateRange, selectedAccounts, debouncedSearchTerm])
 
   // Limpar seleção ao mudar filtros
   useEffect(() => {
     selection.clearSelection()
-  }, [selectedYear, selectedAccount, searchTerm])
+  }, [selectedYear, selectedMonth, dateFilterType, customDateRange, selectedAccounts, debouncedSearchTerm])
 
-  // Funções de ação - ATUALIZADA PARA NOVOS CAMPOS
+  // Funções de ação
   const handleCreateTransaction = async () => {
     try {
       if (!formData.description.trim()) {
@@ -272,7 +657,6 @@ function FinanceiroPageContent() {
         return
       }
 
-      // Determinar status baseado no checkbox is_paid
       const status = formData.is_paid 
         ? (formData.type === 'receita' ? 'recebido' : 'pago')
         : 'pendente'
@@ -290,8 +674,6 @@ function FinanceiroPageContent() {
           notes: formData.notes?.trim() || null,
           status: status,
           payment_date: formData.is_paid ? new Date().toISOString() : null,
-          
-          // Novos campos
           client_id: formData.client_id || null,
           supplier_id: formData.supplier_id || null,
           enable_split: formData.enable_split,
@@ -307,7 +689,7 @@ function FinanceiroPageContent() {
 
       if (error) throw error
 
-      // Resetar formulário
+      // Reset form
       setFormData({
         description: '',
         category: 'receitas_servicos',
@@ -332,10 +714,7 @@ function FinanceiroPageContent() {
       })
 
       setShowNewTransactionModal(false)
-      
-      // Recarregar dados
       await refreshData()
-      
       alert('Transação criada com sucesso!')
     } catch (err: any) {
       console.error('Erro ao criar transação:', err)
@@ -378,6 +757,15 @@ function FinanceiroPageContent() {
     setShowExportModal(false)
   }
 
+  // Toggle account selection
+  const toggleAccountSelection = (accountId: string) => {
+    setSelectedAccounts(prev => 
+      prev.includes(accountId)
+        ? prev.filter(id => id !== accountId)
+        : [...prev, accountId]
+    )
+  }
+
   // Loading state
   if (loading) {
     return (
@@ -392,7 +780,7 @@ function FinanceiroPageContent() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header Premium da página */}
+      {/* Header Premium da página - SEM BOTÃO NOVO REGISTRO */}
       <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
         <div className="px-6 py-4">
           <div className="flex items-center justify-between">
@@ -408,7 +796,6 @@ function FinanceiroPageContent() {
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              {/* Notificações */}
               <button
                 onClick={() => setShowNotifications(true)}
                 className="relative p-2 hover:bg-blue-500 rounded-lg transition-colors"
@@ -418,7 +805,6 @@ function FinanceiroPageContent() {
                 <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
               </button>
 
-              {/* Menu Premium */}
               <div className="flex items-center space-x-2 text-sm">
                 <button className="text-blue-100 hover:text-white">Novidades</button>
                 <button className="text-blue-100 hover:text-white">Ajuda</button>
@@ -431,33 +817,9 @@ function FinanceiroPageContent() {
           </div>
         </div>
 
-        {/* Premium Features Bar */}
+        {/* Barra premium vazia */}
         <div className="px-6 pb-4">
-          <div className="flex items-center space-x-3">
-            <button
-              onClick={() => setShowCategoriesManager(true)}
-              className="bg-white bg-opacity-10 hover:bg-opacity-20 px-3 py-1 rounded-lg text-sm flex items-center space-x-2 transition-colors"
-            >
-              <Settings className="w-4 h-4" />
-              <span>Categorias</span>
-            </button>
-
-            <button
-              onClick={() => setShowCashFlowProjection(true)}
-              className="bg-white bg-opacity-10 hover:bg-opacity-20 px-3 py-1 rounded-lg text-sm flex items-center space-x-2 transition-colors"
-            >
-              <TrendingUp className="w-4 h-4" />
-              <span>Projeção</span>
-            </button>
-
-            <button
-              onClick={() => setShowReconciliation(accounts[0] || null)}
-              className="bg-white bg-opacity-10 hover:bg-opacity-20 px-3 py-1 rounded-lg text-sm flex items-center space-x-2 transition-colors"
-            >
-              <Building2 className="w-4 h-4" />
-              <span>Conciliação</span>
-            </button>
-          </div>
+          {/* Removido o botão novo registro daqui */}
         </div>
       </div>
 
@@ -480,22 +842,101 @@ function FinanceiroPageContent() {
           </div>
         )}
 
-        {/* Action Buttons */}
+        {/* BOTÕES DE AÇÃO COM NOVO REGISTRO NO LADO DIREITO */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-3">
-            <button 
-              onClick={() => setShowNewTransactionModal(true)}
-              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Nova</span>
-              <ChevronDown className="w-4 h-4" />
-            </button>
+            {/* Dropdown + Nova */}
+            <div className="relative" ref={newDropdownRef}>
+              <button 
+                onClick={() => {
+                  setShowNewDropdown(!showNewDropdown)
+                  setShowReportsDropdown(false)
+                }}
+                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Nova</span>
+                <ChevronDown className="w-4 h-4" />
+              </button>
+
+              {showNewDropdown && (
+                <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 w-48">
+                  <div className="py-1">
+                    <button
+                      onClick={() => {
+                        setShowNewTransactionModal(true)
+                        setShowNewDropdown(false)
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center space-x-2"
+                    >
+                      <DollarSign className="w-4 h-4" />
+                      <span>Nova Transação</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowCategoriesManager(true)
+                        setShowNewDropdown(false)
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center space-x-2"
+                    >
+                      <Settings className="w-4 h-4" />
+                      <span>Gerenciar Categorias</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowAccountsManager(true)
+                        setShowNewDropdown(false)
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center space-x-2"
+                    >
+                      <Wallet className="w-4 h-4" />
+                      <span>Gerenciar Contas</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
             
-            <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2">
-              <span>Relatórios</span>
-              <ChevronDown className="w-4 h-4" />
-            </button>
+            {/* Dropdown Relatórios */}
+            <div className="relative" ref={reportsDropdownRef}>
+              <button 
+                onClick={() => {
+                  setShowReportsDropdown(!showReportsDropdown)
+                  setShowNewDropdown(false)
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
+              >
+                <span>Relatórios</span>
+                <ChevronDown className="w-4 h-4" />
+              </button>
+
+              {showReportsDropdown && (
+                <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 w-56">
+                  <div className="py-1">
+                    <button
+                      onClick={() => {
+                        setShowCashFlowProjection(true)
+                        setShowReportsDropdown(false)
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center space-x-2"
+                    >
+                      <TrendingUp className="w-4 h-4" />
+                      <span>Projeção do Fluxo de Caixa</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowReconciliation(accounts[0] || null)
+                        setShowReportsDropdown(false)
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center space-x-2"
+                    >
+                      <Building2 className="w-4 h-4" />
+                      <span>Conciliação Bancária</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
 
             <button 
               onClick={() => setShowExportModal(true)}
@@ -519,6 +960,7 @@ function FinanceiroPageContent() {
             </button>
           </div>
 
+          {/* BOTÃO NOVO REGISTRO DE VOLTA AQUI NO LADO DIREITO */}
           <button 
             onClick={() => setShowNewTransactionModal(true)}
             className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
@@ -529,37 +971,121 @@ function FinanceiroPageContent() {
           </button>
         </div>
 
-        {/* Filtros */}
+        {/* FILTROS */}
         <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-            {/* Period Selector */}
+            {/* Filtro de Período */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Período
               </label>
-              <div className="flex items-center space-x-2">
-                <button 
-                  onClick={() => setSelectedYear(selectedYear - 1)}
-                  className="p-2 hover:bg-gray-100 rounded"
+              
+              <div className="flex bg-gray-100 rounded-lg p-1 mb-2">
+                <button
+                  type="button"
+                  onClick={() => setDateFilterType('year')}
+                  className={`flex-1 py-1 px-2 rounded text-xs font-medium transition-colors ${
+                    dateFilterType === 'year'
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
                 >
-                  <ChevronLeft className="w-4 h-4" />
+                  Ano
                 </button>
-                <select 
-                  value={selectedYear}
-                  onChange={(e) => setSelectedYear(Number(e.target.value))}
-                  className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-center font-medium text-gray-900"
+                <button
+                  type="button"
+                  onClick={() => setDateFilterType('month')}
+                  className={`flex-1 py-1 px-2 rounded text-xs font-medium transition-colors ${
+                    dateFilterType === 'month'
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
                 >
-                  <option value={2024}>2024</option>
-                  <option value={2025}>2025</option>
-                  <option value={2026}>2026</option>
-                </select>
-                <button 
-                  onClick={() => setSelectedYear(selectedYear + 1)}
-                  className="p-2 hover:bg-gray-100 rounded"
+                  Mês
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDateFilterType('custom')}
+                  className={`flex-1 py-1 px-2 rounded text-xs font-medium transition-colors ${
+                    dateFilterType === 'custom'
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
                 >
-                  <ChevronRight className="w-4 h-4" />
+                  Personalizado
                 </button>
               </div>
+
+              {/* Seletores baseados no tipo */}
+              {dateFilterType === 'year' && (
+                <div className="flex items-center space-x-2">
+                  <button 
+                    onClick={() => setSelectedYear(selectedYear - 1)}
+                    className="p-2 hover:bg-gray-100 rounded"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <select 
+                    value={selectedYear}
+                    onChange={(e) => setSelectedYear(Number(e.target.value))}
+                    className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-center font-medium text-gray-900"
+                  >
+                    <option value={2024}>2024</option>
+                    <option value={2025}>2025</option>
+                    <option value={2026}>2026</option>
+                  </select>
+                  <button 
+                    onClick={() => setSelectedYear(selectedYear + 1)}
+                    className="p-2 hover:bg-gray-100 rounded"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+
+              {dateFilterType === 'month' && (
+                <div className="space-y-2">
+                  <select 
+                    value={selectedYear}
+                    onChange={(e) => setSelectedYear(Number(e.target.value))}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900"
+                  >
+                    <option value={2024}>2024</option>
+                    <option value={2025}>2025</option>
+                    <option value={2026}>2026</option>
+                  </select>
+                  <select 
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900"
+                  >
+                    {months.map(month => (
+                      <option key={month.value} value={month.value}>
+                        {month.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {dateFilterType === 'custom' && (
+                <div className="space-y-2">
+                  <input
+                    type="date"
+                    value={customDateRange.start}
+                    onChange={(e) => setCustomDateRange(prev => ({ ...prev, start: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900"
+                    placeholder="Data inicial"
+                  />
+                  <input
+                    type="date"
+                    value={customDateRange.end}
+                    onChange={(e) => setCustomDateRange(prev => ({ ...prev, end: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900"
+                    placeholder="Data final"
+                  />
+                </div>
+              )}
             </div>
 
             {/* Search */}
@@ -579,52 +1105,65 @@ function FinanceiroPageContent() {
               </div>
             </div>
 
-            {/* Account */}
-            <div>
+            {/* Seletor de Contas */}
+            <div className="relative">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Conta
+                Contas
               </label>
-              <select 
-                value={selectedAccount}
-                onChange={(e) => setSelectedAccount(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900"
+              <button
+                onClick={() => setShowAccountSelector(!showAccountSelector)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-left text-gray-900 flex items-center justify-between"
               >
-                <option value="all">Selecionar todas</option>
-                {accounts.map(account => (
-                  <option key={account.id} value={account.id}>
-                    {account.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* More Filters */}
-            <div className="flex items-center space-x-3">
-              <button 
-                onClick={() => setShowAdvancedFilters(true)}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
-              >
-                <Filter className="w-4 h-4" />
-                <span>Mais filtros</span>
+                <span>
+                  {selectedAccounts.length === 0 
+                    ? 'Selecionar contas'
+                    : selectedAccounts.length === 1 
+                      ? accounts.find(a => a.id === selectedAccounts[0])?.name
+                      : `${selectedAccounts.length} contas selecionadas`
+                  }
+                </span>
                 <ChevronDown className="w-4 h-4" />
               </button>
+
+              {showAccountSelector && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
+                  <div className="p-2">
+                    {accounts.map(account => (
+                      <label
+                        key={account.id}
+                        className="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedAccounts.includes(account.id)}
+                          onChange={() => toggleAccountSelection(account.id)}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-sm text-gray-900">{account.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Botão Limpar Filtros */}
+            <div className="flex items-end">
+              {hasActiveFilters() && (
+                <button 
+                  onClick={clearFilters}
+                  className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg flex items-center space-x-2 h-10"
+                >
+                  <X className="w-4 h-4" />
+                  <span>Limpar filtros</span>
+                </button>
+              )}
             </div>
           </div>
 
-          <div className="mt-4 flex items-center justify-between">
-            <button 
-              onClick={() => {
-                setSearchTerm('')
-                setSelectedAccount('all')
-              }}
-              className="text-blue-600 hover:text-blue-700 text-sm flex items-center space-x-1"
-            >
-              <X className="w-4 h-4" />
-              <span>Limpar filtros</span>
-            </button>
-
-            {/* Selection shortcuts */}
-            {transactions.length > 0 && (
+          {/* Selection shortcuts */}
+          {transactions.length > 0 && (
+            <div className="mt-4 flex items-center justify-end">
               <div className="flex items-center space-x-2 text-sm">
                 <span className="text-gray-600">Selecionar:</span>
                 <button 
@@ -648,8 +1187,8 @@ function FinanceiroPageContent() {
                   Despesas
                 </button>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
         {/* Metrics Cards */}
@@ -703,7 +1242,10 @@ function FinanceiroPageContent() {
               <DollarSign className="mx-auto h-12 w-12 text-gray-400" />
               <h3 className="mt-2 text-sm font-medium text-gray-900">Nenhuma transação encontrada</h3>
               <p className="mt-1 text-sm text-gray-500">
-                Comece criando sua primeira transação financeira.
+                {hasActiveFilters() 
+                  ? 'Nenhuma transação encontrada com os filtros aplicados.'
+                  : 'Comece criando sua primeira transação financeira.'
+                }
               </p>
               <div className="mt-6">
                 <button
@@ -828,7 +1370,15 @@ function FinanceiroPageContent() {
         </div>
       </div>
 
-      {/* MODAL NOVA TRANSAÇÃO - VERSÃO COMPLETA COM CONTRASTE MELHORADO */}
+      {/* Click outside para fechar account selector */}
+      {showAccountSelector && (
+        <div 
+          className="fixed inset-0 z-5"
+          onClick={() => setShowAccountSelector(false)}
+        />
+      )}
+
+      {/* MODAL NOVA TRANSAÇÃO */}
       {showNewTransactionModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
@@ -901,7 +1451,6 @@ function FinanceiroPageContent() {
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                       >
                         <option value="" className="text-gray-700">Selecione...</option>
-                        {/* Carregar clientes/fornecedores da base */}
                       </select>
                       {formData.type === 'receita' && (
                         <button type="button" className="mt-1 text-xs text-blue-600 hover:text-blue-800">
@@ -1258,11 +1807,19 @@ function FinanceiroPageContent() {
         </div>
       )}
 
-      {/* MODAIS PREMIUM */}
+      {/* MODAIS */}
       {showCategoriesManager && (
         <CustomCategoriesManager
           onClose={() => setShowCategoriesManager(false)}
           onCategoryUpdate={fetchCustomCategories}
+        />
+      )}
+
+      {showAccountsManager && (
+        <AccountsManager
+          accounts={accounts}
+          onClose={() => setShowAccountsManager(false)}
+          onAccountUpdate={fetchAccounts}
         />
       )}
 
@@ -1293,7 +1850,6 @@ function FinanceiroPageContent() {
   )
 }
 
-// Component principal com Provider
 export default function FinanceiroPage() {
   return (
     <ToastProvider>
