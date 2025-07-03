@@ -1,13 +1,21 @@
-// src/app/financeiro/page.tsx - INTEGRADO COM SUPABASE
+// src/app/financeiro/page.tsx - VERSÃO COM INTERATIVIDADE AVANÇADA
 'use client'
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { 
   Plus, Search, Filter, ChevronDown, ChevronLeft, ChevronRight,
-  FileDown, Printer, Upload, MoreHorizontal, X, Edit2, Trash2,
-  DollarSign, Building2, Calendar, FileText, AlertCircle
+  FileDown, Printer, Upload, X, AlertCircle, DollarSign
 } from 'lucide-react'
+
+// Imports dos novos componentes
+import { ToastProvider } from './components/Toast'
+import { BulkActions } from './components/BulkActions'
+import { TransactionDropdown } from './components/TransactionDropdown'
+import { TableLoadingState } from './components/LoadingSpinner'
+import { useTransactionSelection } from './hooks/useTransactionSelection'
+import { useTransactionActions } from './hooks/useTransactionActions'
+import { Transaction, Account, FinancialMetrics } from './types/financial'
 
 // Configuração do Supabase
 const supabase = createClient(
@@ -15,48 +23,8 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
-// Types
-interface Transaction {
-  id: string
-  description: string
-  category: string
-  type: 'receita' | 'despesa'
-  amount: number
-  status: 'pendente' | 'recebido' | 'pago' | 'vencido' | 'cancelado'
-  transaction_date: string
-  due_date?: string
-  payment_date?: string
-  account_id: string
-  company?: string
-  document?: string
-  notes?: string
-  created_at: string
-  updated_at: string
-  account?: {
-    name: string
-    type: string
-  }
-}
-
-interface Account {
-  id: string
-  name: string
-  type: string
-  bank?: string
-  balance: number
-  is_active: boolean
-}
-
-interface FinancialMetrics {
-  receitas_em_aberto: number
-  receitas_realizadas: number
-  despesas_em_aberto: number
-  despesas_realizadas: number
-  total_periodo: number
-}
-
-export default function FinanceiroPage() {
-  // Estados
+function FinanceiroPageContent() {
+  // Estados principais
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [accounts, setAccounts] = useState<Account[]>([])
   const [metrics, setMetrics] = useState<FinancialMetrics>({
@@ -70,7 +38,6 @@ export default function FinanceiroPage() {
   const [selectedYear, setSelectedYear] = useState(2025)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedAccount, setSelectedAccount] = useState('all')
-  const [selectedTransactions, setSelectedTransactions] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   
@@ -90,6 +57,10 @@ export default function FinanceiroPage() {
     company: '',
     notes: ''
   })
+
+  // Hooks customizados para seleção e ações
+  const selection = useTransactionSelection(transactions)
+  const { loadingState } = useTransactionActions(refreshData)
 
   const statusConfig = {
     pendente: { label: 'Pendente', color: 'bg-yellow-100 text-yellow-800' },
@@ -113,6 +84,14 @@ export default function FinanceiroPage() {
       'despesas_tecnologia': 'Despesas de Tecnologia',
       'despesas_outras': 'Outras Despesas'
     }
+  }
+
+  // Função centralizada de refresh
+  async function refreshData() {
+    await Promise.all([
+      fetchTransactions(),
+      fetchMetrics()
+    ])
   }
 
   // Funções de busca de dados
@@ -211,6 +190,11 @@ export default function FinanceiroPage() {
     loadData()
   }, [selectedYear, selectedAccount, searchTerm])
 
+  // Limpar seleção ao mudar filtros
+  useEffect(() => {
+    selection.clearSelection()
+  }, [selectedYear, selectedAccount, searchTerm])
+
   // Funções de ação
   const handleCreateTransaction = async () => {
     try {
@@ -261,62 +245,12 @@ export default function FinanceiroPage() {
       setShowNewTransactionModal(false)
       
       // Recarregar dados
-      await Promise.all([fetchTransactions(), fetchMetrics()])
+      await refreshData()
       
       alert('Transação criada com sucesso!')
     } catch (err: any) {
       console.error('Erro ao criar transação:', err)
       alert('Erro ao criar transação: ' + err.message)
-    }
-  }
-
-  const handleDeleteTransaction = async (transactionId: string) => {
-    if (!confirm('Tem certeza que deseja excluir esta transação?')) {
-      return
-    }
-
-    try {
-      const { error } = await supabase
-        .from('financial_transactions')
-        .delete()
-        .eq('id', transactionId)
-
-      if (error) throw error
-
-      // Recarregar dados
-      await Promise.all([fetchTransactions(), fetchMetrics()])
-      
-      alert('Transação excluída com sucesso!')
-    } catch (err: any) {
-      console.error('Erro ao excluir transação:', err)
-      alert('Erro ao excluir transação: ' + err.message)
-    }
-  }
-
-  const handleMarkAsPaid = async (transactionId: string, currentStatus: string) => {
-    try {
-      const transaction = transactions.find(t => t.id === transactionId)
-      if (!transaction) return
-
-      const newStatus = transaction.type === 'receita' ? 'recebido' : 'pago'
-      
-      const { error } = await supabase
-        .from('financial_transactions')
-        .update({ 
-          status: newStatus,
-          payment_date: new Date().toISOString()
-        })
-        .eq('id', transactionId)
-
-      if (error) throw error
-
-      // Recarregar dados
-      await Promise.all([fetchTransactions(), fetchMetrics()])
-      
-      alert(`Transação marcada como ${newStatus}!`)
-    } catch (err: any) {
-      console.error('Erro ao atualizar transação:', err)
-      alert('Erro ao atualizar transação: ' + err.message)
     }
   }
 
@@ -330,22 +264,6 @@ export default function FinanceiroPage() {
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('pt-BR')
-  }
-
-  const handleSelectTransaction = (transactionId: string) => {
-    setSelectedTransactions(prev => 
-      prev.includes(transactionId) 
-        ? prev.filter(id => id !== transactionId)
-        : [...prev, transactionId]
-    )
-  }
-
-  const handleSelectAll = () => {
-    if (selectedTransactions.length === transactions.length) {
-      setSelectedTransactions([])
-    } else {
-      setSelectedTransactions(transactions.map(t => t.id))
-    }
   }
 
   const handleExportCSV = () => {
@@ -547,7 +465,7 @@ export default function FinanceiroPage() {
             </div>
           </div>
 
-          <div className="mt-4">
+          <div className="mt-4 flex items-center justify-between">
             <button 
               onClick={() => {
                 setSearchTerm('')
@@ -558,36 +476,63 @@ export default function FinanceiroPage() {
               <X className="w-4 h-4" />
               <span>Limpar filtros</span>
             </button>
+
+            {/* Selection shortcuts */}
+            {transactions.length > 0 && (
+              <div className="flex items-center space-x-2 text-sm">
+                <span className="text-gray-500">Selecionar:</span>
+                <button 
+                  onClick={() => selection.selectByStatus('pendente')}
+                  className="text-blue-600 hover:text-blue-700"
+                >
+                  Pendentes
+                </button>
+                <span className="text-gray-300">|</span>
+                <button 
+                  onClick={() => selection.selectByType('receita')}
+                  className="text-blue-600 hover:text-blue-700"
+                >
+                  Receitas
+                </button>
+                <span className="text-gray-300">|</span>
+                <button 
+                  onClick={() => selection.selectByType('despesa')}
+                  className="text-blue-600 hover:text-blue-700"
+                >
+                  Despesas
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Metrics Cards - DADOS REAIS DO SUPABASE */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <div className="bg-white rounded-lg border border-gray-200 p-6" suppressHydrationWarning>
             <h3 className="text-sm font-medium text-gray-600 mb-2">Receitas em aberto (R$)</h3>
             <p className="text-2xl font-bold text-green-600">
               {formatCurrency(metrics.receitas_em_aberto)}
             </p>
           </div>
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <div className="bg-white rounded-lg border border-gray-200 p-6" suppressHydrationWarning>
             <h3 className="text-sm font-medium text-gray-600 mb-2">Receitas realizadas (R$)</h3>
             <p className="text-2xl font-bold text-green-600">
               {formatCurrency(metrics.receitas_realizadas)}
             </p>
           </div>
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <div className="bg-white rounded-lg border border-gray-200 p-6" suppressHydrationWarning>
             <h3 className="text-sm font-medium text-gray-600 mb-2">Despesas em aberto (R$)</h3>
             <p className="text-2xl font-bold text-red-600">
               {formatCurrency(metrics.despesas_em_aberto)}
             </p>
           </div>
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <div className="bg-white rounded-lg border border-gray-200 p-6" suppressHydrationWarning>
             <h3 className="text-sm font-medium text-gray-600 mb-2">Despesas realizadas (R$)</h3>
             <p className="text-2xl font-bold text-red-600">
               {formatCurrency(metrics.despesas_realizadas)}
             </p>
           </div>
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <div className="bg-white rounded-lg border border-gray-200 p-6" suppressHydrationWarning>
             <h3 className="text-sm font-medium text-gray-600 mb-2">Total do período (R$)</h3>
             <p className={`text-2xl font-bold ${metrics.total_periodo >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
               {formatCurrency(metrics.total_periodo)}
@@ -595,27 +540,17 @@ export default function FinanceiroPage() {
           </div>
         </div>
 
-        {/* Bulk Actions */}
-        {selectedTransactions.length > 0 && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-            <div className="flex items-center justify-between">
-              <span className="text-blue-800 font-medium">
-                {selectedTransactions.length} registro(s) selecionado(s)
-              </span>
-              <div className="flex items-center space-x-3">
-                <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm">
-                  Pagar pelo CA de Bolso
-                </button>
-                <button className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg flex items-center space-x-2 text-sm">
-                  <span>Ações em lote</span>
-                  <ChevronDown className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          </div>
+        {/* Bulk Actions - NOVO COMPONENTE AVANÇADO */}
+        {selection.hasSelection && (
+          <BulkActions
+            selectedTransactions={selection.selectedTransactions}
+            selectionStats={selection.selectionStats}
+            onClearSelection={selection.clearSelection}
+            onRefresh={refreshData}
+          />
         )}
 
-        {/* Transactions Table - DADOS REAIS DO SUPABASE */}
+        {/* Transactions Table - VERSÃO MELHORADA */}
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
           {transactions.length === 0 ? (
             <div className="text-center py-12">
@@ -642,8 +577,11 @@ export default function FinanceiroPage() {
                     <th className="w-12 px-6 py-3">
                       <input
                         type="checkbox"
-                        checked={selectedTransactions.length === transactions.length}
-                        onChange={handleSelectAll}
+                        checked={selection.isAllSelected}
+                        ref={(el) => {
+                          if (el) el.indeterminate = selection.isPartiallySelected
+                        }}
+                        onChange={selection.toggleAll}
                         className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                       />
                     </th>
@@ -667,12 +605,17 @@ export default function FinanceiroPage() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {transactions.map((transaction) => (
-                    <tr key={transaction.id} className="hover:bg-gray-50">
+                    <tr 
+                      key={transaction.id} 
+                      className={`hover:bg-gray-50 transition-colors ${
+                        selection.isSelected(transaction.id) ? 'bg-blue-50 border-l-4 border-blue-500' : ''
+                      }`}
+                    >
                       <td className="px-6 py-4">
                         <input
                           type="checkbox"
-                          checked={selectedTransactions.includes(transaction.id)}
-                          onChange={() => handleSelectTransaction(transaction.id)}
+                          checked={selection.isSelected(transaction.id)}
+                          onChange={() => selection.toggleTransaction(transaction.id)}
                           className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                         />
                       </td>
@@ -708,41 +651,10 @@ export default function FinanceiroPage() {
                         {transaction.account?.name || 'N/A'}
                       </td>
                       <td className="px-6 py-4">
-                        <div className="relative group">
-                          <button className="text-gray-400 hover:text-gray-600">
-                            <MoreHorizontal className="w-4 h-4" />
-                          </button>
-                          
-                          <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
-                            <div className="py-1">
-                              {transaction.status === 'pendente' && (
-                                <button
-                                  onClick={() => handleMarkAsPaid(transaction.id, transaction.status)}
-                                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                >
-                                  <Check className="w-4 h-4 mr-2" />
-                                  Marcar como {transaction.type === 'receita' ? 'recebido' : 'pago'}
-                                </button>
-                              )}
-                              <button className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                <Edit2 className="w-4 h-4 mr-2" />
-                                Editar
-                              </button>
-                              <button className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                <FileDown className="w-4 h-4 mr-2" />
-                                Baixar comprovante
-                              </button>
-                              <div className="border-t border-gray-100"></div>
-                              <button 
-                                onClick={() => handleDeleteTransaction(transaction.id)}
-                                className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                              >
-                                <Trash2 className="w-4 h-4 mr-2" />
-                                Excluir
-                              </button>
-                            </div>
-                          </div>
-                        </div>
+                        <TransactionDropdown 
+                          transaction={transaction}
+                          onRefresh={refreshData}
+                        />
                       </td>
                     </tr>
                   ))}
@@ -753,7 +665,7 @@ export default function FinanceiroPage() {
         </div>
       </div>
 
-      {/* MODAL NOVA TRANSAÇÃO - COM DADOS REAIS */}
+      {/* MODAL NOVA TRANSAÇÃO - MANTIDO COMO ESTAVA */}
       {showNewTransactionModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
@@ -957,5 +869,14 @@ export default function FinanceiroPage() {
         </div>
       )}
     </div>
+  )
+}
+
+// Component principal com Provider
+export default function FinanceiroPage() {
+  return (
+    <ToastProvider>
+      <FinanceiroPageContent />
+    </ToastProvider>
   )
 }
