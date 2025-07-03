@@ -198,9 +198,9 @@ export default function ClientsPage() {
       case 'Ativo': return <CheckCircle className="w-4 h-4 text-green-500" />
       case 'Prospect': return <Clock className="w-4 h-4 text-blue-500" />
       case 'Renovação': return <TrendingUp className="w-4 h-4 text-orange-500" />
-      case 'Inativo': return <XCircle className="w-4 h-4 text-gray-500" />
-      case 'Churned': return <XCircle className="w-4 h-4 text-red-500" />
-      default: return <Clock className="w-4 h-4 text-gray-500" />
+      case 'Inativo': return <XCircle className="w-4 h-4 text-gray-900" />
+      case 'Churned': return <XCircle className="w-4 h-4 text-red-900" />
+      default: return <Clock className="w-4 h-4 text-gray-900" />
     }
   }
 
@@ -332,7 +332,7 @@ export default function ClientsPage() {
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1">
               <div className="relative">
-                <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+                <Search className="w-5 h-5 text-gray-700 absolute left-3 top-1/2 transform -translate-y-1/2" />
                 <input
                   type="text"
                   placeholder="Buscar por empresa, setor ou contato..."
@@ -383,7 +383,7 @@ export default function ClientsPage() {
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
-                      <Building2 className="w-5 h-5 text-gray-400" />
+                      <Building2 className="w-5 h-5 text-gray-700" />
                       <h3 className="font-semibold text-gray-900 truncate">{client.company_name}</h3>
                     </div>
                     {client.industry && (
@@ -393,7 +393,7 @@ export default function ClientsPage() {
                   <div className="flex gap-2">
                     <button 
                       onClick={() => handleViewClient(client.id)}
-                      className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                      className="p-2 text-gray-900 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                     >
                       <Eye className="w-4 h-4" />
                     </button>
@@ -427,7 +427,7 @@ export default function ClientsPage() {
                 {primaryContact && (
                   <div className="mb-4 p-3 bg-gray-50 rounded-lg">
                     <p className="font-medium text-sm text-gray-900 mb-1">{primaryContact.full_name}</p>
-                    <div className="flex items-center gap-3 text-xs text-gray-600">
+                    <div className="flex items-center gap-3 text-xs text-gray-800">
                       {primaryContact.email && (
                         <div className="flex items-center gap-1">
                           <Mail className="w-3 h-3" />
@@ -448,19 +448,19 @@ export default function ClientsPage() {
                 <div className="space-y-2">
                   {client.total_contract_value > 0 && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Valor Contrato:</span>
+                      <span className="text-gray-800">Valor Contrato:</span>
                       <span className="font-medium">{formatCurrency(client.total_contract_value)}</span>
                     </div>
                   )}
                   {client.monthly_recurring_revenue > 0 && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">MRR:</span>
+                      <span className="text-gray-800">MRR:</span>
                       <span className="font-medium">{formatCurrency(client.monthly_recurring_revenue)}</span>
                     </div>
                   )}
                   {client.account_manager && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Responsável:</span>
+                      <span className="text-gray-800">Responsável:</span>
                       <span className="font-medium">{client.account_manager.full_name}</span>
                     </div>
                   )}
@@ -469,7 +469,7 @@ export default function ClientsPage() {
                 {/* Localização */}
                 {(client.address_city || client.address_state) && (
                   <div className="mt-3 pt-3 border-t border-gray-200">
-                    <div className="flex items-center gap-1 text-xs text-gray-600">
+                    <div className="flex items-center gap-1 text-xs text-gray-800">
                       <MapPin className="w-3 h-3" />
                       <span>
                         {client.address_city}{client.address_city && client.address_state && ', '}{client.address_state}
@@ -485,9 +485,9 @@ export default function ClientsPage() {
         {/* Estado Vazio */}
         {filteredClients.length === 0 && (
           <div className="text-center py-12">
-            <Building2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <Building2 className="w-16 h-16 text-gray-700 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum cliente encontrado</h3>
-            <p className="text-gray-600 mb-6">
+            <p className="text-gray-700 mb-6">
               {searchTerm || statusFilter !== 'all' || healthFilter !== 'all'
                 ? 'Tente ajustar os filtros para encontrar clientes.'
                 : 'Comece adicionando seu primeiro cliente.'
