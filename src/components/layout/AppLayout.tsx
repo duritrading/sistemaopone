@@ -169,7 +169,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-auto px-12 py-8">
           {children}
         </main>
       </div>
