@@ -1,10 +1,16 @@
-import React, { createContext, useContext, ReactNode } from 'react'
-import { Container } from './Container'
+'use client'
 
-const ContainerContext = createContext<Container | null>(null)
+import React, { createContext, useContext, ReactNode } from 'react'
+
+interface ContainerContextType {
+  supabase: any
+  // Adicione outros tipos conforme necessário
+}
+
+const ContainerContext = createContext<ContainerContextType | null>(null)
 
 interface ContainerProviderProps {
-  container: Container
+  container: ContainerContextType
   children: ReactNode
 }
 
@@ -16,7 +22,7 @@ export function ContainerProvider({ container, children }: ContainerProviderProp
   )
 }
 
-export function useContainer(): Container {
+export function useContainer(): ContainerContextType {
   const container = useContext(ContainerContext)
   
   if (!container) {
@@ -24,12 +30,4 @@ export function useContainer(): Container {
   }
   
   return container
-}
-
-/**
- * Hook para resolver dependências
- */
-export function useService<T>(token: string): T {
-  const container = useContainer()
-  return container.resolve<T>(token)
 }
