@@ -1,20 +1,29 @@
-// src/app/financeiro/page.tsx - VERSÃO COM INTERATIVIDADE AVANÇADA
+// src/app/financeiro/page.tsx - VERSÃO PREMIUM COMPLETA
 'use client'
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { 
   Plus, Search, Filter, ChevronDown, ChevronLeft, ChevronRight,
-  FileDown, Printer, Upload, X, AlertCircle, DollarSign
+  FileDown, Printer, Upload, X, AlertCircle, DollarSign, Bell,
+  Settings, BarChart3, Building2, Paperclip, TrendingUp, Zap
 } from 'lucide-react'
 
-// Imports dos novos componentes
+// Imports dos componentes base
 import { ToastProvider } from './components/Toast'
 import { BulkActions } from './components/BulkActions'
 import { TransactionDropdown } from './components/TransactionDropdown'
-import { TableLoadingState } from './components/LoadingSpinner'
 import { useTransactionSelection } from './hooks/useTransactionSelection'
 import { useTransactionActions } from './hooks/useTransactionActions'
+
+// Imports dos componentes premium
+import { CustomCategoriesManager } from './components/CustomCategoriesManager'
+import { AttachmentsModal } from './components/AttachmentsManager'
+import { NotificationsManager } from './components/NotificationsManager'
+import { BankReconciliation } from './components/BankReconciliation'
+import { CashFlowProjection } from './components/CashFlowProjection'
+import { FinancialCharts } from './components/Charts'
+
 import { Transaction, Account, FinancialMetrics } from './types/financial'
 
 // Configuração do Supabase
@@ -27,6 +36,7 @@ function FinanceiroPageContent() {
   // Estados principais
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [accounts, setAccounts] = useState<Account[]>([])
+  const [customCategories, setCustomCategories] = useState<any[]>([])
   const [metrics, setMetrics] = useState<FinancialMetrics>({
     receitas_em_aberto: 0,
     receitas_realizadas: 0,
@@ -40,11 +50,19 @@ function FinanceiroPageContent() {
   const [selectedAccount, setSelectedAccount] = useState('all')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [currentView, setCurrentView] = useState<'transactions' | 'charts'>('transactions')
   
   // Estados dos modais
   const [showNewTransactionModal, setShowNewTransactionModal] = useState(false)
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
   const [showExportModal, setShowExportModal] = useState(false)
+  
+  // Estados dos modais premium
+  const [showCategoriesManager, setShowCategoriesManager] = useState(false)
+  const [showAttachmentsModal, setShowAttachmentsModal] = useState<string | null>(null)
+  const [showNotifications, setShowNotifications] = useState(false)
+  const [showReconciliation, setShowReconciliation] = useState<Account | null>(null)
+  const [showCashFlowProjection, setShowCashFlowProjection] = useState(false)
   
   // Estados do formulário
   const [formData, setFormData] = useState({
@@ -70,11 +88,15 @@ function FinanceiroPageContent() {
     cancelado: { label: 'Cancelado', color: 'bg-gray-100 text-gray-800' }
   }
 
-  const categoryOptions = {
+  // Categorias combinadas (padrão + personalizadas)
+  const allCategories = {
     receita: {
       'receitas_servicos': 'Receitas de Serviços',
       'receitas_produtos': 'Receitas de Produtos',
-      'receitas_outras': 'Outras Receitas'
+      'receitas_outras': 'Outras Receitas',
+      ...customCategories
+        .filter(c => c.type === 'receita' && c.is_active)
+        .reduce((acc, c) => ({ ...acc, [c.id]: c.name }), {})
     },
     despesa: {
       'despesas_operacionais': 'Despesas Operacionais',
@@ -82,7 +104,10 @@ function FinanceiroPageContent() {
       'despesas_pessoal': 'Despesas com Pessoal',
       'despesas_marketing': 'Despesas de Marketing',
       'despesas_tecnologia': 'Despesas de Tecnologia',
-      'despesas_outras': 'Outras Despesas'
+      'despesas_outras': 'Outras Despesas',
+      ...customCategories
+        .filter(c => c.type === 'despesa' && c.is_active)
+        .reduce((acc, c) => ({ ...acc, [c.id]: c.name }), {})
     }
   }
 
@@ -90,7 +115,8 @@ function FinanceiroPageContent() {
   async function refreshData() {
     await Promise.all([
       fetchTransactions(),
-      fetchMetrics()
+      fetchMetrics(),
+      fetchCustomCategories()
     ])
   }
 
@@ -152,6 +178,22 @@ function FinanceiroPageContent() {
     }
   }
 
+  const fetchCustomCategories = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('custom_categories')
+        .select('*')
+        .eq('is_active', true)
+        .order('name')
+
+      if (error) throw error
+
+      setCustomCategories(data || [])
+    } catch (err: any) {
+      console.error('Erro ao buscar categorias personalizadas:', err)
+    }
+  }
+
   const fetchMetrics = async () => {
     try {
       const { data, error } = await supabase
@@ -171,7 +213,6 @@ function FinanceiroPageContent() {
       }
     } catch (err: any) {
       console.error('Erro ao buscar métricas:', err)
-      // Não mostra erro para métricas pois não é crítico
     }
   }
 
@@ -182,6 +223,7 @@ function FinanceiroPageContent() {
       await Promise.all([
         fetchTransactions(),
         fetchAccounts(),
+        fetchCustomCategories(),
         fetchMetrics()
       ])
       setLoading(false)
@@ -303,20 +345,93 @@ function FinanceiroPageContent() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header da página */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-900">Extrato Financeiro</h1>
-          <div className="flex items-center space-x-4">
-            <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
-              Novidades
+      {/* Header Premium da página */}
+      <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+        <div className="px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div>
+                <h1 className="text-2xl font-bold flex items-center space-x-2">
+                  <span>Extrato Financeiro</span>
+                  <div className="bg-yellow-500 text-yellow-900 px-2 py-1 rounded-full text-xs font-medium">
+                    PREMIUM
+                  </div>
+                </h1>
+                <p className="text-blue-100 text-sm">Gestão financeira avançada para sua empresa</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-4">
+              {/* Notificações */}
+              <button
+                onClick={() => setShowNotifications(true)}
+                className="relative p-2 hover:bg-blue-500 rounded-lg transition-colors"
+                title="Notificações"
+              >
+                <Bell className="w-5 h-5" />
+                <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
+              </button>
+
+              {/* Menu Premium */}
+              <div className="flex items-center space-x-2 text-sm">
+                <button className="text-blue-100 hover:text-white">Novidades</button>
+                <button className="text-blue-100 hover:text-white">Ajuda</button>
+                <div className="text-right">
+                  <p className="text-xs text-blue-200">OpOne Premium</p>
+                  <p className="text-xs text-blue-100">Todas as funcionalidades</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Premium Features Bar */}
+        <div className="px-6 pb-4">
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={() => setShowCategoriesManager(true)}
+              className="bg-white bg-opacity-10 hover:bg-opacity-20 px-3 py-1 rounded-lg text-sm flex items-center space-x-2 transition-colors"
+            >
+              <Settings className="w-4 h-4" />
+              <span>Categorias</span>
             </button>
-            <button className="text-gray-600 hover:text-gray-700 text-sm font-medium">
-              Ajuda
+
+            <button
+              onClick={() => setShowCashFlowProjection(true)}
+              className="bg-white bg-opacity-10 hover:bg-opacity-20 px-3 py-1 rounded-lg text-sm flex items-center space-x-2 transition-colors"
+            >
+              <TrendingUp className="w-4 h-4" />
+              <span>Projeção</span>
             </button>
-            <div className="text-right">
-              <p className="text-xs text-gray-500">OpOne LAB</p>
-              <p className="text-xs text-gray-600">Configurações e plano</p>
+
+            <button
+              onClick={() => setShowReconciliation(accounts[0] || null)}
+              className="bg-white bg-opacity-10 hover:bg-opacity-20 px-3 py-1 rounded-lg text-sm flex items-center space-x-2 transition-colors"
+            >
+              <Building2 className="w-4 h-4" />
+              <span>Conciliação</span>
+            </button>
+
+            <div className="flex items-center space-x-1 ml-auto">
+              <button
+                onClick={() => setCurrentView('transactions')}
+                className={`px-3 py-1 rounded-lg text-sm transition-colors ${
+                  currentView === 'transactions' 
+                    ? 'bg-white text-blue-600' 
+                    : 'text-blue-100 hover:text-white'
+                }`}
+              >
+                Transações
+              </button>
+              <button
+                onClick={() => setCurrentView('charts')}
+                className={`px-3 py-1 rounded-lg text-sm transition-colors ${
+                  currentView === 'charts' 
+                    ? 'bg-white text-blue-600' 
+                    : 'text-blue-100 hover:text-white'
+                }`}
+              >
+                Analytics
+              </button>
             </div>
           </div>
         </div>
@@ -334,345 +449,379 @@ function FinanceiroPageContent() {
           </div>
         )}
 
-        {/* Action Buttons */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center space-x-3">
-            <button 
-              onClick={() => setShowNewTransactionModal(true)}
-              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Nova</span>
-              <ChevronDown className="w-4 h-4" />
-            </button>
-            
-            <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2">
-              <span>Relatórios</span>
-              <ChevronDown className="w-4 h-4" />
-            </button>
-
-            <button 
-              onClick={() => setShowExportModal(true)}
-              className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg flex items-center space-x-2"
-            >
-              <FileDown className="w-4 h-4" />
-              <span>Exportar</span>
-            </button>
-
-            <button 
-              onClick={() => window.print()}
-              className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg flex items-center space-x-2"
-            >
-              <Printer className="w-4 h-4" />
-              <span>Imprimir</span>
-            </button>
-
-            <button className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg flex items-center space-x-2">
-              <Upload className="w-4 h-4" />
-              <span>Importar planilha</span>
-            </button>
+        {/* Notificações Widget */}
+        {showNotifications && (
+          <div className="mb-6">
+            <NotificationsManager />
           </div>
+        )}
 
-          <button 
-            onClick={() => setShowNewTransactionModal(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Novo registro</span>
-            <ChevronDown className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Filtros */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-            {/* Period Selector */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Período
-              </label>
-              <div className="flex items-center space-x-2">
+        {/* Conditional Content */}
+        {currentView === 'charts' ? (
+          <FinancialCharts 
+            transactions={transactions} 
+            selectedYear={selectedYear} 
+          />
+        ) : (
+          <>
+            {/* Action Buttons */}
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center space-x-3">
                 <button 
-                  onClick={() => setSelectedYear(selectedYear - 1)}
-                  className="p-2 hover:bg-gray-100 rounded"
+                  onClick={() => setShowNewTransactionModal(true)}
+                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
                 >
-                  <ChevronLeft className="w-4 h-4" />
+                  <Plus className="w-4 h-4" />
+                  <span>Nova</span>
+                  <ChevronDown className="w-4 h-4" />
                 </button>
-                <select 
-                  value={selectedYear}
-                  onChange={(e) => setSelectedYear(Number(e.target.value))}
-                  className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-center font-medium"
-                >
-                  <option value={2024}>2024</option>
-                  <option value={2025}>2025</option>
-                  <option value={2026}>2026</option>
-                </select>
+                
+                <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2">
+                  <span>Relatórios</span>
+                  <ChevronDown className="w-4 h-4" />
+                </button>
+
                 <button 
-                  onClick={() => setSelectedYear(selectedYear + 1)}
-                  className="p-2 hover:bg-gray-100 rounded"
+                  onClick={() => setShowExportModal(true)}
+                  className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg flex items-center space-x-2"
                 >
-                  <ChevronRight className="w-4 h-4" />
+                  <FileDown className="w-4 h-4" />
+                  <span>Exportar</span>
+                </button>
+
+                <button 
+                  onClick={() => window.print()}
+                  className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg flex items-center space-x-2"
+                >
+                  <Printer className="w-4 h-4" />
+                  <span>Imprimir</span>
+                </button>
+
+                <button className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg flex items-center space-x-2">
+                  <Upload className="w-4 h-4" />
+                  <span>Importar planilha</span>
                 </button>
               </div>
-            </div>
 
-            {/* Search */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Pesquisar no período selecionado
-              </label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <input
-                  type="text"
-                  placeholder="Pesquisar"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-            </div>
-
-            {/* Account */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Conta
-              </label>
-              <select 
-                value={selectedAccount}
-                onChange={(e) => setSelectedAccount(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2"
-              >
-                <option value="all">Selecionar todas</option>
-                {accounts.map(account => (
-                  <option key={account.id} value={account.id}>
-                    {account.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* More Filters */}
-            <div className="flex items-center space-x-3">
               <button 
-                onClick={() => setShowAdvancedFilters(true)}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
+                onClick={() => setShowNewTransactionModal(true)}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
               >
-                <Filter className="w-4 h-4" />
-                <span>Mais filtros</span>
+                <Zap className="w-4 h-4" />
+                <span>Novo registro</span>
                 <ChevronDown className="w-4 h-4" />
               </button>
             </div>
-          </div>
 
-          <div className="mt-4 flex items-center justify-between">
-            <button 
-              onClick={() => {
-                setSearchTerm('')
-                setSelectedAccount('all')
-              }}
-              className="text-blue-600 hover:text-blue-700 text-sm flex items-center space-x-1"
-            >
-              <X className="w-4 h-4" />
-              <span>Limpar filtros</span>
-            </button>
-
-            {/* Selection shortcuts */}
-            {transactions.length > 0 && (
-              <div className="flex items-center space-x-2 text-sm">
-                <span className="text-gray-500">Selecionar:</span>
-                <button 
-                  onClick={() => selection.selectByStatus('pendente')}
-                  className="text-blue-600 hover:text-blue-700"
-                >
-                  Pendentes
-                </button>
-                <span className="text-gray-300">|</span>
-                <button 
-                  onClick={() => selection.selectByType('receita')}
-                  className="text-blue-600 hover:text-blue-700"
-                >
-                  Receitas
-                </button>
-                <span className="text-gray-300">|</span>
-                <button 
-                  onClick={() => selection.selectByType('despesa')}
-                  className="text-blue-600 hover:text-blue-700"
-                >
-                  Despesas
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Metrics Cards - DADOS REAIS DO SUPABASE */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
-          <div className="bg-white rounded-lg border border-gray-200 p-6" suppressHydrationWarning>
-            <h3 className="text-sm font-medium text-gray-600 mb-2">Receitas em aberto (R$)</h3>
-            <p className="text-2xl font-bold text-green-600">
-              {formatCurrency(metrics.receitas_em_aberto)}
-            </p>
-          </div>
-          <div className="bg-white rounded-lg border border-gray-200 p-6" suppressHydrationWarning>
-            <h3 className="text-sm font-medium text-gray-600 mb-2">Receitas realizadas (R$)</h3>
-            <p className="text-2xl font-bold text-green-600">
-              {formatCurrency(metrics.receitas_realizadas)}
-            </p>
-          </div>
-          <div className="bg-white rounded-lg border border-gray-200 p-6" suppressHydrationWarning>
-            <h3 className="text-sm font-medium text-gray-600 mb-2">Despesas em aberto (R$)</h3>
-            <p className="text-2xl font-bold text-red-600">
-              {formatCurrency(metrics.despesas_em_aberto)}
-            </p>
-          </div>
-          <div className="bg-white rounded-lg border border-gray-200 p-6" suppressHydrationWarning>
-            <h3 className="text-sm font-medium text-gray-600 mb-2">Despesas realizadas (R$)</h3>
-            <p className="text-2xl font-bold text-red-600">
-              {formatCurrency(metrics.despesas_realizadas)}
-            </p>
-          </div>
-          <div className="bg-white rounded-lg border border-gray-200 p-6" suppressHydrationWarning>
-            <h3 className="text-sm font-medium text-gray-600 mb-2">Total do período (R$)</h3>
-            <p className={`text-2xl font-bold ${metrics.total_periodo >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
-              {formatCurrency(metrics.total_periodo)}
-            </p>
-          </div>
-        </div>
-
-        {/* Bulk Actions - NOVO COMPONENTE AVANÇADO */}
-        {selection.hasSelection && (
-          <BulkActions
-            selectedTransactions={selection.selectedTransactions}
-            selectionStats={selection.selectionStats}
-            onClearSelection={selection.clearSelection}
-            onRefresh={refreshData}
-          />
-        )}
-
-        {/* Transactions Table - VERSÃO MELHORADA */}
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          {transactions.length === 0 ? (
-            <div className="text-center py-12">
-              <DollarSign className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">Nenhuma transação encontrada</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                Comece criando sua primeira transação financeira.
-              </p>
-              <div className="mt-6">
-                <button
-                  onClick={() => setShowNewTransactionModal(true)}
-                  className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Nova Transação
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th className="w-12 px-6 py-3">
-                      <input
-                        type="checkbox"
-                        checked={selection.isAllSelected}
-                        ref={(el) => {
-                          if (el) el.indeterminate = selection.isPartiallySelected
-                        }}
-                        onChange={selection.toggleAll}
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                      />
-                    </th>
-                    <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Data
-                    </th>
-                    <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Descrição
-                    </th>
-                    <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Situação
-                    </th>
-                    <th className="text-right px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Valor (R$)
-                    </th>
-                    <th className="text-right px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Conta
-                    </th>
-                    <th className="w-16 px-6 py-3"></th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {transactions.map((transaction) => (
-                    <tr 
-                      key={transaction.id} 
-                      className={`hover:bg-gray-50 transition-colors ${
-                        selection.isSelected(transaction.id) ? 'bg-blue-50 border-l-4 border-blue-500' : ''
-                      }`}
+            {/* Filtros */}
+            <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                {/* Period Selector */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Período
+                  </label>
+                  <div className="flex items-center space-x-2">
+                    <button 
+                      onClick={() => setSelectedYear(selectedYear - 1)}
+                      className="p-2 hover:bg-gray-100 rounded"
                     >
-                      <td className="px-6 py-4">
-                        <input
-                          type="checkbox"
-                          checked={selection.isSelected(transaction.id)}
-                          onChange={() => selection.toggleTransaction(transaction.id)}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        {formatDate(transaction.transaction_date)}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">
-                            {transaction.description}
-                          </p>
-                          <p className="text-sm text-gray-500">
-                            {transaction.category}
-                          </p>
-                          {transaction.company && (
-                            <p className="text-xs text-gray-400">
-                              {transaction.company}
-                            </p>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${statusConfig[transaction.status].color}`}>
-                          {statusConfig[transaction.status].label}
-                        </span>
-                      </td>
-                      <td className={`px-6 py-4 text-sm font-medium text-right ${
-                        transaction.type === 'receita' ? 'text-green-600' : 'text-red-600'
-                      }`}>
-                        {transaction.type === 'receita' ? '+' : '-'}{formatCurrency(transaction.amount)}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 text-right">
-                        {transaction.account?.name || 'N/A'}
-                      </td>
-                      <td className="px-6 py-4">
-                        <TransactionDropdown 
-                          transaction={transaction}
-                          onRefresh={refreshData}
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <select 
+                      value={selectedYear}
+                      onChange={(e) => setSelectedYear(Number(e.target.value))}
+                      className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-center font-medium"
+                    >
+                      <option value={2024}>2024</option>
+                      <option value={2025}>2025</option>
+                      <option value={2026}>2026</option>
+                    </select>
+                    <button 
+                      onClick={() => setSelectedYear(selectedYear + 1)}
+                      className="p-2 hover:bg-gray-100 rounded"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Search */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Pesquisar no período selecionado
+                  </label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <input
+                      type="text"
+                      placeholder="Pesquisar"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+
+                {/* Account */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Conta
+                  </label>
+                  <select 
+                    value={selectedAccount}
+                    onChange={(e) => setSelectedAccount(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  >
+                    <option value="all">Selecionar todas</option>
+                    {accounts.map(account => (
+                      <option key={account.id} value={account.id}>
+                        {account.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* More Filters */}
+                <div className="flex items-center space-x-3">
+                  <button 
+                    onClick={() => setShowAdvancedFilters(true)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
+                  >
+                    <Filter className="w-4 h-4" />
+                    <span>Mais filtros</span>
+                    <ChevronDown className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-4 flex items-center justify-between">
+                <button 
+                  onClick={() => {
+                    setSearchTerm('')
+                    setSelectedAccount('all')
+                  }}
+                  className="text-blue-600 hover:text-blue-700 text-sm flex items-center space-x-1"
+                >
+                  <X className="w-4 h-4" />
+                  <span>Limpar filtros</span>
+                </button>
+
+                {/* Selection shortcuts */}
+                {transactions.length > 0 && (
+                  <div className="flex items-center space-x-2 text-sm">
+                    <span className="text-gray-500">Selecionar:</span>
+                    <button 
+                      onClick={() => selection.selectByStatus('pendente')}
+                      className="text-blue-600 hover:text-blue-700"
+                    >
+                      Pendentes
+                    </button>
+                    <span className="text-gray-300">|</span>
+                    <button 
+                      onClick={() => selection.selectByType('receita')}
+                      className="text-blue-600 hover:text-blue-700"
+                    >
+                      Receitas
+                    </button>
+                    <span className="text-gray-300">|</span>
+                    <button 
+                      onClick={() => selection.selectByType('despesa')}
+                      className="text-blue-600 hover:text-blue-700"
+                    >
+                      Despesas
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
-          )}
-        </div>
+
+            {/* Metrics Cards - DADOS REAIS DO SUPABASE */}
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+              <div className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow" suppressHydrationWarning>
+                <h3 className="text-sm font-medium text-gray-600 mb-2">Receitas em aberto (R$)</h3>
+                <p className="text-2xl font-bold text-green-600">
+                  {formatCurrency(metrics.receitas_em_aberto)}
+                </p>
+              </div>
+              <div className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow" suppressHydrationWarning>
+                <h3 className="text-sm font-medium text-gray-600 mb-2">Receitas realizadas (R$)</h3>
+                <p className="text-2xl font-bold text-green-600">
+                  {formatCurrency(metrics.receitas_realizadas)}
+                </p>
+              </div>
+              <div className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow" suppressHydrationWarning>
+                <h3 className="text-sm font-medium text-gray-600 mb-2">Despesas em aberto (R$)</h3>
+                <p className="text-2xl font-bold text-red-600">
+                  {formatCurrency(metrics.despesas_em_aberto)}
+                </p>
+              </div>
+              <div className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow" suppressHydrationWarning>
+                <h3 className="text-sm font-medium text-gray-600 mb-2">Despesas realizadas (R$)</h3>
+                <p className="text-2xl font-bold text-red-600">
+                  {formatCurrency(metrics.despesas_realizadas)}
+                </p>
+              </div>
+              <div className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow" suppressHydrationWarning>
+                <h3 className="text-sm font-medium text-gray-600 mb-2">Total do período (R$)</h3>
+                <p className={`text-2xl font-bold ${metrics.total_periodo >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                  {formatCurrency(metrics.total_periodo)}
+                </p>
+              </div>
+            </div>
+
+            {/* Bulk Actions - COMPONENTE AVANÇADO */}
+            {selection.hasSelection && (
+              <BulkActions
+                selectedTransactions={selection.selectedTransactions}
+                selectionStats={selection.selectionStats}
+                onClearSelection={selection.clearSelection}
+                onRefresh={refreshData}
+              />
+            )}
+
+            {/* Transactions Table - VERSÃO PREMIUM */}
+            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
+              {transactions.length === 0 ? (
+                <div className="text-center py-12">
+                  <DollarSign className="mx-auto h-12 w-12 text-gray-400" />
+                  <h3 className="mt-2 text-sm font-medium text-gray-900">Nenhuma transação encontrada</h3>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Comece criando sua primeira transação financeira.
+                  </p>
+                  <div className="mt-6">
+                    <button
+                      onClick={() => setShowNewTransactionModal(true)}
+                      className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Nova Transação
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50 border-b border-gray-200">
+                      <tr>
+                        <th className="w-12 px-6 py-3">
+                          <input
+                            type="checkbox"
+                            checked={selection.isAllSelected}
+                            ref={(el) => {
+                              if (el) el.indeterminate = selection.isPartiallySelected
+                            }}
+                            onChange={selection.toggleAll}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                        </th>
+                        <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Data
+                        </th>
+                        <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Descrição
+                        </th>
+                        <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Situação
+                        </th>
+                        <th className="text-right px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Valor (R$)
+                        </th>
+                        <th className="text-right px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Conta
+                        </th>
+                        <th className="text-center px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Anexos
+                        </th>
+                        <th className="w-16 px-6 py-3"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {transactions.map((transaction) => (
+                        <tr 
+                          key={transaction.id} 
+                          className={`hover:bg-gray-50 transition-colors ${
+                            selection.isSelected(transaction.id) ? 'bg-blue-50 border-l-4 border-blue-500' : ''
+                          }`}
+                        >
+                          <td className="px-6 py-4">
+                            <input
+                              type="checkbox"
+                              checked={selection.isSelected(transaction.id)}
+                              onChange={() => selection.toggleTransaction(transaction.id)}
+                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-900">
+                            {formatDate(transaction.transaction_date)}
+                          </td>
+                          <td className="px-6 py-4">
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">
+                                {transaction.description}
+                              </p>
+                              <p className="text-sm text-gray-500">
+                                {allCategories[transaction.type][transaction.category] || transaction.category}
+                              </p>
+                              {transaction.company && (
+                                <p className="text-xs text-gray-400">
+                                  {transaction.company}
+                                </p>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${statusConfig[transaction.status].color}`}>
+                              {statusConfig[transaction.status].label}
+                            </span>
+                          </td>
+                          <td className={`px-6 py-4 text-sm font-medium text-right ${
+                            transaction.type === 'receita' ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                            {transaction.type === 'receita' ? '+' : '-'}{formatCurrency(transaction.amount)}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-900 text-right">
+                            {transaction.account?.name || 'N/A'}
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            <button
+                              onClick={() => setShowAttachmentsModal(transaction.id)}
+                              className="text-gray-400 hover:text-blue-600 transition-colors"
+                              title="Ver anexos"
+                            >
+                              <Paperclip className="w-4 h-4" />
+                              {transaction.attachments && transaction.attachments.length > 0 && (
+                                <span className="absolute -mt-2 -mr-1 bg-blue-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                                  {transaction.attachments.length}
+                                </span>
+                              )}
+                            </button>
+                          </td>
+                          <td className="px-6 py-4">
+                            <TransactionDropdown 
+                              transaction={transaction}
+                              onRefresh={refreshData}
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </>
+        )}
       </div>
 
-      {/* MODAL NOVA TRANSAÇÃO - MANTIDO COMO ESTAVA */}
+      {/* MODAL NOVA TRANSAÇÃO - COM CATEGORIAS PERSONALIZADAS */}
       {showNewTransactionModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                  <DollarSign className="w-5 h-5 text-green-600" />
+                <div className="w-10 h-10 bg-gradient-to-r from-green-400 to-blue-500 rounded-lg flex items-center justify-center">
+                  <DollarSign className="w-5 h-5 text-white" />
                 </div>
                 <div>
                   <h2 className="text-lg font-semibold text-gray-900">Nova Transação</h2>
@@ -688,7 +837,7 @@ function FinanceiroPageContent() {
             </div>
 
             <div className="p-6 space-y-6">
-              {/* Tipo */}
+              {/* Resto do formulário igual ao anterior, mas usando allCategories */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-3">Tipo</label>
                 <div className="grid grid-cols-2 gap-3">
@@ -744,7 +893,7 @@ function FinanceiroPageContent() {
                     onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
-                    {Object.entries(categoryOptions[formData.type]).map(([key, label]) => (
+                    {Object.entries(allCategories[formData.type]).map(([key, label]) => (
                       <option key={key} value={key}>{label}</option>
                     ))}
                   </select>
@@ -818,7 +967,7 @@ function FinanceiroPageContent() {
             <div className="flex space-x-3 p-6 border-t border-gray-200">
               <button
                 onClick={handleCreateTransaction}
-                className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-colors"
               >
                 Criar Transação
               </button>
@@ -867,6 +1016,38 @@ function FinanceiroPageContent() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* MODAIS PREMIUM */}
+      {showCategoriesManager && (
+        <CustomCategoriesManager
+          onClose={() => setShowCategoriesManager(false)}
+          onCategoryUpdate={fetchCustomCategories}
+        />
+      )}
+
+      {showAttachmentsModal && (
+        <AttachmentsModal
+          transactionId={showAttachmentsModal}
+          transactionDescription={
+            transactions.find(t => t.id === showAttachmentsModal)?.description || ''
+          }
+          onClose={() => setShowAttachmentsModal(null)}
+        />
+      )}
+
+      {showReconciliation && (
+        <BankReconciliation
+          account={showReconciliation}
+          onClose={() => setShowReconciliation(null)}
+        />
+      )}
+
+      {showCashFlowProjection && (
+        <CashFlowProjection
+          accounts={accounts}
+          onClose={() => setShowCashFlowProjection(false)}
+        />
       )}
     </div>
   )
