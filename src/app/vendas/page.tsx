@@ -342,7 +342,7 @@ export default function VendasPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
       <div className="sm:flex sm:items-center sm:justify-between">
         <div>

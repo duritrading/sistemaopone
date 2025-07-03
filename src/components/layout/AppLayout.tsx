@@ -12,7 +12,8 @@ import {
   Users, 
   Settings,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Menu
 } from 'lucide-react';
 
 interface AppLayoutProps {
@@ -42,7 +43,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
       {/* Sidebar - Design escuro igual à imagem */}
       <div className={`
         bg-slate-900 text-white transition-all duration-300 ease-in-out flex flex-col
-        ${sidebarCollapsed ? 'w-16' : 'w-80'}
+        ${sidebarCollapsed ? 'w-16' : 'w-64'}
       `}>
         {/* Header */}
         <div className="p-6 border-b border-slate-700">
@@ -57,20 +58,6 @@ const AppLayout = ({ children }: AppLayoutProps) => {
               </div>
             )}
           </div>
-        </div>
-
-        {/* Toggle Button */}
-        <div className="px-4 py-2 border-b border-slate-700">
-          <button
-            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="w-full flex items-center justify-center p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
-          >
-            {sidebarCollapsed ? (
-              <ChevronRight className="w-5 h-5" />
-            ) : (
-              <ChevronLeft className="w-5 h-5" />
-            )}
-          </button>
         </div>
 
         {/* Navigation */}
@@ -162,7 +149,16 @@ const AppLayout = ({ children }: AppLayoutProps) => {
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top Header */}
         <header className="bg-white border-b border-gray-200 px-6 py-4">
-          <div className="flex items-center justify-end">
+          <div className="flex items-center justify-between">
+            {/* Toggle Button */}
+            <button
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+
+            {/* User Info */}
             <div className="flex items-center space-x-3">
               <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
                 <span className="text-white font-medium text-sm">AD</span>
