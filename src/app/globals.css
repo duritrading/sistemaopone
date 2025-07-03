@@ -1,50 +1,63 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  height: 100%;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: rgb(var(--background-start-rgb));
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 255, 255, 255;
+  --background-end-rgb: 255, 255, 255;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --foreground-rgb: 255, 255, 255;
+    --background-start-rgb: 0, 0, 0;
+    --background-end-rgb: 0, 0, 0;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Scrollbar styles */
+::-webkit-scrollbar {
+  width: 6px;
 }
 
-.gantt-container {
-  @apply font-sans; /* Garante que o gráfico use a mesma fonte do resto do site */
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
 }
 
-.gantt-container .grid-header {
-  @apply bg-gray-50; /* Cor de fundo para o cabeçalho dos meses */
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
 }
 
-.gantt-container .grid-header-text {
-  @apply text-gray-600 font-semibold text-sm; /* Estilo do texto dos meses */
-}
-
-.gantt-container .grid-row-cell {
-  @apply text-gray-500; /* Cor do texto da lista de tarefas */
-}
-
-.gantt-container .task-list-header {
-  @apply bg-gray-50 text-gray-700 font-semibold; /* Cabeçalho da lista de tarefas à esquerda */
-}
-
-.gantt-container .task-list-table .task-list-row {
-  @apply hover:bg-gray-100 transition-colors;
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
 }

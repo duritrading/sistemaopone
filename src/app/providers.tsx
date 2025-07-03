@@ -1,15 +1,15 @@
 'use client'
 
-import React from 'react'
-import { ContainerProvider } from '@/shared/di/ContainerContext'
-import { createFinancialContainer } from '@/shared/di/FinancialModuleContainer'
+import { ReactNode } from 'react'
 
-const financialContainer = createFinancialContainer()
+interface ProvidersProps {
+  children: ReactNode
+}
 
-export function Providers({ children }: { children: React.ReactNode }) {
+export function Providers({ children }: ProvidersProps) {
   return (
-    <ContainerProvider container={financialContainer}>
+    <>
       {children}
-    </ContainerProvider>
+    </>
   )
 }

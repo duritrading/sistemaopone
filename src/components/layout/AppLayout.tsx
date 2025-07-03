@@ -1,3 +1,4 @@
+// src/components/layout/AppLayout.tsx
 'use client'
 
 import React, { useState } from 'react';
@@ -11,8 +12,6 @@ import {
   DollarSign,
   Users, 
   Settings,
-  ChevronLeft,
-  ChevronRight,
   Menu
 } from 'lucide-react';
 
@@ -24,7 +23,6 @@ const AppLayout = ({ children }: AppLayoutProps) => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const pathname = usePathname();
 
-  // Ordem exata da imagem: Dashboard, Vendas, Projetos, Clientes, Financeiro, Equipe
   const navigationItems = [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
     { icon: TrendingUp, label: 'Vendas', href: '/vendas' },
@@ -40,7 +38,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      {/* Sidebar - Design escuro igual à imagem */}
+      {/* Sidebar */}
       <div className={`
         bg-slate-900 text-white transition-all duration-300 ease-in-out flex flex-col
         ${sidebarCollapsed ? 'w-16' : 'w-64'}
@@ -110,7 +108,6 @@ const AppLayout = ({ children }: AppLayoutProps) => {
 
         {/* Footer */}
         <div className="border-t border-slate-700">
-          {/* Configurações */}
           <div className="p-4">
             <Link
               href="/configuracoes"
@@ -169,8 +166,10 @@ const AppLayout = ({ children }: AppLayoutProps) => {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-auto px-12 py-8">
-          {children}
+        <main className="flex-1 overflow-auto">
+          <div className="px-6 py-8">
+            {children}
+          </div>
         </main>
       </div>
     </div>
