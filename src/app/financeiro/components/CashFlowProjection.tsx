@@ -1,13 +1,12 @@
-// src/app/financeiro/components/CashFlowProjection.tsx
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { 
   TrendingUp, TrendingDown, Calendar, DollarSign, AlertTriangle,
-  BarChart3, Plus, Settings, Download, X, Eye
+  Plus, Settings, Download, X, Eye
 } from 'lucide-react'
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart } from 'recharts'
+// Removido recharts - versão sem gráficos
 import { useToast } from './Toast'
 import { Transaction, Account } from '../types/financial'
 
@@ -320,7 +319,7 @@ export function CashFlowProjection({ accounts, onClose }: CashFlowProjectionProp
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-              <BarChart3 className="w-5 h-5 text-purple-600" />
+              <TrendingUp className="w-5 h-5 text-purple-600" />
             </div>
             <div>
               <h2 className="text-lg font-semibold text-gray-900">Fluxo de Caixa Projetado</h2>
@@ -456,71 +455,108 @@ export function CashFlowProjection({ accounts, onClose }: CashFlowProjectionProp
             </div>
           )}
 
-          {/* Charts */}
+          {/* Charts - Substituído por estatísticas */}
           <div className="p-6 space-y-6">
-            {/* Cash Flow Chart */}
+            {/* Resumo Visual Simples */}
             <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Evolução do Saldo</h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <AreaChart data={projections}>
-                  <defs>
-                    <linearGradient id="balanceGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis 
-                    dataKey="date" 
-                    tick={{ fontSize: 12 }} 
-                    tickFormatter={formatMonth}
-                  />
-                  <YAxis 
-                    tick={{ fontSize: 12 }} 
-                    tickFormatter={(value) => formatCurrency(value)}
-                  />
-                  <Tooltip 
-                    formatter={(value: number) => [formatCurrency(value), 'Saldo Acumulado']}
-                    labelFormatter={(label) => formatMonth(label)}
-                  />
-                  <Area 
-                    type="monotone" 
-                    dataKey="accumulated_balance" 
-                    stroke="#3b82f6" 
-                    strokeWidth={2}
-                    fill="url(#balanceGradient)"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Resumo da Projeção</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="text-center p-4 bg-green-50 rounded-lg">
+                  <p className="text-sm text-green-600 font-medium">Total Receitas Projetadas</p>
+                  <p className="text-2xl font-bold text-green-700">
+                    {formatCurrency(
+                      projections.reduce((sum, p) => sum + p.projected_income, 0)
+                    )}
+                  </p>
+                </div>
+                <div className="text-center p-4 bg-red-50 rounded-lg">
+                  <p className="text-sm text-red-600 font-medium">Total Despesas Projetadas</p>
+                  <p className="text-2xl font-bold text-red-700">
+                    {formatCurrency(
+                      projections.reduce((sum, p) => sum + p.projected_expenses, 0)
+                    )}
+                  </p>
+                </div>
+                <div className="text-center p-4 bg-blue-50 rounded-lg">
+                  <p className="text-sm text-blue-600 font-medium">Resultado Líquido</p>
+                  <p className={`text-2xl font-bold ${
+                    getProjectionStats.netChange >= 0 ? 'text-blue-700' : 'text-red-700'
+                  }`}>
+                    {formatCurrency(getProjectionStats.netChange)}
+                  </p>
+                </div>
+              </div>
             </div>
 
-            {/* Monthly Flow Chart */}
+            {/* Evolução Mensal - Tabela Visual */}
             <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Fluxo Mensal Projetado</h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={projections}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis 
-                    dataKey="date" 
-                    tick={{ fontSize: 12 }} 
-                    tickFormatter={formatMonth}
-                  />
-                  <YAxis 
-                    tick={{ fontSize: 12 }} 
-                    tickFormatter={(value) => formatCurrency(value)}
-                  />
-                  <Tooltip 
-                    formatter={(value: number) => formatCurrency(value)}
-                    labelFormatter={(label) => formatMonth(label)}
-                  />
-                  <Legend />
-                  <Bar dataKey="projected_income" fill="#16a34a" name="Receitas Projetadas" />
-                  <Bar dataKey="projected_expenses" fill="#dc2626" name="Despesas Projetadas" />
-                </BarChart>
-              </ResponsiveContainer>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Evolução do Saldo por Mês</h3>
+              <div className="space-y-3">
+                {projections.map((projection, index) => (
+                  <div key={projection.date} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                        <span className="text-sm font-bold text-blue-600">{index + 1}</span>
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900">{formatMonth(projection.date)}</p>
+                        <p className="text-sm text-gray-500">
+                          {formatCurrency(projection.projected_income)} - {formatCurrency(projection.projected_expenses)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className={`text-lg font-bold ${
+                        projection.accumulated_balance >= 0 ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        {formatCurrency(projection.accumulated_balance)}
+                      </p>
+                      <p className="text-xs text-gray-500">Saldo acumulado</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
 
-            {/* Detailed Table */}
+            {/* Alertas e Insights */}
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Insights e Alertas</h3>
+              <div className="space-y-3">
+                {getProjectionStats.lowestBalance < 0 && (
+                  <div className="flex items-center space-x-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <AlertTriangle className="w-5 h-5 text-red-600" />
+                    <div>
+                      <p className="text-sm font-medium text-red-800">Atenção: Saldo negativo previsto</p>
+                      <p className="text-xs text-red-600">
+                        O menor saldo será de {formatCurrency(getProjectionStats.lowestBalance)}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                
+                {getProjectionStats.netChange > 0 && (
+                  <div className="flex items-center space-x-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <TrendingUp className="w-5 h-5 text-green-600" />
+                    <div>
+                      <p className="text-sm font-medium text-green-800">Projeção positiva</p>
+                      <p className="text-xs text-green-600">
+                        Crescimento projetado de {formatCurrency(getProjectionStats.netChange)}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-center space-x-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <Calendar className="w-5 h-5 text-blue-600" />
+                  <div>
+                    <p className="text-sm font-medium text-blue-800">Fluxo médio mensal</p>
+                    <p className="text-xs text-blue-600">
+                      {formatCurrency(getProjectionStats.averageMonthlyFlow)} por mês
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
             <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
               <div className="px-6 py-4 border-b border-gray-200">
                 <h3 className="text-lg font-semibold text-gray-900">Detalhamento por Mês</h3>
