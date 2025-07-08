@@ -1,7 +1,9 @@
 // src/types/sales.ts
 
 export type SalesStage = 
-  | 'Lead Qualificado'
+  | 'Lead Gerado'
+  | 'Qualificado'
+  | 'Diagnóstico Realizado'
   | 'Proposta Enviada' 
   | 'Negociação'
   | 'Proposta Aceita'
@@ -20,7 +22,7 @@ export type ActivityType =
 export interface SalesOpportunity {
   id: string
   company_name: string
-  company_cnpj: string | null  // ← ADICIONAR ESTA LINHA
+  company_cnpj: string | null
   contact_name: string
   contact_email: string
   contact_phone: string | null
@@ -33,6 +35,7 @@ export interface SalesOpportunity {
   actual_close_date: string | null
   lead_source: string | null
   assigned_to: string | null
+  display_order: number | null
   is_active: boolean
   created_at: string
   updated_at: string

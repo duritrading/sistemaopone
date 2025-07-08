@@ -1,7 +1,7 @@
 // src/app/vendas/page.tsx
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import NewOpportunityModal from '@/components/modals/NewOpportunityModal'
 import OpportunityDetailsModal from '@/components/modals/OpportunityDetailsModal'
 import EditOpportunityModal from '@/components/modals/EditOpportunityModal'
@@ -14,11 +14,9 @@ import {
   TrendingUp, 
   Target,
   Users,
+  User,
   Calendar,
-  Phone,
-  Mail,
   Building,
-  MoreVertical,
   Edit2,
   Trash2,
   Eye,
@@ -26,7 +24,9 @@ import {
 } from 'lucide-react'
 
 const PIPELINE_STAGES: { stage: SalesStage; color: string; bgColor: string }[] = [
-  { stage: 'Lead Qualificado', color: 'text-blue-600', bgColor: 'bg-blue-50' },
+  { stage: 'Lead Gerado', color: 'text-slate-600', bgColor: 'bg-slate-50' },
+  { stage: 'Qualificado', color: 'text-blue-600', bgColor: 'bg-blue-50' },
+  { stage: 'Diagnóstico Realizado', color: 'text-cyan-600', bgColor: 'bg-cyan-50' },
   { stage: 'Proposta Enviada', color: 'text-yellow-600', bgColor: 'bg-yellow-50' },
   { stage: 'Negociação', color: 'text-orange-600', bgColor: 'bg-orange-50' },
   { stage: 'Proposta Aceita', color: 'text-purple-600', bgColor: 'bg-purple-50' },
@@ -46,7 +46,9 @@ export default function VendasPage() {
   const [opportunityToDelete, setOpportunityToDelete] = useState<{ id: string; title: string } | null>(null)
   const [draggedItem, setDraggedItem] = useState<string | null>(null)
   const [dragOverStage, setDragOverStage] = useState<SalesStage | null>(null)
+  const [dragOverPosition, setDragOverPosition] = useState<number | null>(null)
   const [deletingOpportunity, setDeletingOpportunity] = useState<string | null>(null)
+  const stageRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
 
   useEffect(() => {
     fetchOpportunities()
@@ -62,6 +64,7 @@ export default function VendasPage() {
           team_member:team_members(id, full_name, email)
         `)
         .eq('is_active', true)
+        .order('display_order', { ascending: true, nullsFirst: false })
         .order('created_at', { ascending: false })
 
       if (error) throw error
@@ -126,53 +129,68 @@ export default function VendasPage() {
     return new Date(dateString).toLocaleDateString('pt-BR')
   }
 
-  const getStageConfig = (stage: SalesStage) => {
-    return PIPELINE_STAGES.find(s => s.stage === stage) || PIPELINE_STAGES[0]
-  }
-
   const getOpportunitiesByStage = (stage: SalesStage) => {
-    return opportunities.filter(opp => opp.stage === stage)
+    return opportunities
+      .filter(opp => opp.stage === stage)
+      .sort((a, b) => {
+        const orderA = (a as any).display_order ?? 999999
+        const orderB = (b as any).display_order ?? 999999
+        if (orderA !== orderB) return orderA - orderB
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      })
   }
 
-  const handleStageChange = async (opportunityId: string, newStage: SalesStage) => {
+  const updateDisplayOrder = async (opportunities: SalesOpportunity[]) => {
     try {
-      const { error } = await supabase
-        .from('sales_opportunities')
-        .update({ 
-          stage: newStage,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', opportunityId)
-
-      if (error) throw error
-
-      // Refresh data
-      await fetchOpportunities()
-      await fetchStats()
+      for (let i = 0; i < opportunities.length; i++) {
+        await supabase
+          .from('sales_opportunities')
+          .update({ display_order: i })
+          .eq('id', opportunities[i].id)
+      }
     } catch (error) {
-      console.error('Erro ao atualizar stage:', error)
-      alert('Erro ao atualizar stage. Tente novamente.')
+      console.warn('Não foi possível atualizar ordem:', error)
     }
   }
 
-  // Drag & Drop Functions
   const handleDragStart = (e: React.DragEvent, opportunityId: string) => {
-    console.log('🔄 Drag Start:', opportunityId)
+    console.log('Drag Start:', opportunityId)
     setDraggedItem(opportunityId)
     e.dataTransfer.effectAllowed = 'move'
     e.dataTransfer.setData('text/plain', opportunityId)
   }
 
-  const handleDragEnd = (e: React.DragEvent) => {
-    console.log('🔄 Drag End')
+  const handleDragEnd = () => {
+    console.log('Drag End')
     setDraggedItem(null)
     setDragOverStage(null)
+    setDragOverPosition(null)
   }
 
   const handleDragOver = (e: React.DragEvent, stage: SalesStage) => {
     e.preventDefault()
     e.dataTransfer.dropEffect = 'move'
     setDragOverStage(stage)
+
+    // Calcular posição para reordenação simples
+    if (draggedItem) {
+      const draggedOpp = opportunities.find(opp => opp.id === draggedItem)
+      if (draggedOpp && draggedOpp.stage === stage) {
+        // Reordenação dentro da mesma coluna
+        const container = stageRefs.current[stage]
+        if (container) {
+          const rect = container.getBoundingClientRect()
+          const mouseY = e.clientY - rect.top
+          const cardHeight = 180 // altura estimada do card
+          const position = Math.floor(mouseY / cardHeight)
+          const stageOpps = getOpportunitiesByStage(stage)
+          const clampedPosition = Math.max(0, Math.min(position, stageOpps.length - 1))
+          setDragOverPosition(clampedPosition)
+        }
+      } else {
+        setDragOverPosition(null)
+      }
+    }
   }
 
   const handleDragLeave = (e: React.DragEvent) => {
@@ -181,85 +199,91 @@ export default function VendasPage() {
     
     if (!currentTarget.contains(relatedTarget)) {
       setDragOverStage(null)
+      setDragOverPosition(null)
     }
   }
 
   const handleDrop = async (e: React.DragEvent, newStage: SalesStage) => {
     e.preventDefault()
-    console.log('🎯 Drop event triggered for stage:', newStage)
-    
-    setDragOverStage(null)
+    console.log('Drop triggered for stage:', newStage)
     
     const opportunityId = e.dataTransfer.getData('text/plain') || draggedItem
-    console.log('📦 Opportunity ID from drop:', opportunityId)
     
     if (!opportunityId) {
-      console.log('❌ No opportunity ID found')
+      setDragOverStage(null)
+      setDragOverPosition(null)
       return
     }
 
-    // Find the opportunity being moved
     const opportunity = opportunities.find(opp => opp.id === opportunityId)
-    console.log('🔍 Found opportunity:', opportunity?.opportunity_title, 'Current stage:', opportunity?.stage)
     
     if (!opportunity) {
-      console.log('❌ Opportunity not found')
       setDraggedItem(null)
+      setDragOverStage(null)
+      setDragOverPosition(null)
       return
     }
 
-    if (opportunity.stage === newStage) {
-      console.log('⚠️ Same stage, no move needed')
-      setDraggedItem(null)
-      return
-    }
+    const isSameStage = opportunity.stage === newStage
+    const shouldReorder = isSameStage && dragOverPosition !== null
 
-    console.log(`🚀 Moving "${opportunity.opportunity_title}" from "${opportunity.stage}" to "${newStage}"`)
-
-    // Update database directly (no optimistic update for now)
     try {
-      const { data, error } = await supabase
-        .from('sales_opportunities')
-        .update({ 
-          stage: newStage,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', opportunityId)
-        .select()
+      if (shouldReorder) {
+        // Reordenação dentro da mesma coluna
+        console.log('Reordenando para posição:', dragOverPosition)
+        
+        const stageOpps = getOpportunitiesByStage(newStage)
+        const currentIndex = stageOpps.findIndex(opp => opp.id === opportunityId)
+        const newIndex = dragOverPosition
+        
+        if (currentIndex !== newIndex && currentIndex !== -1) {
+          // Reordenar array
+          const reorderedOpps = [...stageOpps]
+          const [movedItem] = reorderedOpps.splice(currentIndex, 1)
+          reorderedOpps.splice(newIndex, 0, movedItem)
+          
+          // Atualizar no banco
+          await updateDisplayOrder(reorderedOpps)
+          
+          // Refresh
+          await fetchOpportunities()
+          await fetchStats()
+        }
+      } else if (!isSameStage) {
+        // Mudança de stage
+        console.log(`Moving "${opportunity.opportunity_title}" from "${opportunity.stage}" to "${newStage}"`)
+        
+        const { error } = await supabase
+          .from('sales_opportunities')
+          .update({ 
+            stage: newStage,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', opportunityId)
 
-      if (error) {
-        console.error('❌ Supabase error:', error)
-        throw error
+        if (error) throw error
+
+        await supabase
+          .from('sales_activities')
+          .insert([{
+            opportunity_id: opportunityId,
+            activity_type: 'Mudança de Stage',
+            title: `Movido para ${newStage}`,
+            description: `Oportunidade movida de "${opportunity.stage}" para "${newStage}" via drag & drop`
+          }])
+
+        await fetchOpportunities()
+        await fetchStats()
       }
-
-      console.log('✅ Database updated successfully:', data)
-
-      // Add activity log
-      const { error: activityError } = await supabase
-        .from('sales_activities')
-        .insert([{
-          opportunity_id: opportunityId,
-          activity_type: 'Mudança de Stage',
-          title: `Movido para ${newStage}`,
-          description: `Oportunidade movida de "${opportunity.stage}" para "${newStage}" via drag & drop`
-        }])
-
-      if (activityError) {
-        console.log('⚠️ Activity log error (not critical):', activityError)
-      }
-
-      // Refresh data
-      console.log('🔄 Refreshing data...')
-      await fetchOpportunities()
-      await fetchStats()
-      console.log('✅ Data refreshed')
       
     } catch (error) {
-      console.error('❌ Error moving opportunity:', error)
+      console.error('Error moving opportunity:', error)
       alert(`Erro ao mover oportunidade: ${error.message || 'Erro desconhecido'}`)
     }
 
     setDraggedItem(null)
+    setDragOverStage(null)
+    setDragOverPosition(null)
   }
 
   const handleViewDetails = (opportunity: SalesOpportunity) => {
@@ -269,7 +293,7 @@ export default function VendasPage() {
 
   const handleEditOpportunity = (opportunity: SalesOpportunity) => {
     setSelectedOpportunity(opportunity)
-    setShowDetailsModal(false) // Fechar modal de detalhes se estiver aberto
+    setShowDetailsModal(false)
     setShowEditModal(true)
   }
 
@@ -279,10 +303,8 @@ export default function VendasPage() {
     setShowEditModal(true)
   }
 
-  const handleDeleteOpportunity = async (e: React.MouseEvent, opportunityId: string, opportunityTitle: string) => {
+  const handleDeleteOpportunity = (e: React.MouseEvent, opportunityId: string, opportunityTitle: string) => {
     e.stopPropagation()
-    
-    // Definir oportunidade a ser excluída e mostrar modal de confirmação
     setOpportunityToDelete({ id: opportunityId, title: opportunityTitle })
     setShowConfirmationModal(true)
   }
@@ -293,7 +315,6 @@ export default function VendasPage() {
     setDeletingOpportunity(opportunityToDelete.id)
     
     try {
-      // Soft delete - marcar como inativo
       const { error } = await supabase
         .from('sales_opportunities')
         .update({ 
@@ -304,17 +325,6 @@ export default function VendasPage() {
 
       if (error) throw error
 
-      // Adicionar atividade de exclusão
-      await supabase
-        .from('sales_activities')
-        .insert([{
-          opportunity_id: opportunityToDelete.id,
-          activity_type: 'Nota',
-          title: 'Oportunidade excluída',
-          description: `A oportunidade "${opportunityToDelete.title}" foi marcada como excluída`
-        }])
-
-      // Reset estados e refresh data
       setShowConfirmationModal(false)
       setOpportunityToDelete(null)
       await fetchOpportunities()
@@ -343,7 +353,6 @@ export default function VendasPage() {
 
   return (
     <div className="space-y-8">
-      {/* Header */}
       <div className="sm:flex sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Pipeline de Vendas</h1>
@@ -355,7 +364,7 @@ export default function VendasPage() {
           <button
             type="button"
             onClick={() => setShowNewOpportunityModal(true)}
-            className="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+            className="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500"
           >
             <Plus className="h-4 w-4 mr-2" />
             Nova Oportunidade
@@ -363,13 +372,12 @@ export default function VendasPage() {
         </div>
       </div>
 
-      {/* Stats Cards */}
       {stats && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <div className="bg-white rounded-lg border border-gray-200 p-6">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <Target className="h-8 w-8 text-blue-500" />
+                <Users className="h-8 w-8 text-blue-500" />
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">Total de Oportunidades</p>
@@ -416,7 +424,6 @@ export default function VendasPage() {
         </div>
       )}
 
-      {/* Pipeline */}
       <div className="bg-white rounded-lg border border-gray-200 p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-6">Pipeline de Vendas</h2>
         
@@ -434,7 +441,6 @@ export default function VendasPage() {
                   onDragLeave={handleDragLeave}
                   onDrop={(e) => handleDrop(e, stage)}
                 >
-                  {/* Stage Header */}
                   <div className={`${bgColor} rounded-lg p-4 mb-4 transition-all duration-200 ${
                     dragOverStage === stage ? 'ring-2 ring-blue-400 ring-opacity-75 scale-105' : ''
                   }`}>
@@ -449,119 +455,120 @@ export default function VendasPage() {
                     </p>
                     {dragOverStage === stage && (
                       <p className="text-xs text-blue-600 mt-2 font-medium">
-                        Solte aqui para mover
+                        {dragOverPosition !== null ? `Inserir na posição ${dragOverPosition + 1}` : 'Solte aqui para mover'}
                       </p>
                     )}
                   </div>
 
-                  {/* Opportunities */}
-                  <div className="space-y-3 min-h-[400px]">
-                    {stageOpportunities.map((opportunity) => (
-                      <div
-                        key={opportunity.id}
-                        draggable
-                        onDragStart={(e) => handleDragStart(e, opportunity.id)}
-                        onDragEnd={handleDragEnd}
-                        className={`bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all duration-200 cursor-move ${
-                          draggedItem === opportunity.id ? 'opacity-50 scale-95' : 'hover:scale-105'
-                        }`}
-                      >
-                        {/* Opportunity Header */}
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex items-start space-x-2 flex-1">
-                            {/* Drag Handle */}
-                            <div className="flex items-center justify-center w-4 h-4 mt-1 text-gray-400 cursor-grab active:cursor-grabbing">
-                              <GripVertical className="h-3 w-3" />
+                  <div 
+                    ref={(el) => stageRefs.current[stage] = el}
+                    className="space-y-3 min-h-[400px]"
+                  >
+                    {stageOpportunities.map((opportunity, index) => (
+                      <div key={opportunity.id}>
+                        {dragOverStage === stage && dragOverPosition === index && draggedItem !== opportunity.id && (
+                          <div className="h-1 bg-blue-400 rounded-full mb-3 animate-pulse"></div>
+                        )}
+                        
+                        <div
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, opportunity.id)}
+                          onDragEnd={handleDragEnd}
+                          onClick={() => handleViewDetails(opportunity)}
+                          className={`bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all duration-200 cursor-move ${
+                            draggedItem === opportunity.id ? 'opacity-50 scale-95' : 'hover:scale-105'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex items-start space-x-2 flex-1">
+                              <div className="flex items-center justify-center w-4 h-4 mt-1 text-gray-400">
+                                <GripVertical className="h-3 w-3" />
+                              </div>
+                              
+                              <h4 className="font-medium text-gray-900 text-sm leading-tight flex-1">
+                                {opportunity.opportunity_title}
+                              </h4>
                             </div>
                             
-                            <h4 className="font-medium text-gray-900 text-sm leading-tight flex-1">
-                              {opportunity.opportunity_title}
-                            </h4>
-                          </div>
-                          
-                          <div className="flex items-center space-x-1">
-                            <button 
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleViewDetails(opportunity)
-                              }}
-                              className="p-1 text-gray-400 hover:text-blue-500 rounded"
-                              title="Ver detalhes"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </button>
-                            <button 
-                              onClick={(e) => handleEditFromCard(e, opportunity)}
-                              className="p-1 text-gray-400 hover:text-blue-500 rounded"
-                              title="Editar oportunidade"
-                            >
-                              <Edit2 className="h-4 w-4" />
-                            </button>
-                            <button 
-                              onClick={(e) => handleDeleteOpportunity(e, opportunity.id, opportunity.opportunity_title)}
-                              disabled={deletingOpportunity === opportunity.id || showConfirmationModal}
-                              className="p-1 text-gray-400 hover:text-red-500 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-                              title="Excluir oportunidade"
-                            >
-                              {deletingOpportunity === opportunity.id ? (
-                                <div className="h-4 w-4 animate-spin border-2 border-red-500 border-t-transparent rounded-full"></div>
-                              ) : (
-                                <Trash2 className="h-4 w-4" />
-                              )}
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Company & Contact */}
-                        <div className="space-y-2 mb-3">
-                          <div className="flex items-center text-sm text-gray-600">
-                            <Building className="h-4 w-4 mr-2" />
-                            {opportunity.company_name}
-                          </div>
-                          <div className="flex items-center text-sm text-gray-600">
-                            <Users className="h-4 w-4 mr-2" />
-                            {opportunity.contact_name}
-                          </div>
-                        </div>
-
-                        {/* Value & Probability */}
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="text-lg font-semibold text-green-600">
-                            {formatCurrency(opportunity.estimated_value)}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {opportunity.probability_percentage}% prob.
-                          </div>
-                        </div>
-
-                        {/* Expected Close Date */}
-                        <div className="flex items-center text-sm text-gray-500">
-                          <Calendar className="h-4 w-4 mr-2" />
-                          {formatDate(opportunity.expected_close_date)}
-                        </div>
-
-                        {/* Assigned To */}
-                        {opportunity.team_member && (
-                          <div className="mt-3 pt-3 border-t border-gray-100">
-                            <div className="flex items-center text-sm text-gray-600">
-                              <div className="h-6 w-6 bg-blue-500 rounded-full flex items-center justify-center mr-2">
-                                <span className="text-xs text-white font-medium">
-                                  {opportunity.team_member.full_name.charAt(0)}
-                                </span>
-                              </div>
-                              {opportunity.team_member.full_name}
+                            <div className="flex items-center space-x-1">
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleViewDetails(opportunity)
+                                }}
+                                className="p-1 text-gray-400 hover:text-blue-500 rounded"
+                                title="Ver detalhes"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </button>
+                              <button 
+                                onClick={(e) => handleEditFromCard(e, opportunity)}
+                                className="p-1 text-gray-400 hover:text-blue-500 rounded"
+                                title="Editar"
+                              >
+                                <Edit2 className="h-4 w-4" />
+                              </button>
+                              <button 
+                                onClick={(e) => handleDeleteOpportunity(e, opportunity.id, opportunity.opportunity_title)}
+                                disabled={deletingOpportunity === opportunity.id}
+                                className="p-1 text-gray-400 hover:text-red-500 rounded disabled:opacity-50"
+                                title="Excluir"
+                              >
+                                {deletingOpportunity === opportunity.id ? (
+                                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-red-500"></div>
+                                ) : (
+                                  <Trash2 className="h-4 w-4" />
+                                )}
+                              </button>
                             </div>
                           </div>
-                        )}
 
-                        {/* Drag Instructions */}
-                        <div className="mt-3 pt-3 border-t border-gray-100">
-                          <p className="text-xs text-gray-500 text-center">
-                            Arraste para mover entre etapas
-                          </p>
+                          <div className="space-y-2 mb-3">
+                            <div className="flex items-center text-sm text-gray-600">
+                              <Building className="h-3 w-3 mr-1" />
+                              <span className="truncate">{opportunity.company_name}</span>
+                            </div>
+                            <div className="flex items-center text-sm text-gray-600">
+                              <User className="h-3 w-3 mr-1" />
+                              <span className="truncate">{opportunity.contact_name}</span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between mb-3">
+                            <span className="text-lg font-semibold text-green-600">
+                              {formatCurrency(opportunity.estimated_value)}
+                            </span>
+                            <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full">
+                              {opportunity.probability_percentage}% prob.
+                            </span>
+                          </div>
+
+                          {opportunity.expected_close_date && (
+                            <div className="flex items-center text-xs text-gray-500 mb-2">
+                              <Calendar className="h-3 w-3 mr-1" />
+                              <span>Prev: {formatDate(opportunity.expected_close_date)}</span>
+                            </div>
+                          )}
+
+                          {opportunity.team_member && (
+                            <div className="flex items-center text-xs text-gray-500">
+                              <User className="h-3 w-3 mr-1" />
+                              <span className="truncate">{opportunity.team_member.full_name}</span>
+                            </div>
+                          )}
+
+                          <div className="mt-3 pt-3 border-t border-gray-100">
+                            <p className="text-xs text-gray-500 text-center">
+                              Arraste para mover ou reordenar
+                            </p>
+                          </div>
                         </div>
                       </div>
                     ))}
+                    
+                    {dragOverStage === stage && dragOverPosition === stageOpportunities.length && (
+                      <div className="h-1 bg-blue-400 rounded-full animate-pulse"></div>
+                    )}
                   </div>
                 </div>
               )
@@ -570,17 +577,15 @@ export default function VendasPage() {
         </div>
       </div>
 
-      {/* New Opportunity Modal */}
       <NewOpportunityModal 
         isOpen={showNewOpportunityModal}
         onClose={() => setShowNewOpportunityModal(false)}
         onSuccess={() => {
-          fetchOpportunities() // Refresh opportunities
-          fetchStats() // Refresh stats
+          fetchOpportunities()
+          fetchStats()
         }}
       />
 
-      {/* Opportunity Details Modal */}
       <OpportunityDetailsModal 
         isOpen={showDetailsModal}
         opportunity={selectedOpportunity}
@@ -590,12 +595,11 @@ export default function VendasPage() {
         }}
         onEdit={handleEditOpportunity}
         onSuccess={() => {
-          fetchOpportunities() // Refresh opportunities
-          fetchStats() // Refresh stats
+          fetchOpportunities()
+          fetchStats()
         }}
       />
 
-      {/* Edit Opportunity Modal */}
       <EditOpportunityModal 
         isOpen={showEditModal}
         opportunity={selectedOpportunity}
@@ -604,12 +608,11 @@ export default function VendasPage() {
           setSelectedOpportunity(null)
         }}
         onSuccess={() => {
-          fetchOpportunities() // Refresh opportunities
-          fetchStats() // Refresh stats
+          fetchOpportunities()
+          fetchStats()
         }}
       />
 
-      {/* Confirmation Modal */}
       <ConfirmationModal 
         isOpen={showConfirmationModal}
         title="Excluir Oportunidade"

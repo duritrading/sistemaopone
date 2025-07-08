@@ -31,7 +31,7 @@ const newOpportunitySchema = z.object({
   description: z.string().min(10, 'Descrição deve ter pelo menos 10 caracteres'),
   estimated_value: z.number().min(1, 'Valor deve ser maior que zero'),
   probability_percentage: z.number().min(0).max(100),
-  stage: z.enum(['Lead Qualificado', 'Proposta Enviada', 'Negociação', 'Proposta Aceita', 'Contrato Assinado', 'Perdido']),
+  stage: z.enum(['Lead Gerado', 'Qualificado', 'Diagnóstico Realizado', 'Proposta Enviada', 'Negociação', 'Proposta Aceita', 'Contrato Assinado', 'Perdido']),
   expected_close_date: z.string().min(1, 'Data de fechamento é obrigatória'),
   lead_source: z.string().min(2, 'Origem do lead é obrigatória'),
   assigned_to: z.string().min(1, 'Responsável é obrigatório')
@@ -46,7 +46,9 @@ interface NewOpportunityModalProps {
 }
 
 const stageOptions: { value: SalesStage; label: string }[] = [
-  { value: 'Lead Qualificado', label: 'Lead Qualificado' },
+  { value: 'Lead Gerado', label: 'Lead Gerado' },
+  { value: 'Qualificado', label: 'Qualificado' },
+  { value: 'Diagnóstico Realizado', label: 'Diagnóstico Realizado' },
   { value: 'Proposta Enviada', label: 'Proposta Enviada' },
   { value: 'Negociação', label: 'Negociação' },
   { value: 'Proposta Aceita', label: 'Proposta Aceita' },
@@ -81,14 +83,12 @@ export default function NewOpportunityModal({ isOpen, onClose, onSuccess }: NewO
     register,
     handleSubmit,
     formState: { errors },
-    reset,
-    watch
+    reset
   } = useForm<NewOpportunityForm>({
     resolver: zodResolver(newOpportunitySchema),
     defaultValues: {
-      stage: 'Lead Qualificado',
-      probability_percentage: 50,
-      estimated_value: 0
+      stage: 'Lead Gerado',
+      probability_percentage: 10
     }
   })
 
@@ -114,13 +114,12 @@ export default function NewOpportunityModal({ isOpen, onClose, onSuccess }: NewO
     }
   }
 
-  // Função para formatar CNPJ
   const formatCNPJ = (value: string) => {
     const cleanValue = value.replace(/\D/g, '')
     if (cleanValue.length <= 14) {
       return cleanValue
-        .replace(/^(\d{2})(\d)/, '$1.$2')
-        .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+        .replace(/(\d{2})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d)/, '$1.$2')
         .replace(/\.(\d{3})(\d)/, '.$1/$2')
         .replace(/(\d{4})(\d)/, '$1-$2')
     }
@@ -152,10 +151,8 @@ export default function NewOpportunityModal({ isOpen, onClose, onSuccess }: NewO
 
       if (error) throw error
 
-      // Reset form and close modal
-      reset()
-      onClose()
       onSuccess()
+      handleClose()
       
     } catch (error) {
       console.error('Erro ao criar oportunidade:', error)
@@ -215,7 +212,7 @@ export default function NewOpportunityModal({ isOpen, onClose, onSuccess }: NewO
                       <input
                         type="text"
                         {...register('company_name')}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder:text-gray-500"
                         placeholder="Ex: TechCorp Ltda"
                       />
                       {errors.company_name && (
@@ -231,7 +228,7 @@ export default function NewOpportunityModal({ isOpen, onClose, onSuccess }: NewO
                       <input
                         type="text"
                         {...register('company_cnpj')}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder:text-gray-500"
                         placeholder="00.000.000/0000-00"
                         maxLength={18}
                         onChange={(e) => {
@@ -256,7 +253,7 @@ export default function NewOpportunityModal({ isOpen, onClose, onSuccess }: NewO
                       <input
                         type="text"
                         {...register('contact_name')}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder:text-gray-500"
                         placeholder="Ex: João Silva"
                       />
                       {errors.contact_name && (
@@ -273,8 +270,8 @@ export default function NewOpportunityModal({ isOpen, onClose, onSuccess }: NewO
                       <input
                         type="email"
                         {...register('contact_email')}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="joao@techcorp.com"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder:text-gray-500"
+                        placeholder="joao@empresa.com"
                       />
                       {errors.contact_email && (
                         <p className="mt-1 text-sm text-red-600">{errors.contact_email.message}</p>
@@ -286,13 +283,13 @@ export default function NewOpportunityModal({ isOpen, onClose, onSuccess }: NewO
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       <Phone className="h-4 w-4 inline mr-1" />
-                      Telefone
+                      Telefone do Contato
                     </label>
                     <input
                       type="tel"
                       {...register('contact_phone')}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="+55 11 99999-9999"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder:text-gray-500"
+                      placeholder="(11) 99999-9999"
                     />
                     {errors.contact_phone && (
                       <p className="mt-1 text-sm text-red-600">{errors.contact_phone.message}</p>
@@ -308,7 +305,7 @@ export default function NewOpportunityModal({ isOpen, onClose, onSuccess }: NewO
                   Detalhes da Oportunidade
                 </h4>
                 <div className="space-y-4">
-                  {/* Título da Oportunidade */}
+                  {/* Título */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Título da Oportunidade
@@ -316,8 +313,8 @@ export default function NewOpportunityModal({ isOpen, onClose, onSuccess }: NewO
                     <input
                       type="text"
                       {...register('opportunity_title')}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Ex: Implementação de ChatBot IA"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder:text-gray-500"
+                      placeholder="Ex: Implementação de Sistema ERP"
                     />
                     {errors.opportunity_title && (
                       <p className="mt-1 text-sm text-red-600">{errors.opportunity_title.message}</p>
@@ -332,7 +329,7 @@ export default function NewOpportunityModal({ isOpen, onClose, onSuccess }: NewO
                     <textarea
                       rows={3}
                       {...register('description')}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder:text-gray-500"
                       placeholder="Descreva os detalhes do projeto, requisitos e escopo..."
                     />
                     {errors.description && (
@@ -352,7 +349,7 @@ export default function NewOpportunityModal({ isOpen, onClose, onSuccess }: NewO
                         min="0"
                         step="0.01"
                         {...register('estimated_value', { valueAsNumber: true })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder:text-gray-500"
                         placeholder="150000.00"
                       />
                       {errors.estimated_value && (
@@ -369,9 +366,8 @@ export default function NewOpportunityModal({ isOpen, onClose, onSuccess }: NewO
                         type="number"
                         min="0"
                         max="100"
-                        id="probability_percentage"
                         {...register('probability_percentage', { valueAsNumber: true })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder:text-gray-500"
                         placeholder="50"
                       />
                       {errors.probability_percentage && (
@@ -382,13 +378,13 @@ export default function NewOpportunityModal({ isOpen, onClose, onSuccess }: NewO
                 </div>
               </div>
 
-              {/* Stage e Informações Adicionais */}
+              {/* Pipeline e Responsável */}
               <div>
                 <h4 className="text-sm font-medium text-gray-900 mb-4 flex items-center">
                   <Briefcase className="h-4 w-4 mr-2" />
                   Pipeline e Responsável
                 </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {/* Stage */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -396,9 +392,9 @@ export default function NewOpportunityModal({ isOpen, onClose, onSuccess }: NewO
                     </label>
                     <select
                       {...register('stage')}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
                     >
-                      {stageOptions.map(option => (
+                      {stageOptions.map((option) => (
                         <option key={option.value} value={option.value}>
                           {option.label}
                         </option>
@@ -409,7 +405,7 @@ export default function NewOpportunityModal({ isOpen, onClose, onSuccess }: NewO
                     )}
                   </div>
 
-                  {/* Data de Fechamento */}
+                  {/* Data Prevista */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       <Calendar className="h-4 w-4 inline mr-1" />
@@ -418,7 +414,7 @@ export default function NewOpportunityModal({ isOpen, onClose, onSuccess }: NewO
                     <input
                       type="date"
                       {...register('expected_close_date')}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                     />
                     {errors.expected_close_date && (
                       <p className="mt-1 text-sm text-red-600">{errors.expected_close_date.message}</p>
@@ -432,10 +428,10 @@ export default function NewOpportunityModal({ isOpen, onClose, onSuccess }: NewO
                     </label>
                     <select
                       {...register('lead_source')}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
                     >
-                      <option value="">Selecione...</option>
-                      {leadSourceOptions.map(source => (
+                      <option value="">Selecione a origem...</option>
+                      {leadSourceOptions.map((source) => (
                         <option key={source} value={source}>
                           {source}
                         </option>
@@ -445,46 +441,54 @@ export default function NewOpportunityModal({ isOpen, onClose, onSuccess }: NewO
                       <p className="mt-1 text-sm text-red-600">{errors.lead_source.message}</p>
                     )}
                   </div>
+                </div>
 
-                  {/* Responsável */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Responsável
-                    </label>
-                    <select
-                      {...register('assigned_to')}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      <option value="">Selecione...</option>
-                      {teamMembers.map(member => (
-                        <option key={member.id} value={member.id}>
-                          {member.full_name}
-                        </option>
-                      ))}
-                    </select>
-                    {errors.assigned_to && (
-                      <p className="mt-1 text-sm text-red-600">{errors.assigned_to.message}</p>
-                    )}
-                  </div>
+                {/* Responsável */}
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Responsável
+                  </label>
+                  <select
+                    {...register('assigned_to')}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
+                  >
+                    <option value="">Selecione um responsável...</option>
+                    {teamMembers.map((member) => (
+                      <option key={member.id} value={member.id}>
+                        {member.full_name} ({member.email})
+                      </option>
+                    ))}
+                  </select>
+                  {errors.assigned_to && (
+                    <p className="mt-1 text-sm text-red-600">{errors.assigned_to.message}</p>
+                  )}
                 </div>
               </div>
             </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200">
+            <div className="border-t border-gray-200 px-6 py-4 flex justify-end space-x-3">
               <button
                 type="button"
                 onClick={handleClose}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                disabled={isSubmitting}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center space-x-2"
               >
-                {isSubmitting ? 'Salvando...' : 'Criar Oportunidade'}
+                {isSubmitting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <span>Criando...</span>
+                  </>
+                ) : (
+                  'Criar Oportunidade'
+                )}
               </button>
             </div>
           </form>
