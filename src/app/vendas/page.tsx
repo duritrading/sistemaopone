@@ -6,6 +6,7 @@ import NewOpportunityModal from '@/components/modals/NewOpportunityModal'
 import OpportunityDetailsModal from '@/components/modals/OpportunityDetailsModal'
 import EditOpportunityModal from '@/components/modals/EditOpportunityModal'
 import ConfirmationModal from '@/components/modals/ConfirmationModal'
+import SalesAutomationModal from '@/components/modals/SalesAutomationModal'
 import { supabase } from '@/lib/supabase'
 import { SalesOpportunity, SalesStage, SalesPipelineStats } from '@/types/sales'
 import { 
@@ -20,7 +21,8 @@ import {
   Edit2,
   Trash2,
   Eye,
-  GripVertical
+  GripVertical,
+  Settings
 } from 'lucide-react'
 
 const PIPELINE_STAGES: { stage: SalesStage; color: string; bgColor: string }[] = [
@@ -42,6 +44,7 @@ export default function VendasPage() {
   const [showDetailsModal, setShowDetailsModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showConfirmationModal, setShowConfirmationModal] = useState(false)
+  const [showAutomationModal, setShowAutomationModal] = useState(false)
   const [selectedOpportunity, setSelectedOpportunity] = useState<SalesOpportunity | null>(null)
   const [opportunityToDelete, setOpportunityToDelete] = useState<{ id: string; title: string } | null>(null)
   const [draggedItem, setDraggedItem] = useState<string | null>(null)
@@ -54,6 +57,140 @@ export default function VendasPage() {
     fetchOpportunities()
     fetchStats()
   }, [])
+
+  // Função para obter configurações de automação
+  const getAutomationSettings = () => {
+    try {
+      const saved = localStorage.getItem('salesAutomationSettings')
+      return saved ? JSON.parse(saved) : {
+        autoCreateClient: true,
+        defaultRelationshipStatus: 'Ativo',
+        defaultAccountHealth: 'Saudável',
+        calculateMRR: true,
+        mrrMonths: 12,
+        createPrimaryContact: true,
+        createInitialInteraction: true
+      }
+    } catch {
+      return {
+        autoCreateClient: true,
+        defaultRelationshipStatus: 'Ativo',
+        defaultAccountHealth: 'Saudável',
+        calculateMRR: true,
+        mrrMonths: 12,
+        createPrimaryContact: true,
+        createInitialInteraction: true
+      }
+    }
+  }
+
+  // Função para verificar se cliente já existe
+  const checkExistingClient = async (companyName: string, cnpj: string | null) => {
+    try {
+      let query = supabase
+        .from('clients')
+        .select('id, company_name')
+        .eq('is_active', true)
+
+      if (cnpj) {
+        // Buscar por CNPJ primeiro (mais preciso)
+        const { data: clientByCnpj } = await query.eq('company_cnpj', cnpj).single()
+        if (clientByCnpj) return clientByCnpj
+      }
+
+      // Buscar por nome da empresa (case insensitive)
+      const { data: clientByName } = await query
+        .ilike('company_name', companyName.trim())
+        .single()
+      
+      return clientByName || null
+    } catch (error) {
+      return null // Cliente não encontrado
+    }
+  }
+
+  // Função para criar cliente automaticamente
+  const createClientFromOpportunity = async (opportunity: SalesOpportunity) => {
+    try {
+      console.log('Creating client from opportunity:', opportunity.company_name)
+      
+      const automationSettings = getAutomationSettings()
+
+      // Dados do novo cliente usando as configurações
+      const clientData = {
+        company_name: opportunity.company_name,
+        company_cnpj: opportunity.company_cnpj || null,
+        relationship_status: automationSettings.defaultRelationshipStatus,
+        account_health: automationSettings.defaultAccountHealth,
+        total_contract_value: opportunity.estimated_value || 0,
+        monthly_recurring_revenue: automationSettings.calculateMRR 
+          ? Math.round((opportunity.estimated_value || 0) / automationSettings.mrrMonths)
+          : 0,
+        contract_start_date: new Date().toISOString().split('T')[0],
+        account_manager_id: opportunity.assigned_to,
+        notes: `Cliente criado automaticamente a partir da oportunidade: ${opportunity.opportunity_title}`,
+        is_active: true
+      }
+
+      // Inserir cliente
+      const { data: newClient, error: clientError } = await supabase
+        .from('clients')
+        .insert([clientData])
+        .select('id')
+        .single()
+
+      if (clientError) throw clientError
+
+      console.log('Cliente criado:', newClient)
+
+      // Criar contato principal (se habilitado)
+      if (newClient?.id && automationSettings.createPrimaryContact) {
+        const contactData = {
+          client_id: newClient.id,
+          full_name: opportunity.contact_name,
+          email: opportunity.contact_email,
+          phone: opportunity.contact_phone || null,
+          contact_type: 'Primário' as const,
+          is_primary: true,
+          is_active: true
+        }
+
+        const { error: contactError } = await supabase
+          .from('client_contacts')
+          .insert([contactData])
+
+        if (contactError) {
+          console.error('Erro ao criar contato:', contactError)
+        }
+      }
+
+      // Criar interação inicial (se habilitado)
+      if (newClient?.id && automationSettings.createInitialInteraction) {
+        const interactionData = {
+          client_id: newClient.id,
+          interaction_type: 'Nota' as const,
+          title: 'Cliente convertido de oportunidade',
+          description: `Cliente criado automaticamente quando a oportunidade "${opportunity.opportunity_title}" foi fechada como "Contrato Assinado".`,
+          outcome: 'Positivo' as const,
+          created_by: opportunity.assigned_to,
+          interaction_date: new Date().toISOString()
+        }
+
+        const { error: interactionError } = await supabase
+          .from('client_interactions')
+          .insert([interactionData])
+
+        if (interactionError) {
+          console.error('Erro ao criar interação:', interactionError)
+        }
+      }
+
+      return newClient
+    } catch (error) {
+      console.error('Erro ao criar cliente:', error)
+      throw error
+    }
+  }
 
   const fetchOpportunities = async () => {
     try {
@@ -253,16 +390,26 @@ export default function VendasPage() {
         // Mudança de stage
         console.log(`Moving "${opportunity.opportunity_title}" from "${opportunity.stage}" to "${newStage}"`)
         
+        // Preparar dados de atualização
+        const updateData: any = { 
+          stage: newStage,
+          updated_at: new Date().toISOString()
+        }
+
+        // Se movendo para "Contrato Assinado", definir data de fechamento
+        if (newStage === 'Contrato Assinado') {
+          updateData.actual_close_date = new Date().toISOString()
+        }
+
+        // Atualizar oportunidade
         const { error } = await supabase
           .from('sales_opportunities')
-          .update({ 
-            stage: newStage,
-            updated_at: new Date().toISOString()
-          })
+          .update(updateData)
           .eq('id', opportunityId)
 
         if (error) throw error
 
+        // Criar atividade de mudança de stage
         await supabase
           .from('sales_activities')
           .insert([{
@@ -271,6 +418,42 @@ export default function VendasPage() {
             title: `Movido para ${newStage}`,
             description: `Oportunidade movida de "${opportunity.stage}" para "${newStage}" via drag & drop`
           }])
+
+        // 🎯 LÓGICA PRINCIPAL: Criar cliente automaticamente se movido para "Contrato Assinado"
+        if (newStage === 'Contrato Assinado') {
+          const automationSettings = getAutomationSettings()
+          
+          if (automationSettings.autoCreateClient) {
+            try {
+              // Verificar se cliente já existe
+              const existingClient = await checkExistingClient(
+                opportunity.company_name, 
+                opportunity.company_cnpj
+              )
+
+              if (existingClient) {
+                console.log('Cliente já existe:', existingClient.company_name)
+                alert(`✅ Oportunidade fechada!\n\nCliente "${existingClient.company_name}" já existe no sistema.`)
+              } else {
+                // Criar novo cliente
+                const newClient = await createClientFromOpportunity(opportunity)
+                console.log('Novo cliente criado:', newClient)
+                
+                const mrrText = automationSettings.calculateMRR 
+                  ? `\n• MRR calculado: ${formatCurrency(Math.round((opportunity.estimated_value || 0) / automationSettings.mrrMonths))}`
+                  : ''
+                
+                alert(`🎉 Oportunidade fechada com sucesso!\n\n✅ Cliente "${opportunity.company_name}" foi criado automaticamente na aba de Clientes.\n\n📋 Dados transferidos:\n• Contato principal: ${opportunity.contact_name}\n• Valor do contrato: ${formatCurrency(opportunity.estimated_value)}${mrrText}\n• Status: ${automationSettings.defaultRelationshipStatus}\n• Responsável: Mantido o mesmo da oportunidade`)
+              }
+            } catch (error) {
+              console.error('Erro ao processar cliente:', error)
+              alert(`⚠️ Oportunidade movida para "Contrato Assinado", mas houve erro ao criar cliente automaticamente.\n\nPor favor, crie o cliente manualmente na aba de Clientes.`)
+            }
+          } else {
+            // Automação desabilitada
+            alert(`✅ Oportunidade movida para "Contrato Assinado"!\n\nℹ️ A criação automática de cliente está desabilitada. Você pode criar o cliente manualmente na aba de Clientes ou ativar a automação nas configurações.`)
+          }
+        }
 
         await fetchOpportunities()
         await fetchStats()
@@ -341,39 +524,48 @@ export default function VendasPage() {
   const cancelDeleteOpportunity = () => {
     setShowConfirmationModal(false)
     setOpportunityToDelete(null)
+    setDeletingOpportunity(null)
   }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-8">
-      <div className="sm:flex sm:items-center sm:justify-between">
+    <div className="p-6 space-y-8">
+      {/* Header */}
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Pipeline de Vendas</h1>
-          <p className="mt-2 text-gray-700">
-            Gerencie suas oportunidades e acompanhe o progresso das vendas
-          </p>
+          <p className="text-gray-600">Gerencie suas oportunidades e acompanhe o progresso das vendas</p>
         </div>
-        <div className="mt-4 sm:mt-0">
+        <div className="flex items-center gap-3">
           <button
-            type="button"
             onClick={() => setShowNewOpportunityModal(true)}
-            className="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500"
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
           >
-            <Plus className="h-4 w-4 mr-2" />
+            <Plus className="w-4 h-4" />
             Nova Oportunidade
+          </button>
+          
+          <button
+            onClick={() => setShowAutomationModal(true)}
+            className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2"
+            title="Configurar automação de vendas"
+          >
+            <Settings className="w-4 h-4" />
+            Automação
           </button>
         </div>
       </div>
 
+      {/* Estatísticas */}
       {stats && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <div className="bg-white rounded-lg border border-gray-200 p-6">
             <div className="flex items-center">
               <div className="flex-shrink-0">
@@ -392,7 +584,7 @@ export default function VendasPage() {
                 <DollarSign className="h-8 w-8 text-green-500" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Valor Total</p>
+                <p className="text-sm font-medium text-gray-500">Valor Total Pipeline</p>
                 <p className="text-2xl font-bold text-gray-900">{formatCurrency(stats.total_value)}</p>
               </div>
             </div>
@@ -455,7 +647,8 @@ export default function VendasPage() {
                     </p>
                     {dragOverStage === stage && (
                       <p className="text-xs text-blue-600 mt-2 font-medium">
-                        {dragOverPosition !== null ? `Inserir na posição ${dragOverPosition + 1}` : 'Solte aqui para mover'}
+                        {dragOverPosition !== null ? 
+                          `Inserir na posição ${dragOverPosition + 1}` : 'Solte aqui para mover'}
                       </p>
                     )}
                   </div>
@@ -476,99 +669,75 @@ export default function VendasPage() {
                           onDragEnd={handleDragEnd}
                           onClick={() => handleViewDetails(opportunity)}
                           className={`bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all duration-200 cursor-move ${
-                            draggedItem === opportunity.id ? 'opacity-50 scale-95' : 'hover:scale-105'
+                            draggedItem === opportunity.id ? 'opacity-50 scale-95' : ''
                           }`}
                         >
-                          <div className="flex items-start justify-between mb-3">
-                            <div className="flex items-start space-x-2 flex-1">
-                              <div className="flex items-center justify-center w-4 h-4 mt-1 text-gray-400">
-                                <GripVertical className="h-3 w-3" />
-                              </div>
-                              
-                              <h4 className="font-medium text-gray-900 text-sm leading-tight flex-1">
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex-1 min-w-0">
+                              <h4 className="text-sm font-medium text-gray-900 truncate">
                                 {opportunity.opportunity_title}
                               </h4>
+                              <p className="text-sm text-gray-600 truncate mt-1">
+                                {opportunity.company_name}
+                              </p>
                             </div>
-                            
-                            <div className="flex items-center space-x-1">
-                              <button 
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleViewDetails(opportunity)
-                                }}
-                                className="p-1 text-gray-400 hover:text-blue-500 rounded"
-                                title="Ver detalhes"
-                              >
-                                <Eye className="h-4 w-4" />
-                              </button>
-                              <button 
+                            <div className="flex items-center gap-1 ml-2">
+                              <button
                                 onClick={(e) => handleEditFromCard(e, opportunity)}
-                                className="p-1 text-gray-400 hover:text-blue-500 rounded"
+                                className="p-1 hover:bg-gray-100 rounded transition-colors"
                                 title="Editar"
                               >
-                                <Edit2 className="h-4 w-4" />
+                                <Edit2 className="w-3 h-3 text-gray-500" />
                               </button>
-                              <button 
+                              <button
                                 onClick={(e) => handleDeleteOpportunity(e, opportunity.id, opportunity.opportunity_title)}
-                                disabled={deletingOpportunity === opportunity.id}
-                                className="p-1 text-gray-400 hover:text-red-500 rounded disabled:opacity-50"
+                                className="p-1 hover:bg-gray-100 rounded transition-colors"
                                 title="Excluir"
                               >
-                                {deletingOpportunity === opportunity.id ? (
-                                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-red-500"></div>
-                                ) : (
-                                  <Trash2 className="h-4 w-4" />
-                                )}
+                                <Trash2 className="w-3 h-3 text-gray-500" />
                               </button>
                             </div>
                           </div>
 
-                          <div className="space-y-2 mb-3">
-                            <div className="flex items-center text-sm text-gray-600">
-                              <Building className="h-3 w-3 mr-1" />
-                              <span className="truncate">{opportunity.company_name}</span>
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-gray-600">Valor:</span>
+                              <span className="font-medium text-green-600">
+                                {formatCurrency(opportunity.estimated_value)}
+                              </span>
                             </div>
-                            <div className="flex items-center text-sm text-gray-600">
-                              <User className="h-3 w-3 mr-1" />
-                              <span className="truncate">{opportunity.contact_name}</span>
+                            
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-gray-600">Probabilidade:</span>
+                              <span className="font-medium">{opportunity.probability_percentage}%</span>
                             </div>
-                          </div>
 
-                          <div className="flex items-center justify-between mb-3">
-                            <span className="text-lg font-semibold text-green-600">
-                              {formatCurrency(opportunity.estimated_value)}
-                            </span>
-                            <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full">
-                              {opportunity.probability_percentage}% prob.
-                            </span>
-                          </div>
+                            {opportunity.expected_close_date && (
+                              <div className="flex items-center justify-between text-sm">
+                                <span className="text-gray-600">Previsão:</span>
+                                <span className="font-medium">{formatDate(opportunity.expected_close_date)}</span>
+                              </div>
+                            )}
 
-                          {opportunity.expected_close_date && (
-                            <div className="flex items-center text-xs text-gray-500 mb-2">
-                              <Calendar className="h-3 w-3 mr-1" />
-                              <span>Prev: {formatDate(opportunity.expected_close_date)}</span>
+                            {opportunity.team_member && (
+                              <div className="flex items-center gap-2 mt-3 pt-2 border-t border-gray-200">
+                                <User className="w-3 h-3 text-gray-500" />
+                                <span className="text-xs text-gray-600">{opportunity.team_member.full_name}</span>
+                              </div>
+                            )}
+
+                            <div className="flex items-center justify-between mt-3 pt-2 border-t border-gray-200">
+                              <span className="text-xs text-gray-500">
+                                {opportunity.contact_name}
+                              </span>
+                              <div className="flex items-center gap-1">
+                                <GripVertical className="w-3 h-3 text-gray-400" />
+                              </div>
                             </div>
-                          )}
-
-                          {opportunity.team_member && (
-                            <div className="flex items-center text-xs text-gray-500">
-                              <User className="h-3 w-3 mr-1" />
-                              <span className="truncate">{opportunity.team_member.full_name}</span>
-                            </div>
-                          )}
-
-                          <div className="mt-3 pt-3 border-t border-gray-100">
-                            <p className="text-xs text-gray-500 text-center">
-                              Arraste para mover ou reordenar
-                            </p>
                           </div>
                         </div>
                       </div>
                     ))}
-                    
-                    {dragOverStage === stage && dragOverPosition === stageOpportunities.length && (
-                      <div className="h-1 bg-blue-400 rounded-full animate-pulse"></div>
-                    )}
                   </div>
                 </div>
               )
@@ -577,55 +746,65 @@ export default function VendasPage() {
         </div>
       </div>
 
-      <NewOpportunityModal 
-        isOpen={showNewOpportunityModal}
-        onClose={() => setShowNewOpportunityModal(false)}
-        onSuccess={() => {
-          fetchOpportunities()
-          fetchStats()
-        }}
-      />
+      {/* Modals */}
+      {showNewOpportunityModal && (
+        <NewOpportunityModal
+          isOpen={showNewOpportunityModal}
+          onClose={() => setShowNewOpportunityModal(false)}
+          onSuccess={() => {
+            fetchOpportunities()
+            fetchStats()
+          }}
+        />
+      )}
 
-      <OpportunityDetailsModal 
-        isOpen={showDetailsModal}
-        opportunity={selectedOpportunity}
-        onClose={() => {
-          setShowDetailsModal(false)
-          setSelectedOpportunity(null)
-        }}
-        onEdit={handleEditOpportunity}
-        onSuccess={() => {
-          fetchOpportunities()
-          fetchStats()
-        }}
-      />
+      {showDetailsModal && selectedOpportunity && (
+        <OpportunityDetailsModal
+          isOpen={showDetailsModal}
+          opportunity={selectedOpportunity}
+          onClose={() => {
+            setShowDetailsModal(false)
+            setSelectedOpportunity(null)
+          }}
+          onEdit={() => handleEditOpportunity(selectedOpportunity)}
+        />
+      )}
 
-      <EditOpportunityModal 
-        isOpen={showEditModal}
-        opportunity={selectedOpportunity}
-        onClose={() => {
-          setShowEditModal(false)
-          setSelectedOpportunity(null)
-        }}
-        onSuccess={() => {
-          fetchOpportunities()
-          fetchStats()
-        }}
-      />
+      {showEditModal && selectedOpportunity && (
+        <EditOpportunityModal
+          isOpen={showEditModal}
+          opportunity={selectedOpportunity}
+          onClose={() => {
+            setShowEditModal(false)
+            setSelectedOpportunity(null)
+          }}
+          onSuccess={() => {
+            fetchOpportunities()
+            fetchStats()
+          }}
+        />
+      )}
 
-      <ConfirmationModal 
-        isOpen={showConfirmationModal}
-        title="Excluir Oportunidade"
-        message={`Tem certeza que deseja excluir a oportunidade "${opportunityToDelete?.title}"?
+      {showAutomationModal && (
+        <SalesAutomationModal
+          isOpen={showAutomationModal}
+          onClose={() => setShowAutomationModal(false)}
+        />
+      )}
 
-Esta ação irá marcar a oportunidade como inativa e ela não aparecerá mais no pipeline.`}
-        confirmText="Excluir"
-        cancelText="Cancelar"
-        onConfirm={confirmDeleteOpportunity}
-        onCancel={cancelDeleteOpportunity}
-        isLoading={!!deletingOpportunity && deletingOpportunity === opportunityToDelete?.id}
-        variant="danger"
-      />
+      {showConfirmationModal && opportunityToDelete && (
+        <ConfirmationModal
+          isOpen={showConfirmationModal}
+          title="Excluir Oportunidade"
+          message={`Tem certeza que deseja excluir a oportunidade "${opportunityToDelete.title}"? Esta ação irá marcar a oportunidade como inativa e ela não aparecerá mais no pipeline.`}
+          confirmText="Excluir"
+          cancelText="Cancelar"
+          onConfirm={confirmDeleteOpportunity}
+          onCancel={cancelDeleteOpportunity}
+          isLoading={!!deletingOpportunity && deletingOpportunity === opportunityToDelete?.id}
+          variant="danger"
+        />
+      )}
     </div>
   )
 }
