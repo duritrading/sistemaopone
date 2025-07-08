@@ -1,4 +1,4 @@
-// src/components/modals/ClientDetailsModal.tsx
+// src/components/modals/ClientDetailsModal.tsx - Contraste corrigido
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -136,6 +136,58 @@ export default function ClientDetailsModal({
     }
   }
 
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value)
+  }
+
+  const formatDate = (date: string) => {
+    return new Date(date).toLocaleDateString('pt-BR')
+  }
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'Ativo': return <CheckCircle className="w-4 h-4 text-green-600" />
+      case 'Prospect': return <Clock className="w-4 h-4 text-blue-600" />
+      case 'Renovação': return <TrendingUp className="w-4 h-4 text-orange-600" />
+      case 'Inativo': return <XCircle className="w-4 h-4 text-gray-600" />
+      case 'Churned': return <AlertTriangle className="w-4 h-4 text-red-600" />
+      default: return null
+    }
+  }
+
+  const getHealthColor = (health: string) => {
+    switch (health) {
+      case 'Excelente': return 'bg-green-100 text-green-800'
+      case 'Saudável': return 'bg-blue-100 text-blue-800'
+      case 'Em Risco': return 'bg-yellow-100 text-yellow-800'
+      case 'Crítico': return 'bg-red-100 text-red-800'
+      default: return 'bg-gray-100 text-gray-800'
+    }
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'Ativo': return 'bg-green-600 text-white'
+      case 'Prospect': return 'bg-gray-100 text-gray-800'
+      case 'Renovação': return 'bg-orange-100 text-orange-800'
+      case 'Inativo': return 'bg-gray-100 text-gray-800'
+      case 'Churned': return 'bg-red-100 text-red-800'
+      default: return 'bg-gray-100 text-gray-800'
+    }
+  }
+
+  const getOutcomeColor = (outcome: string) => {
+    switch (outcome) {
+      case 'Positivo': return 'bg-green-100 text-green-800'
+      case 'Neutro': return 'bg-gray-100 text-gray-800'
+      case 'Negativo': return 'bg-red-100 text-red-800'
+      default: return 'bg-gray-100 text-gray-800'
+    }
+  }
+
   const handleCreateInteraction = async () => {
     if (!clientId || !newInteraction.title.trim()) return
 
@@ -148,7 +200,7 @@ export default function ClientDetailsModal({
         title: newInteraction.title,
         description: newInteraction.description || null,
         outcome: newInteraction.outcome,
-        created_by: teamMembers[0]?.id || null, // Usar primeiro membro como padrão
+        created_by: teamMembers[0]?.id || null,
         interaction_date: new Date().toISOString()
       }
 
@@ -208,165 +260,41 @@ export default function ClientDetailsModal({
 
       if (error) throw error
 
-      // Criar interação de exclusão
-      if (clientId) {
-        await supabase
-          .from('client_interactions')
-          .insert([{
-            client_id: clientId,
-            contact_id: contactId,
-            interaction_type: 'Nota',
-            title: 'Contato removido',
-            description: `Contato ${contactName} foi removido`,
-            outcome: 'Neutro',
-            interaction_date: new Date().toISOString()
-          }])
-      }
-
       loadClientDetails()
       alert('Contato removido com sucesso!')
     } catch (error) {
-      console.error('Erro ao remover contato:', error)
+      console.error('Erro ao excluir contato:', error)
       alert('Erro ao remover contato')
     }
   }
 
-  // Filtrar interações
-  const filteredInteractions = interactions.filter(interaction => {
-    // Filtro por busca
-    const matchesSearch = !interactionFilters.search || 
-      interaction.title.toLowerCase().includes(interactionFilters.search.toLowerCase()) ||
-      interaction.description?.toLowerCase().includes(interactionFilters.search.toLowerCase())
-
-    // Filtro por tipo
-    const matchesType = interactionFilters.type === 'all' || interaction.interaction_type === interactionFilters.type
-
-    // Filtro por outcome
-    const matchesOutcome = interactionFilters.outcome === 'all' || interaction.outcome === interactionFilters.outcome
-
-    // Filtro por data
-    let matchesDate = true
-    if (interactionFilters.dateRange !== 'all') {
-      const interactionDate = new Date(interaction.interaction_date)
-      const now = new Date()
-      
-      switch (interactionFilters.dateRange) {
-        case 'today':
-          matchesDate = interactionDate.toDateString() === now.toDateString()
-          break
-        case 'week':
-          const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-          matchesDate = interactionDate >= weekAgo
-          break
-        case 'month':
-          const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-          matchesDate = interactionDate >= monthAgo
-          break
-        case 'quarter':
-          const quarterAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
-          matchesDate = interactionDate >= quarterAgo
-          break
-      }
-    }
-
-    return matchesSearch && matchesType && matchesOutcome && matchesDate
-  })
-
-  const resetInteractionFilters = () => {
-    setInteractionFilters({
-      search: '',
-      type: 'all',
-      outcome: 'all',
-      dateRange: 'all'
-    })
-  }
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'Ativo': return <CheckCircle className="w-5 h-5 text-green-500" />
-      case 'Prospect': return <Clock className="w-5 h-5 text-blue-500" />
-      case 'Renovação': return <TrendingUp className="w-5 h-5 text-orange-500" />
-      case 'Inativo': return <XCircle className="w-5 h-5 text-gray-500" />
-      case 'Churned': return <XCircle className="w-5 h-5 text-red-500" />
-      default: return <Clock className="w-5 h-5 text-gray-500" />
-    }
-  }
-
-  const getHealthColor = (health: string) => {
-    switch (health) {
-      case 'Excelente': return 'text-green-600 bg-green-100'
-      case 'Saudável': return 'text-blue-600 bg-blue-100'
-      case 'Em Risco': return 'text-orange-600 bg-orange-100'
-      case 'Crítico': return 'text-red-600 bg-red-100'
-      default: return 'text-gray-600 bg-gray-100'
-    }
-  }
-
-  const getInteractionIcon = (type: InteractionType) => {
-    switch (type) {
-      case 'Ligação': return <Phone className="w-4 h-4 text-green-500" />
-      case 'Email': return <Mail className="w-4 h-4 text-blue-500" />
-      case 'Reunião': return <Users className="w-4 h-4 text-purple-500" />
-      case 'Apresentação': return <FileText className="w-4 h-4 text-orange-500" />
-      case 'Check-in': return <CheckCircle className="w-4 h-4 text-blue-500" />
-      case 'Suporte': return <AlertTriangle className="w-4 h-4 text-yellow-500" />
-      default: return <MessageSquare className="w-4 h-4 text-gray-500" />
-    }
-  }
-
-  const getOutcomeColor = (outcome: InteractionOutcome | null) => {
-    switch (outcome) {
-      case 'Positivo': return 'text-green-600 bg-green-100'
-      case 'Negativo': return 'text-red-600 bg-red-100'
-      case 'Neutro': return 'text-gray-600 bg-gray-100'
-      default: return 'text-gray-600 bg-gray-100'
-    }
-  }
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value)
-  }
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  }
-
-  if (!isOpen || !client) return null
+  if (!isOpen || !clientId) return null
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg w-full max-w-6xl max-h-[90vh] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <div className="flex items-center gap-4">
-            <Building2 className="w-6 h-6 text-blue-600" />
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900">{client.company_name}</h2>
-              <p className="text-sm text-gray-600">{client.industry || 'Setor não informado'}</p>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+              <Building2 className="w-5 h-5 text-blue-600" />
             </div>
-            <div className="flex gap-2">
-              <div className="flex items-center gap-1 px-2 py-1 bg-gray-100 rounded-full">
-                {getStatusIcon(client.relationship_status)}
-                <span className="text-xs font-medium">{client.relationship_status}</span>
-              </div>
-              <div className={`px-2 py-1 rounded-full text-xs font-medium ${getHealthColor(client.account_health)}`}>
-                {client.account_health}
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">{client?.company_name}</h2>
+              <div className="flex items-center gap-2 mt-1">
+                <div className={`px-2 py-1 rounded-full text-xs font-medium ${getHealthColor(client?.account_health || '')}`}>
+                  {client?.account_health}
+                </div>
+                {client?.industry && (
+                  <span className="text-sm text-gray-600">{client.industry}</span>
+                )}
               </div>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => onEditClient(client)}
-              className="px-4 py-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors flex items-center gap-2"
+              onClick={() => client && onEditClient(client)}
+              className="flex items-center gap-2 px-4 py-2 text-green-700 bg-green-100 hover:bg-green-200 rounded-lg transition-colors"
             >
               <Edit2 className="w-4 h-4" />
               Editar
@@ -382,35 +310,52 @@ export default function ClientDetailsModal({
 
         {/* Tabs */}
         <div className="border-b border-gray-200">
-          <nav className="flex space-x-8 px-6">
-            {[
-              { id: 'details', label: 'Detalhes', icon: Building2 },
-              { id: 'contacts', label: 'Contatos', icon: Users },
-              { id: 'interactions', label: 'Interações', icon: MessageSquare }
-            ].map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${
-                  activeTab === tab.id
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                <tab.icon className="w-4 h-4" />
-                {tab.label}
-                {tab.id === 'contacts' && contacts.length > 0 && (
-                  <span className="ml-1 bg-gray-200 text-gray-700 py-0.5 px-2 rounded-full text-xs">
-                    {contacts.length}
-                  </span>
-                )}
-                {tab.id === 'interactions' && interactions.length > 0 && (
-                  <span className="ml-1 bg-gray-200 text-gray-700 py-0.5 px-2 rounded-full text-xs">
-                    {interactions.length}
-                  </span>
-                )}
-              </button>
-            ))}
+          <nav className="flex px-6">
+            <button
+              onClick={() => setActiveTab('details')}
+              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'details'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Building2 className="w-4 h-4" />
+                Detalhes
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab('contacts')}
+              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'contacts'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4" />
+                Contatos
+                <span className="bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full text-xs">
+                  {contacts.length}
+                </span>
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab('interactions')}
+              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'interactions'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <MessageSquare className="w-4 h-4" />
+                Interações
+                <span className="bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full text-xs">
+                  {interactions.length}
+                </span>
+              </div>
+            </button>
           </nav>
         </div>
 
@@ -422,42 +367,45 @@ export default function ClientDetailsModal({
             </div>
           ) : (
             <>
-              {/* Tab: Detalhes */}
-              {activeTab === 'details' && (
+              {/* Tab Detalhes */}
+              {activeTab === 'details' && client && (
                 <div className="p-6 space-y-8">
-                  {/* Dados da Empresa */}
+                  {/* Informações Básicas */}
                   <div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">Dados da Empresa</h3>
+                    <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
+                      <Building2 className="w-5 h-5" />
+                      Informações da Empresa
+                    </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-4">
                         <div>
-                          <label className="text-sm text-gray-600">Nome da Empresa</label>
-                          <p className="font-medium">{client.company_name}</p>
+                          <label className="text-sm font-medium text-gray-700">Nome da Empresa</label>
+                          <p className="text-base font-semibold text-gray-900">{client.company_name}</p>
                         </div>
                         {client.company_cnpj && (
                           <div>
-                            <label className="text-sm text-gray-600">CNPJ</label>
-                            <p className="font-medium">{client.company_cnpj}</p>
+                            <label className="text-sm font-medium text-gray-700">CNPJ</label>
+                            <p className="text-base text-gray-900">{client.company_cnpj}</p>
                           </div>
                         )}
                         {client.company_size && (
                           <div>
-                            <label className="text-sm text-gray-600">Porte</label>
-                            <p className="font-medium">{client.company_size}</p>
+                            <label className="text-sm font-medium text-gray-700">Porte</label>
+                            <p className="text-base text-gray-900">{client.company_size}</p>
                           </div>
                         )}
                         {client.industry && (
                           <div>
-                            <label className="text-sm text-gray-600">Setor</label>
-                            <p className="font-medium">{client.industry}</p>
+                            <label className="text-sm font-medium text-gray-700">Setor</label>
+                            <p className="text-base text-gray-900">{client.industry}</p>
                           </div>
                         )}
                       </div>
                       <div className="space-y-4">
                         {client.website && (
                           <div>
-                            <label className="text-sm text-gray-600">Website</label>
-                            <p className="font-medium">
+                            <label className="text-sm font-medium text-gray-700">Website</label>
+                            <p className="text-base">
                               <a 
                                 href={client.website} 
                                 target="_blank" 
@@ -472,9 +420,9 @@ export default function ClientDetailsModal({
                         )}
                         {client.account_manager && (
                           <div>
-                            <label className="text-sm text-gray-600">Responsável pela Conta</label>
-                            <p className="font-medium">{client.account_manager.full_name}</p>
-                            <p className="text-sm text-gray-500">{client.account_manager.email}</p>
+                            <label className="text-sm font-medium text-gray-700">Responsável pela Conta</label>
+                            <p className="text-base font-medium text-gray-900">{client.account_manager.full_name}</p>
+                            <p className="text-sm text-gray-600">{client.account_manager.email}</p>
                           </div>
                         )}
                       </div>
@@ -489,12 +437,12 @@ export default function ClientDetailsModal({
                         Endereço
                       </h3>
                       <div className="bg-gray-50 rounded-lg p-4">
-                        {client.address_street && <p>{client.address_street}</p>}
-                        <p>
+                        {client.address_street && <p className="text-gray-900">{client.address_street}</p>}
+                        <p className="text-gray-900">
                           {client.address_city}{client.address_city && client.address_state && ', '}
                           {client.address_state} {client.address_zipcode}
                         </p>
-                        {client.address_country && <p>{client.address_country}</p>}
+                        {client.address_country && <p className="text-gray-900">{client.address_country}</p>}
                       </div>
                     </div>
                   )}
@@ -507,28 +455,24 @@ export default function ClientDetailsModal({
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                       <div className="bg-green-50 rounded-lg p-4">
-                        <p className="text-sm text-green-600">Valor Total do Contrato</p>
-                        <p className="text-xl font-bold text-green-800">
+                        <p className="text-sm font-medium text-green-700">Valor Total do Contrato</p>
+                        <p className="text-xl font-bold text-green-900">
                           {formatCurrency(client.total_contract_value)}
                         </p>
                       </div>
                       <div className="bg-blue-50 rounded-lg p-4">
-                        <p className="text-sm text-blue-600">MRR</p>
-                        <p className="text-xl font-bold text-blue-800">
+                        <p className="text-sm font-medium text-blue-700">MRR</p>
+                        <p className="text-xl font-bold text-blue-900">
                           {formatCurrency(client.monthly_recurring_revenue)}
                         </p>
                       </div>
                       <div className="bg-purple-50 rounded-lg p-4">
-                        <p className="text-sm text-purple-600">Duração do Contrato</p>
-                        <p className="text-sm font-medium text-purple-800">
-                          {client.contract_start_date && client.contract_end_date ? (
-                            <>
-                              {new Date(client.contract_start_date).toLocaleDateString('pt-BR')} até{' '}
-                              {new Date(client.contract_end_date).toLocaleDateString('pt-BR')}
-                            </>
-                          ) : (
-                            'Não definido'
-                          )}
+                        <p className="text-sm font-medium text-purple-700">Duração do Contrato</p>
+                        <p className="text-sm font-medium text-purple-900">
+                          {client.contract_start_date && client.contract_end_date
+                            ? `${formatDate(client.contract_start_date)} - ${formatDate(client.contract_end_date)}`
+                            : 'Não definido'
+                          }
                         </p>
                       </div>
                     </div>
@@ -542,34 +486,36 @@ export default function ClientDetailsModal({
                         Observações
                       </h3>
                       <div className="bg-gray-50 rounded-lg p-4">
-                        <p className="whitespace-pre-wrap">{client.notes}</p>
+                        <p className="text-gray-900 whitespace-pre-wrap">{client.notes}</p>
                       </div>
                     </div>
                   )}
 
-                  {/* Datas */}
+                  {/* Informações do Sistema */}
                   <div>
                     <h3 className="text-lg font-medium text-gray-900 mb-4">Informações do Sistema</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
+                    <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
-                        <span className="font-medium">Criado em:</span> {formatDate(client.created_at)}
+                        <label className="text-gray-600">Criado em:</label>
+                        <p className="font-medium text-gray-900">{formatDate(client.created_at)}</p>
                       </div>
                       <div>
-                        <span className="font-medium">Atualizado em:</span> {formatDate(client.updated_at)}
+                        <label className="text-gray-600">Atualizado em:</label>
+                        <p className="font-medium text-gray-900">{formatDate(client.updated_at)}</p>
                       </div>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* Tab: Contatos */}
+              {/* Tab Contatos */}
               {activeTab === 'contacts' && (
                 <div className="p-6">
                   <div className="flex justify-between items-center mb-6">
                     <h3 className="text-lg font-medium text-gray-900">Contatos</h3>
-                    <button 
+                    <button
                       onClick={() => setShowNewContactModal(true)}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                     >
                       <Plus className="w-4 h-4" />
                       Novo Contato
@@ -578,85 +524,70 @@ export default function ClientDetailsModal({
 
                   {contacts.length === 0 ? (
                     <div className="text-center py-8">
-                      <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                      <p className="text-gray-600 mb-4">Nenhum contato cadastrado</p>
-                      <button 
+                      <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                      <p className="text-gray-600">Nenhum contato cadastrado</p>
+                      <button
                         onClick={() => setShowNewContactModal(true)}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg inline-flex items-center gap-2 transition-colors"
+                        className="mt-4 text-blue-600 hover:text-blue-700"
                       >
-                        <Plus className="w-4 h-4" />
-                        Adicionar Primeiro Contato
+                        Adicionar primeiro contato
                       </button>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-4">
                       {contacts.map(contact => (
-                        <div key={contact.id} className="bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-colors">
-                          <div className="flex justify-between items-start mb-3">
+                        <div key={contact.id} className="bg-gray-50 rounded-lg p-4">
+                          <div className="flex justify-between items-start">
                             <div className="flex-1">
-                              <h4 className="font-medium text-gray-900">{contact.full_name}</h4>
-                              {contact.job_title && (
-                                <p className="text-sm text-gray-600">{contact.job_title}</p>
-                              )}
-                              {contact.department && (
-                                <p className="text-xs text-gray-500">{contact.department}</p>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-1">
-                              {contact.is_primary && (
-                                <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
-                                  Principal
+                              <div className="flex items-center gap-2 mb-2">
+                                <h4 className="font-medium text-gray-900">{contact.full_name}</h4>
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  contact.is_primary ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-700'
+                                }`}>
+                                  {contact.contact_type}
                                 </span>
+                                {contact.is_primary && (
+                                  <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    Principal
+                                  </span>
+                                )}
+                              </div>
+                              {contact.job_title && (
+                                <p className="text-sm text-gray-700 mb-2">{contact.job_title}</p>
                               )}
-                              <span className="px-2 py-1 bg-gray-200 text-gray-700 text-xs rounded-full">
-                                {contact.contact_type}
-                              </span>
+                              <div className="flex flex-wrap gap-4 text-sm text-gray-700">
+                                {contact.email && (
+                                  <div className="flex items-center gap-1">
+                                    <Mail className="w-4 h-4" />
+                                    <a href={`mailto:${contact.email}`} className="hover:text-blue-600">
+                                      {contact.email}
+                                    </a>
+                                  </div>
+                                )}
+                                {contact.phone && (
+                                  <div className="flex items-center gap-1">
+                                    <Phone className="w-4 h-4" />
+                                    <a href={`tel:${contact.phone}`} className="hover:text-blue-600">
+                                      {contact.phone}
+                                    </a>
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                          
-                          <div className="space-y-2 mb-3">
-                            {contact.email && (
-                              <div className="flex items-center gap-2 text-sm">
-                                <Mail className="w-4 h-4 text-gray-400" />
-                                <a href={`mailto:${contact.email}`} className="text-blue-600 hover:underline">
-                                  {contact.email}
-                                </a>
-                              </div>
-                            )}
-                            {contact.phone && (
-                              <div className="flex items-center gap-2 text-sm">
-                                <Phone className="w-4 h-4 text-gray-400" />
-                                <a href={`tel:${contact.phone}`} className="text-blue-600 hover:underline">
-                                  {contact.phone}
-                                </a>
-                              </div>
-                            )}
-                            {contact.mobile && (
-                              <div className="flex items-center gap-2 text-sm">
-                                <Phone className="w-4 h-4 text-gray-400" />
-                                <a href={`tel:${contact.mobile}`} className="text-blue-600 hover:underline">
-                                  {contact.mobile} (móvel)
-                                </a>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Ações do Contato */}
-                          <div className="flex justify-end gap-2 pt-2 border-t border-gray-200">
-                            <button
-                              onClick={() => handleEditContact(contact.id)}
-                              className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                              title="Editar contato"
-                            >
-                              <Edit2 className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteContact(contact.id, contact.full_name)}
-                              className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                              title="Remover contato"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleEditContact(contact.id)}
+                                className="p-2 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteContact(contact.id, contact.full_name)}
+                                className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -665,174 +596,65 @@ export default function ClientDetailsModal({
                 </div>
               )}
 
-              {/* Tab: Interações */}
+              {/* Tab Interações */}
               {activeTab === 'interactions' && (
                 <div className="p-6">
                   <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-lg font-medium text-gray-900">
-                      Histórico de Interações 
-                      {filteredInteractions.length !== interactions.length && (
-                        <span className="text-sm text-gray-500 ml-2">
-                          ({filteredInteractions.length} de {interactions.length})
-                        </span>
-                      )}
-                    </h3>
-                    <button 
-                      onClick={() => setShowNewInteraction(!showNewInteraction)}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+                    <h3 className="text-lg font-medium text-gray-900">Histórico de Interações</h3>
+                    <button
+                      onClick={() => setShowNewInteraction(true)}
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                     >
                       <Plus className="w-4 h-4" />
                       Nova Interação
                     </button>
                   </div>
 
-                  {/* Filtros */}
-                  <div className="bg-gray-50 rounded-lg p-4 mb-6">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Filter className="w-4 h-4 text-gray-600" />
-                      <h4 className="font-medium text-gray-900">Filtros</h4>
-                      {(interactionFilters.search || interactionFilters.type !== 'all' || 
-                        interactionFilters.outcome !== 'all' || interactionFilters.dateRange !== 'all') && (
-                        <button
-                          onClick={resetInteractionFilters}
-                          className="text-xs text-blue-600 hover:text-blue-800 ml-auto"
-                        >
-                          Limpar filtros
-                        </button>
-                      )}
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                      {/* Busca */}
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Buscar</label>
-                        <div className="relative">
-                          <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
-                          <input
-                            type="text"
-                            placeholder="Título ou descrição..."
-                            value={interactionFilters.search}
-                            onChange={(e) => setInteractionFilters(prev => ({ ...prev, search: e.target.value }))}
-                            className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Tipo */}
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Tipo</label>
-                        <select
-                          value={interactionFilters.type}
-                          onChange={(e) => setInteractionFilters(prev => ({ 
-                            ...prev, 
-                            type: e.target.value as InteractionType | 'all' 
-                          }))}
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        >
-                          <option value="all">Todos os tipos</option>
-                          <option value="Ligação">Ligação</option>
-                          <option value="Email">Email</option>
-                          <option value="Reunião">Reunião</option>
-                          <option value="Apresentação">Apresentação</option>
-                          <option value="Workshop">Workshop</option>
-                          <option value="Check-in">Check-in</option>
-                          <option value="Suporte">Suporte</option>
-                          <option value="Renovação">Renovação</option>
-                          <option value="Feedback">Feedback</option>
-                          <option value="Nota">Nota</option>
-                        </select>
-                      </div>
-
-                      {/* Resultado */}
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Resultado</label>
-                        <select
-                          value={interactionFilters.outcome}
-                          onChange={(e) => setInteractionFilters(prev => ({ 
-                            ...prev, 
-                            outcome: e.target.value as InteractionOutcome | 'all' 
-                          }))}
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        >
-                          <option value="all">Todos os resultados</option>
-                          <option value="Positivo">Positivo</option>
-                          <option value="Neutro">Neutro</option>
-                          <option value="Negativo">Negativo</option>
-                        </select>
-                      </div>
-
-                      {/* Período */}
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Período</label>
-                        <select
-                          value={interactionFilters.dateRange}
-                          onChange={(e) => setInteractionFilters(prev => ({ 
-                            ...prev, 
-                            dateRange: e.target.value as any 
-                          }))}
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        >
-                          <option value="all">Todo período</option>
-                          <option value="today">Hoje</option>
-                          <option value="week">Última semana</option>
-                          <option value="month">Último mês</option>
-                          <option value="quarter">Último trimestre</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Formulário Nova Interação */}
+                  {/* Formulário de nova interação */}
                   {showNewInteraction && (
                     <div className="bg-blue-50 rounded-lg p-4 mb-6">
                       <h4 className="font-medium text-gray-900 mb-4">Adicionar Nova Interação</h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
+                          <label className="block text-sm font-medium text-gray-800 mb-1">Tipo</label>
                           <select
                             value={newInteraction.interaction_type}
-                            onChange={(e) => setNewInteraction(prev => ({ 
-                              ...prev, 
-                              interaction_type: e.target.value as InteractionType 
-                            }))}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                            onChange={(e) => setNewInteraction(prev => ({ ...prev, interaction_type: e.target.value as InteractionType }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
                           >
-                            <option value="Ligação">📞 Ligação</option>
-                            <option value="Email">✉️ Email</option>
-                            <option value="Reunião">🎥 Reunião</option>
-                            <option value="Apresentação">📊 Apresentação</option>
-                            <option value="Workshop">🎓 Workshop</option>
-                            <option value="Check-in">✅ Check-in</option>
-                            <option value="Suporte">🛠️ Suporte</option>
-                            <option value="Renovação">🔄 Renovação</option>
-                            <option value="Feedback">💬 Feedback</option>
-                            <option value="Nota">📝 Nota</option>
+                            <option value="Ligação">Ligação</option>
+                            <option value="Email">Email</option>
+                            <option value="Reunião">Reunião</option>
+                            <option value="Apresentação">Apresentação</option>
+                            <option value="Workshop">Workshop</option>
+                            <option value="Check-in">Check-in</option>
+                            <option value="Suporte">Suporte</option>
+                            <option value="Renovação">Renovação</option>
+                            <option value="Feedback">Feedback</option>
+                            <option value="Nota">Nota</option>
                           </select>
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Resultado</label>
+                          <label className="block text-sm font-medium text-gray-800 mb-1">Resultado</label>
                           <select
                             value={newInteraction.outcome}
-                            onChange={(e) => setNewInteraction(prev => ({ 
-                              ...prev, 
-                              outcome: e.target.value as InteractionOutcome 
-                            }))}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                            onChange={(e) => setNewInteraction(prev => ({ ...prev, outcome: e.target.value as InteractionOutcome }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
                           >
-                            <option value="Positivo">😊 Positivo</option>
-                            <option value="Neutro">😐 Neutro</option>
-                            <option value="Negativo">😞 Negativo</option>
+                            <option value="Positivo">Positivo</option>
+                            <option value="Neutro">Neutro</option>
+                            <option value="Negativo">Negativo</option>
                           </select>
                         </div>
                       </div>
                       
                       {contacts.length > 0 && (
                         <div className="mb-4">
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Contato (opcional)</label>
+                          <label className="block text-sm font-medium text-gray-800 mb-1">Contato (opcional)</label>
                           <select
                             value={newInteraction.contact_id}
                             onChange={(e) => setNewInteraction(prev => ({ ...prev, contact_id: e.target.value }))}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
                           >
                             <option value="">Selecionar contato...</option>
                             {contacts.map(contact => (
@@ -845,22 +667,22 @@ export default function ClientDetailsModal({
                       )}
                       
                       <div className="mb-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Título</label>
+                        <label className="block text-sm font-medium text-gray-800 mb-1">Título</label>
                         <input
                           type="text"
                           value={newInteraction.title}
                           onChange={(e) => setNewInteraction(prev => ({ ...prev, title: e.target.value }))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900"
                           placeholder="Ex: Reunião de acompanhamento mensal"
                         />
                       </div>
                       <div className="mb-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+                        <label className="block text-sm font-medium text-gray-800 mb-1">Descrição</label>
                         <textarea
                           value={newInteraction.description}
                           onChange={(e) => setNewInteraction(prev => ({ ...prev, description: e.target.value }))}
                           rows={3}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900"
                           placeholder="Detalhes da interação..."
                         />
                       </div>
@@ -871,15 +693,17 @@ export default function ClientDetailsModal({
                           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg disabled:opacity-50 flex items-center gap-2"
                         >
                           {savingInteraction ? (
-                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            <>
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                              Salvando...
+                            </>
                           ) : (
-                            <Plus className="w-4 h-4" />
+                            'Adicionar'
                           )}
-                          Adicionar
                         </button>
                         <button
                           onClick={() => setShowNewInteraction(false)}
-                          className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg"
+                          className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-lg"
                         >
                           Cancelar
                         </button>
@@ -887,41 +711,28 @@ export default function ClientDetailsModal({
                     </div>
                   )}
 
-                  {/* Lista de Interações */}
+                  {/* Lista de interações */}
                   {interactions.length === 0 ? (
                     <div className="text-center py-8">
-                      <MessageSquare className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                      <p className="text-gray-600 mb-4">Nenhuma interação registrada</p>
-                      <button 
+                      <MessageSquare className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                      <p className="text-gray-600">Nenhuma interação registrada</p>
+                      <button
                         onClick={() => setShowNewInteraction(true)}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg inline-flex items-center gap-2 transition-colors"
+                        className="mt-4 text-blue-600 hover:text-blue-700"
                       >
-                        <Plus className="w-4 h-4" />
-                        Primeira Interação
-                      </button>
-                    </div>
-                  ) : filteredInteractions.length === 0 ? (
-                    <div className="text-center py-8">
-                      <Search className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                      <p className="text-gray-600 mb-2">Nenhuma interação encontrada</p>
-                      <p className="text-gray-500 text-sm mb-4">Tente ajustar os filtros para encontrar interações.</p>
-                      <button 
-                        onClick={resetInteractionFilters}
-                        className="text-blue-600 hover:text-blue-800 text-sm"
-                      >
-                        Limpar todos os filtros
+                        Adicionar primeira interação
                       </button>
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      {filteredInteractions.map(interaction => (
-                        <div key={interaction.id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                          <div className="flex justify-between items-start mb-3">
-                            <div className="flex items-center gap-3">
-                              {getInteractionIcon(interaction.interaction_type)}
+                      {interactions.map(interaction => (
+                        <div key={interaction.id} className="border border-gray-200 rounded-lg p-4">
+                          <div className="flex justify-between items-start mb-2">
+                            <div className="flex items-start gap-3">
+                              <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
                               <div>
                                 <h4 className="font-medium text-gray-900">{interaction.title}</h4>
-                                <div className="flex items-center gap-2 text-sm text-gray-600">
+                                <div className="flex items-center gap-2 text-sm text-gray-700">
                                   <span>{interaction.interaction_type}</span>
                                   {interaction.contact && (
                                     <>
@@ -932,7 +743,7 @@ export default function ClientDetailsModal({
                                 </div>
                               </div>
                             </div>
-                            <div className="flex items-center gap-2 text-sm text-gray-500">
+                            <div className="flex items-center gap-2 text-sm text-gray-600">
                               {interaction.outcome && (
                                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${getOutcomeColor(interaction.outcome)}`}>
                                   {interaction.outcome}
@@ -943,10 +754,10 @@ export default function ClientDetailsModal({
                           </div>
                           
                           {interaction.description && (
-                            <p className="text-gray-700 mb-3 pl-7">{interaction.description}</p>
+                            <p className="text-gray-800 mb-3 pl-5">{interaction.description}</p>
                           )}
                           
-                          <div className="flex justify-between items-center text-xs text-gray-500 pl-7">
+                          <div className="flex justify-between items-center text-xs text-gray-600 pl-5">
                             <div>
                               {interaction.creator && (
                                 <span>Criado por: {interaction.creator.full_name}</span>

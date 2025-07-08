@@ -1,4 +1,4 @@
-// src/components/modals/NewClientModal.tsx
+// src/components/modals/NewClientModal.tsx - Contraste corrigido
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -71,6 +71,47 @@ export default function NewClientModal({ isOpen, onClose, onClientCreated }: New
     }
   }
 
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {}
+
+    if (!formData.company_name.trim()) {
+      newErrors.company_name = 'Nome da empresa é obrigatório'
+    }
+
+    if (formData.website && formData.website.trim()) {
+      try {
+        new URL(formData.website)
+      } catch {
+        newErrors.website = 'URL do website inválida'
+      }
+    }
+
+    if (formData.total_contract_value < 0) {
+      newErrors.total_contract_value = 'Valor do contrato não pode ser negativo'
+    }
+
+    if (formData.monthly_recurring_revenue < 0) {
+      newErrors.monthly_recurring_revenue = 'MRR não pode ser negativo'
+    }
+
+    if (formData.contract_start_date && formData.contract_end_date) {
+      if (new Date(formData.contract_start_date) >= new Date(formData.contract_end_date)) {
+        newErrors.contract_end_date = 'Data final deve ser posterior à data inicial'
+      }
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  const handleInputChange = (field: keyof CreateClientRequest, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }))
+    
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: '' }))
+    }
+  }
+
   const resetForm = () => {
     setFormData({
       company_name: '',
@@ -95,70 +136,6 @@ export default function NewClientModal({ isOpen, onClose, onClientCreated }: New
     setErrors({})
   }
 
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {}
-
-    // Nome da empresa é obrigatório
-    if (!formData.company_name?.trim()) {
-      newErrors.company_name = 'Nome da empresa é obrigatório'
-    }
-
-    // CNPJ deve ter formato válido se preenchido
-    if (formData.company_cnpj) {
-      const cnpjNumbers = formData.company_cnpj.replace(/\D/g, '')
-      if (cnpjNumbers.length > 0 && cnpjNumbers.length < 11) {
-        newErrors.company_cnpj = 'CNPJ deve ter pelo menos 11 dígitos'
-      }
-    }
-
-    // Website deve ter formato válido se preenchido
-    if (formData.website && formData.website.trim()) {
-      const website = formData.website.trim()
-      if (!website.startsWith('http://') && !website.startsWith('https://')) {
-        newErrors.website = 'Website deve começar com http:// ou https://'
-      }
-    }
-
-    // Valores devem ser positivos se preenchidos
-    if (formData.total_contract_value && Number(formData.total_contract_value) < 0) {
-      newErrors.total_contract_value = 'Valor deve ser positivo'
-    }
-
-    if (formData.monthly_recurring_revenue && Number(formData.monthly_recurring_revenue) < 0) {
-      newErrors.monthly_recurring_revenue = 'MRR deve ser positivo'
-    }
-
-    // Data de fim deve ser maior que data de início se ambas preenchidas
-    if (formData.contract_start_date && formData.contract_end_date) {
-      const startDate = new Date(formData.contract_start_date)
-      const endDate = new Date(formData.contract_end_date)
-      if (endDate <= startDate) {
-        newErrors.contract_end_date = 'Data de fim deve ser posterior à data de início'
-      }
-    }
-
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
-
-  const formatCNPJ = (value: string) => {
-    const numbers = value.replace(/\D/g, '')
-    return numbers.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5')
-  }
-
-  const handleInputChange = (field: keyof CreateClientRequest, value: any) => {
-    if (field === 'company_cnpj' && typeof value === 'string') {
-      value = formatCNPJ(value)
-    }
-
-    setFormData(prev => ({ ...prev, [field]: value }))
-    
-    // Limpar erro do campo quando usuário começar a digitar
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }))
-    }
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -167,7 +144,6 @@ export default function NewClientModal({ isOpen, onClose, onClientCreated }: New
     setLoading(true)
 
     try {
-      // Preparar dados limpos para inserção
       const clientData = {
         company_name: formData.company_name.trim(),
         company_cnpj: formData.company_cnpj?.trim() || null,
@@ -190,22 +166,14 @@ export default function NewClientModal({ isOpen, onClose, onClientCreated }: New
         is_active: true
       }
 
-      console.log('Dados a serem inseridos:', clientData)
-
       const { data: insertedClient, error: insertError } = await supabase
         .from('clients')
         .insert([clientData])
         .select('id')
         .single()
 
-      if (insertError) {
-        console.error('Erro detalhado:', insertError)
-        throw insertError
-      }
+      if (insertError) throw insertError
 
-      console.log('Cliente inserido:', insertedClient)
-
-      // Criar interação inicial
       if (insertedClient?.id) {
         const { error: interactionError } = await supabase
           .from('client_interactions')
@@ -221,7 +189,6 @@ export default function NewClientModal({ isOpen, onClose, onClientCreated }: New
 
         if (interactionError) {
           console.error('Erro ao criar interação:', interactionError)
-          // Não interromper o fluxo se falhar criar a interação
         }
       }
 
@@ -257,37 +224,40 @@ export default function NewClientModal({ isOpen, onClose, onClientCreated }: New
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center gap-3">
-            <Building2 className="w-6 h-6 text-blue-600" />
+            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+              <Building2 className="w-5 h-5 text-blue-600" />
+            </div>
             <h2 className="text-xl font-semibold text-gray-900">Novo Cliente</h2>
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
+            disabled={loading}
+            className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Form */}
+        {/* Content */}
         <form onSubmit={handleSubmit} className="overflow-y-auto max-h-[calc(90vh-140px)]">
           <div className="p-6 space-y-8">
             {/* Dados da Empresa */}
             <div>
-              <div className="flex items-center gap-2 mb-4">
-                <Building2 className="w-5 h-5 text-gray-600" />
+              <div className="flex items-center gap-2 mb-6">
+                <Building2 className="w-5 h-5 text-gray-700" />
                 <h3 className="text-lg font-medium text-gray-900">Dados da Empresa</h3>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-900 mb-2">
                     Nome da Empresa *
                   </label>
                   <input
                     type="text"
                     value={formData.company_name}
                     onChange={(e) => handleInputChange('company_name', e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-gray-500 ${
                       errors.company_name ? 'border-red-500' : 'border-gray-300'
                     }`}
                     placeholder="Ex: TechCorp Ltda"
@@ -298,14 +268,14 @@ export default function NewClientModal({ isOpen, onClose, onClientCreated }: New
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-900 mb-2">
                     CNPJ (opcional)
                   </label>
                   <input
                     type="text"
                     value={formData.company_cnpj}
                     onChange={(e) => handleInputChange('company_cnpj', e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-gray-500 ${
                       errors.company_cnpj ? 'border-red-500' : 'border-gray-300'
                     }`}
                     placeholder="12.345.678/0001-90"
@@ -317,15 +287,15 @@ export default function NewClientModal({ isOpen, onClose, onClientCreated }: New
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-900 mb-2">
                     Porte da Empresa
                   </label>
                   <select
                     value={formData.company_size || ''}
                     onChange={(e) => handleInputChange('company_size', e.target.value as CompanySize)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white"
                   >
-                    <option value="">Selecionar porte...</option>
+                    <option value="" className="text-gray-500">Selecionar porte...</option>
                     <option value="Startup">Startup</option>
                     <option value="Pequena">Pequena</option>
                     <option value="Média">Média</option>
@@ -335,27 +305,27 @@ export default function NewClientModal({ isOpen, onClose, onClientCreated }: New
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-900 mb-2">
                     Setor/Indústria
                   </label>
                   <input
                     type="text"
                     value={formData.industry}
                     onChange={(e) => handleInputChange('industry', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-gray-500"
                     placeholder="Ex: Tecnologia, Varejo, Financeiro"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-900 mb-2">
                     Website
                   </label>
                   <input
                     type="url"
                     value={formData.website}
                     onChange={(e) => handleInputChange('website', e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-gray-500 ${
                       errors.website ? 'border-red-500' : 'border-gray-300'
                     }`}
                     placeholder="https://empresa.com.br"
@@ -369,74 +339,74 @@ export default function NewClientModal({ isOpen, onClose, onClientCreated }: New
 
             {/* Endereço */}
             <div>
-              <div className="flex items-center gap-2 mb-4">
-                <MapPin className="w-5 h-5 text-gray-600" />
+              <div className="flex items-center gap-2 mb-6">
+                <MapPin className="w-5 h-5 text-gray-700" />
                 <h3 className="text-lg font-medium text-gray-900">Endereço</h3>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-900 mb-2">
                     Rua/Endereço
                   </label>
                   <input
                     type="text"
                     value={formData.address_street}
                     onChange={(e) => handleInputChange('address_street', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-gray-500"
                     placeholder="Rua das Empresas, 123 - Centro"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-900 mb-2">
                     Cidade
                   </label>
                   <input
                     type="text"
                     value={formData.address_city}
                     onChange={(e) => handleInputChange('address_city', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-gray-500"
                     placeholder="São Paulo"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-900 mb-2">
                     Estado
                   </label>
                   <input
                     type="text"
                     value={formData.address_state}
                     onChange={(e) => handleInputChange('address_state', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-gray-500"
                     placeholder="SP"
                     maxLength={2}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-900 mb-2">
                     CEP
                   </label>
                   <input
                     type="text"
                     value={formData.address_zipcode}
                     onChange={(e) => handleInputChange('address_zipcode', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-gray-500"
                     placeholder="01234-567"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-900 mb-2">
                     País
                   </label>
                   <input
                     type="text"
                     value={formData.address_country}
                     onChange={(e) => handleInputChange('address_country', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-gray-500"
                   />
                 </div>
               </div>
@@ -444,20 +414,20 @@ export default function NewClientModal({ isOpen, onClose, onClientCreated }: New
 
             {/* Status e Relacionamento */}
             <div>
-              <div className="flex items-center gap-2 mb-4">
-                <User className="w-5 h-5 text-gray-600" />
+              <div className="flex items-center gap-2 mb-6">
+                <User className="w-5 h-5 text-gray-700" />
                 <h3 className="text-lg font-medium text-gray-900">Status e Relacionamento</h3>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-900 mb-2">
                     Status do Relacionamento
                   </label>
                   <select
                     value={formData.relationship_status}
                     onChange={(e) => handleInputChange('relationship_status', e.target.value as RelationshipStatus)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white"
                   >
                     <option value="Prospect">Prospect</option>
                     <option value="Ativo">Ativo</option>
@@ -468,13 +438,13 @@ export default function NewClientModal({ isOpen, onClose, onClientCreated }: New
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-900 mb-2">
                     Saúde da Conta
                   </label>
                   <select
                     value={formData.account_health}
                     onChange={(e) => handleInputChange('account_health', e.target.value as AccountHealth)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white"
                   >
                     <option value="Excelente">Excelente</option>
                     <option value="Saudável">Saudável</option>
@@ -484,15 +454,15 @@ export default function NewClientModal({ isOpen, onClose, onClientCreated }: New
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-900 mb-2">
                     Responsável pela Conta
                   </label>
                   <select
                     value={formData.account_manager_id}
                     onChange={(e) => handleInputChange('account_manager_id', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white"
                   >
-                    <option value="">Selecionar responsável...</option>
+                    <option value="" className="text-gray-500">Selecionar responsável...</option>
                     {teamMembers.map(member => (
                       <option key={member.id} value={member.id}>
                         {member.full_name}
@@ -505,14 +475,14 @@ export default function NewClientModal({ isOpen, onClose, onClientCreated }: New
 
             {/* Informações Comerciais */}
             <div>
-              <div className="flex items-center gap-2 mb-4">
-                <DollarSign className="w-5 h-5 text-gray-600" />
+              <div className="flex items-center gap-2 mb-6">
+                <DollarSign className="w-5 h-5 text-gray-700" />
                 <h3 className="text-lg font-medium text-gray-900">Informações Comerciais</h3>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-900 mb-2">
                     Valor Total do Contrato (R$)
                   </label>
                   <input
@@ -521,10 +491,10 @@ export default function NewClientModal({ isOpen, onClose, onClientCreated }: New
                     step="0.01"
                     value={formData.total_contract_value}
                     onChange={(e) => handleInputChange('total_contract_value', parseFloat(e.target.value) || 0)}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-gray-500 ${
                       errors.total_contract_value ? 'border-red-500' : 'border-gray-300'
                     }`}
-                    placeholder="0.00"
+                    placeholder="0,00"
                   />
                   {errors.total_contract_value && (
                     <p className="text-red-500 text-sm mt-1">{errors.total_contract_value}</p>
@@ -532,8 +502,8 @@ export default function NewClientModal({ isOpen, onClose, onClientCreated }: New
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    MRR - Receita Mensal (R$)
+                  <label className="block text-sm font-medium text-gray-900 mb-2">
+                    MRR - Receita Recorrente Mensal (R$)
                   </label>
                   <input
                     type="number"
@@ -541,10 +511,10 @@ export default function NewClientModal({ isOpen, onClose, onClientCreated }: New
                     step="0.01"
                     value={formData.monthly_recurring_revenue}
                     onChange={(e) => handleInputChange('monthly_recurring_revenue', parseFloat(e.target.value) || 0)}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-gray-500 ${
                       errors.monthly_recurring_revenue ? 'border-red-500' : 'border-gray-300'
                     }`}
-                    placeholder="0.00"
+                    placeholder="0,00"
                   />
                   {errors.monthly_recurring_revenue && (
                     <p className="text-red-500 text-sm mt-1">{errors.monthly_recurring_revenue}</p>
@@ -552,35 +522,40 @@ export default function NewClientModal({ isOpen, onClose, onClientCreated }: New
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-900 mb-2">
                     Data de Início do Contrato
                   </label>
                   <input
                     type="date"
                     value={formData.contract_start_date}
                     onChange={(e) => handleInputChange('contract_start_date', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Data de Fim do Contrato
+                  <label className="block text-sm font-medium text-gray-900 mb-2">
+                    Data de Término do Contrato
                   </label>
                   <input
                     type="date"
                     value={formData.contract_end_date}
                     onChange={(e) => handleInputChange('contract_end_date', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 ${
+                      errors.contract_end_date ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   />
+                  {errors.contract_end_date && (
+                    <p className="text-red-500 text-sm mt-1">{errors.contract_end_date}</p>
+                  )}
                 </div>
               </div>
             </div>
 
             {/* Observações */}
             <div>
-              <div className="flex items-center gap-2 mb-4">
-                <FileText className="w-5 h-5 text-gray-600" />
+              <div className="flex items-center gap-2 mb-6">
+                <FileText className="w-5 h-5 text-gray-700" />
                 <h3 className="text-lg font-medium text-gray-900">Observações</h3>
               </div>
               
@@ -588,7 +563,7 @@ export default function NewClientModal({ isOpen, onClose, onClientCreated }: New
                 value={formData.notes}
                 onChange={(e) => handleInputChange('notes', e.target.value)}
                 rows={4}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-gray-500"
                 placeholder="Observações sobre o cliente, histórico de relacionamento, pontos importantes..."
               />
             </div>
