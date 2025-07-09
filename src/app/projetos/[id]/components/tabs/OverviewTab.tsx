@@ -1,25 +1,20 @@
-// src/app/projetos/[id]/components/tabs/OverviewTab.tsx
+// src/app/projetos/[id]/components/tabs/OverviewTab.tsx - SEM KPIs (movidos para estático)
 'use client'
 
 import { 
-  BarChart3, 
-  DollarSign, 
-  Target, 
-  Clock, 
   FileText, 
   Users, 
   TrendingUp,
   AlertTriangle,
   CheckCircle,
-  Calendar
+  Calendar,
+  Target
 } from 'lucide-react'
 import { 
-  KPICard, 
   InfoCard, 
   InfoPair, 
   ProgressBar, 
   formatCurrency, 
-  formatCurrencyCompact, 
   formatDate 
 } from '../shared'
 import { ProjectDetails, ProjectKPIs } from '../../types/project.types'
@@ -33,17 +28,11 @@ interface OverviewTabProps {
 export const OverviewTab = ({ project, kpis, loading = false }: OverviewTabProps) => {
   
   // === HELPER FUNCTIONS ===
-  const getTrendDirection = (value: number, threshold: { good: number; warning: number }) => {
-    if (value >= threshold.good) return 'up'
-    if (value >= threshold.warning) return 'neutral'
-    return 'down'
-  }
-
   const getHealthColor = (health: string) => {
     switch (health.toLowerCase()) {
-      case 'healthy': case 'verde': return 'text-green-600'
-      case 'warning': case 'amarelo': return 'text-yellow-600'
-      case 'critical': case 'vermelho': return 'text-red-600'
+      case 'healthy': case 'verde': case 'excelente': return 'text-green-600'
+      case 'warning': case 'amarelo': case 'bom': return 'text-blue-600'
+      case 'critical': case 'vermelho': case 'crítico': return 'text-red-600'
       default: return 'text-gray-600'
     }
   }
@@ -66,19 +55,16 @@ export const OverviewTab = ({ project, kpis, loading = false }: OverviewTabProps
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {Array.from({ length: 4 }, (_, i) => (
-            <div key={i} className="bg-white p-6 rounded-lg border animate-pulse">
-              <div className="flex items-center space-x-3">
-                <div className="p-3 rounded-lg bg-gray-200 w-12 h-12" />
-                <div className="space-y-2 flex-1">
-                  <div className="h-4 bg-gray-200 rounded w-3/4" />
-                  <div className="h-8 bg-gray-200 rounded w-1/2" />
-                </div>
-              </div>
+        {Array.from({ length: 4 }, (_, i) => (
+          <div key={i} className="bg-white p-6 rounded-lg border animate-pulse">
+            <div className="h-6 bg-gray-200 rounded w-1/4 mb-4" />
+            <div className="space-y-3">
+              <div className="h-4 bg-gray-200 rounded w-3/4" />
+              <div className="h-4 bg-gray-200 rounded w-1/2" />
+              <div className="h-4 bg-gray-200 rounded w-2/3" />
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
       </div>
     )
   }
@@ -86,64 +72,25 @@ export const OverviewTab = ({ project, kpis, loading = false }: OverviewTabProps
   return (
     <div className="space-y-6">
       
-      {/* KPIs Principais */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <KPICard
-          title="Progresso"
-          value={`${kpis.overallProgress}%`}
-          icon={BarChart3}
-          subtitle="do projeto concluído"
-          trend={getTrendDirection(kpis.overallProgress, { good: 70, warning: 30 })}
-          colorClass="bg-blue-500"
-        />
-        
-        <KPICard
-          title="Orçamento Usado"
-          value={formatCurrencyCompact(project.used_budget)}
-          icon={DollarSign}
-          subtitle={`de ${formatCurrencyCompact(project.total_budget)}`}
-          trend={kpis.budgetUtilization <= kpis.overallProgress ? 'up' : 'down'}
-          colorClass="bg-green-500"
-        />
-        
-        <KPICard
-          title="Marcos Concluídos"
-          value={kpis.completedMilestones}
-          icon={Target}
-          subtitle={`de ${kpis.totalMilestones} marcos`}
-          trend={kpis.completedMilestones > 0 ? 'up' : 'neutral'}
-          colorClass="bg-purple-500"
-        />
-        
-        <KPICard
-          title="Dias Restantes"
-          value={kpis.daysRemaining}
-          icon={Clock}
-          subtitle="até o prazo final"
-          trend={getTrendDirection(kpis.daysRemaining, { good: 30, warning: 7 })}
-          colorClass={kpis.daysRemaining > 30 ? 'bg-green-500' : kpis.daysRemaining > 7 ? 'bg-yellow-500' : 'bg-red-500'}
-        />
-      </div>
-
       {/* Cards de Informações */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         {/* Informações do Projeto */}
         <InfoCard title="Informações do Projeto" icon={FileText}>
           <div className="space-y-3">
-            <InfoPair label="Descrição" value={project.description} />
+            <InfoPair label="Descrição" value={project.description || 'Não informado'} />
             <InfoPair label="Tipo" value={project.project_type} />
             <InfoPair label="Fase Atual" value={getProjectPhase()} />
             <InfoPair label="Nível de Risco" value={project.risk_level} />
-            <InfoPair label="Próximo Marco" value={project.next_milestone} />
+            <InfoPair label="Próximo Marco" value={project.next_milestone || 'Não definido'} />
           </div>
         </InfoCard>
 
         {/* Equipe e Cliente */}
         <InfoCard title="Equipe e Cliente" icon={Users}>
           <div className="space-y-3">
-            <InfoPair label="Cliente" value={project.client?.company_name} />
-            <InfoPair label="Gerente do Projeto" value={project.manager?.full_name} />
+            <InfoPair label="Cliente" value={project.client?.company_name || 'Não informado'} />
+            <InfoPair label="Gerente do Projeto" value={project.manager?.full_name || 'Não atribuído'} />
             <InfoPair label="Total de Marcos" value={kpis.totalMilestones.toString()} />
             <InfoPair label="Total de Atividades" value={kpis.totalActivities.toString()} />
             <InfoPair 
@@ -176,9 +123,9 @@ export const OverviewTab = ({ project, kpis, loading = false }: OverviewTabProps
           <div>
             <span className="text-gray-700 font-medium">Status de Saúde:</span>
             <p className={`text-lg font-semibold mt-1 ${getHealthColor(project.health)}`}>
-              {project.health === 'healthy' ? 'Saudável' :
-               project.health === 'warning' ? 'Atenção' :
-               project.health === 'critical' ? 'Crítico' : project.health}
+              {project.health === 'Excelente' ? 'Excelente' :
+               project.health === 'Bom' ? 'Bom' :
+               project.health === 'Crítico' ? 'Crítico' : project.health}
             </p>
           </div>
         </div>
@@ -190,6 +137,10 @@ export const OverviewTab = ({ project, kpis, loading = false }: OverviewTabProps
           
           {/* Progresso Geral */}
           <div>
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-sm font-medium text-gray-700">Progresso Geral</span>
+              <span className="text-sm font-semibold text-gray-900">{kpis.overallProgress}%</span>
+            </div>
             <ProgressBar 
               value={kpis.overallProgress} 
               color="bg-blue-600"
