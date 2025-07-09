@@ -173,6 +173,12 @@ export default function FinanceiroPage() {
     closeAllModals()
   }
 
+  const handleModalSuccess = (type: string) => {
+    console.log(`${type} criado com sucesso`)
+    // Aqui você pode recarregar dados se necessário
+    // loadTransactions()
+  }
+
   const getStatusBadge = (status: string) => {
     const styles = {
       pendente: 'bg-yellow-100 text-yellow-800',
@@ -670,7 +676,7 @@ export default function FinanceiroPage() {
           isOpen={showFornecedorModal}
           onClose={() => setShowFornecedorModal(false)}
           onSuccess={() => {
-            console.log('Fornecedor criado com sucesso')
+            handleModalSuccess('Fornecedor')
             setShowFornecedorModal(false)
           }}
         />
@@ -679,7 +685,7 @@ export default function FinanceiroPage() {
           isOpen={showCentroCustoModal}
           onClose={() => setShowCentroCustoModal(false)}
           onSuccess={() => {
-            console.log('Centro de custo criado com sucesso')
+            handleModalSuccess('Centro de Custo')
             setShowCentroCustoModal(false)
           }}
         />
@@ -688,7 +694,7 @@ export default function FinanceiroPage() {
           isOpen={showCategoriaModal}
           onClose={() => setShowCategoriaModal(false)}
           onSuccess={() => {
-            console.log('Categoria criada com sucesso')
+            handleModalSuccess('Categoria')
             setShowCategoriaModal(false)
           }}
         />
@@ -697,7 +703,7 @@ export default function FinanceiroPage() {
           isOpen={showContaModal}
           onClose={() => setShowContaModal(false)}
           onSuccess={() => {
-            console.log('Conta criada com sucesso')
+            handleModalSuccess('Conta de Recebimento')
             setShowContaModal(false)
           }}
         />

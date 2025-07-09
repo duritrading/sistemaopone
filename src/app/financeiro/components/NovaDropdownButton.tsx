@@ -31,46 +31,16 @@ export function NovaDropdownButton({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const menuItems = [
-    {
-      label: 'Novo Fornecedor',
-      icon: Building,
-      onClick: () => {
-        onNovoFornecedor()
-        setIsOpen(false)
-      }
-    },
-    {
-      label: 'Novo Centro de Custo',
-      icon: Tag,
-      onClick: () => {
-        onNovoCentroCusto()
-        setIsOpen(false)
-      }
-    },
-    {
-      label: 'Nova Categoria',
-      icon: Folder,
-      onClick: () => {
-        onNovaCategoria()
-        setIsOpen(false)
-      }
-    },
-    {
-      label: 'Nova Conta de Recebimento',
-      icon: CreditCard,
-      onClick: () => {
-        onNovaContaRecebimento()
-        setIsOpen(false)
-      }
-    }
-  ]
+  const handleMenuClick = (action: () => void) => {
+    action()
+    setIsOpen(false)
+  }
 
   return (
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all shadow-lg transform hover:scale-105"
+        className="inline-flex items-center px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all shadow-lg transform hover:scale-105"
       >
         <Plus className="w-4 h-4 mr-2" />
         Nova
@@ -79,19 +49,37 @@ export function NovaDropdownButton({
 
       {isOpen && (
         <div className="absolute top-full left-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
-          {menuItems.map((item, index) => {
-            const Icon = item.icon
-            return (
-              <button
-                key={index}
-                onClick={item.onClick}
-                className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                <Icon className="w-4 h-4 mr-3 text-gray-500" />
-                {item.label}
-              </button>
-            )
-          })}
+          <button
+            onClick={() => handleMenuClick(onNovoFornecedor)}
+            className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            <Building className="w-4 h-4 mr-3 text-gray-500" />
+            Novo Fornecedor
+          </button>
+          
+          <button
+            onClick={() => handleMenuClick(onNovoCentroCusto)}
+            className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            <Tag className="w-4 h-4 mr-3 text-gray-500" />
+            Novo Centro de Custo
+          </button>
+          
+          <button
+            onClick={() => handleMenuClick(onNovaCategoria)}
+            className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            <Folder className="w-4 h-4 mr-3 text-gray-500" />
+            Nova Categoria
+          </button>
+          
+          <button
+            onClick={() => handleMenuClick(onNovaContaRecebimento)}
+            className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            <CreditCard className="w-4 h-4 mr-3 text-gray-500" />
+            Nova Conta de Recebimento
+          </button>
         </div>
       )}
     </div>
