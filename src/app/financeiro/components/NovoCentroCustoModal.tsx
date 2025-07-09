@@ -191,7 +191,7 @@ export default function NovoCentroCustoModal({
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Responsável</label>
                 <div className="relative">
-                  <User className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
+                  <User className="w-4 h-4 absolute left-3 top-3 text-gray-700" />
                   <input
                     type="text"
                     value={formData.responsible_person}
@@ -206,7 +206,7 @@ export default function NovoCentroCustoModal({
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Limite de Orçamento (Opcional)</label>
                 <div className="relative">
-                  <DollarSign className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
+                  <DollarSign className="w-4 h-4 absolute left-3 top-3 text-gray-700" />
                   <input
                     type="number"
                     step="0.01"
@@ -272,7 +272,7 @@ export default function NovoCentroCustoModal({
                 />
                 <span className="ml-2 text-sm text-gray-700">Centro de custo ativo</span>
               </label>
-              <p className="text-xs text-gray-500 mt-1 ml-6">
+              <p className="text-xs text-gray-700 mt-1 ml-6">
                 Centros de custo inativos não aparecerão nas opções de seleção
               </p>
             </div>
