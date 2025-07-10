@@ -312,7 +312,6 @@ export default function NewReceitaModal({
         payment_date: data.is_received ? new Date().toISOString() : null,
         account_id: data.account_id,
         client_id: data.client_id,
-        company: selectedClient?.company_name,
         notes: data.notes,
         payment_method: data.payment_method,
         cost_center: data.cost_center,

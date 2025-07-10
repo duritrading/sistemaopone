@@ -312,7 +312,6 @@ export default function NewDespesaModal({
         payment_date: data.is_paid ? new Date().toISOString() : null,
         account_id: data.account_id,
         supplier_id: data.supplier_id,
-        company: selectedSupplier?.company_name,
         notes: data.notes,
         payment_method: data.payment_method,
         cost_center: data.cost_center,

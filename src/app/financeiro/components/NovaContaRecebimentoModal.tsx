@@ -11,7 +11,7 @@ import {
   DollarSign,
   Eye,
   EyeOff,
-  Banknote
+  Info
 } from 'lucide-react'
 
 interface NovaContaRecebimentoModalProps {
@@ -25,16 +25,14 @@ interface AccountFormData {
   name: string
   type: string
   bank: string
+  balance: number
   account_number: string
   agency: string
-  account_digit: string
-  balance: number
-  credit_limit: number
-  is_main: boolean
+  account_holder: string
+  cpf_cnpj: string
+  pix_key: string
   is_active: boolean
   notes: string
-  pix_key: string
-  bank_code: string
 }
 
 export default function NovaContaRecebimentoModal({
@@ -49,16 +47,14 @@ export default function NovaContaRecebimentoModal({
     name: '',
     type: 'conta_corrente',
     bank: '',
+    balance: 0,
     account_number: '',
     agency: '',
-    account_digit: '',
-    balance: 0,
-    credit_limit: 0,
-    is_main: false,
-    is_active: true,
-    notes: '',
+    account_holder: '',
+    cpf_cnpj: '',
     pix_key: '',
-    bank_code: ''
+    is_active: true,
+    notes: ''
   })
 
   useEffect(() => {
@@ -67,16 +63,14 @@ export default function NovaContaRecebimentoModal({
         name: editData.name || '',
         type: editData.type || 'conta_corrente',
         bank: editData.bank || '',
+        balance: editData.balance || 0,
         account_number: editData.account_number || '',
         agency: editData.agency || '',
-        account_digit: editData.account_digit || '',
-        balance: editData.balance || 0,
-        credit_limit: editData.credit_limit || 0,
-        is_main: editData.is_main || false,
-        is_active: editData.is_active ?? true,
-        notes: editData.notes || '',
+        account_holder: editData.account_holder || '',
+        cpf_cnpj: editData.cpf_cnpj || '',
         pix_key: editData.pix_key || '',
-        bank_code: editData.bank_code || ''
+        is_active: editData.is_active ?? true,
+        notes: editData.notes || ''
       })
     } else {
       // Reset form for new account
@@ -84,16 +78,14 @@ export default function NovaContaRecebimentoModal({
         name: '',
         type: 'conta_corrente',
         bank: '',
+        balance: 0,
         account_number: '',
         agency: '',
-        account_digit: '',
-        balance: 0,
-        credit_limit: 0,
-        is_main: false,
-        is_active: true,
-        notes: '',
+        account_holder: '',
+        cpf_cnpj: '',
         pix_key: '',
-        bank_code: ''
+        is_active: true,
+        notes: ''
       })
     }
   }, [editData])
@@ -104,15 +96,25 @@ export default function NovaContaRecebimentoModal({
     { value: 'conta_corrente', label: 'Conta Corrente', icon: '🏦' },
     { value: 'conta_poupanca', label: 'Conta Poupança', icon: '💰' },
     { value: 'cartao_credito', label: 'Cartão de Crédito', icon: '💳' },
-    { value: 'cartao_debito', label: 'Cartão de Débito', icon: '💳' },
+    { value: 'cartao_debito', label: 'Cartão de Débito', icon: '💴' },
     { value: 'dinheiro', label: 'Dinheiro', icon: '💵' },
     { value: 'investimento', label: 'Investimento', icon: '📈' },
-    { value: 'outros', label: 'Outros', icon: '📝' }
+    { value: 'outros', label: 'Outros', icon: '📊' }
   ]
 
   const popularBanks = [
-    'Banco do Brasil', 'Bradesco', 'Itaú', 'Santander', 'Caixa Econômica Federal',
-    'Nubank', 'Inter', 'C6 Bank', 'Neon', 'Original', 'Safra', 'Sicoob', 'Sicredi'
+    'Banco do Brasil',
+    'Bradesco',
+    'Caixa Econômica Federal',
+    'Itaú',
+    'Santander',
+    'BTG Pactual',
+    'Inter',
+    'Nubank',
+    'C6 Bank',
+    'PicPay',
+    'Mercado Pago',
+    'Outro'
   ]
 
   const handleInputChange = (field: keyof AccountFormData, value: string | number | boolean) => {
@@ -128,7 +130,17 @@ export default function NovaContaRecebimentoModal({
 
     try {
       const accountData = {
-        ...formData,
+        name: formData.name,
+        type: formData.type,
+        bank: formData.bank || null,
+        balance: formData.balance,
+        account_number: formData.account_number || null,
+        agency: formData.agency || null,
+        account_holder: formData.account_holder || null,
+        cpf_cnpj: formData.cpf_cnpj || null,
+        pix_key: formData.pix_key || null,
+        notes: formData.notes || null,
+        is_active: formData.is_active,
         updated_at: new Date().toISOString()
       }
 
@@ -169,6 +181,8 @@ export default function NovaContaRecebimentoModal({
     }).format(value)
   }
 
+  const selectedAccountType = accountTypes.find(type => type.value === formData.type)
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
@@ -183,7 +197,7 @@ export default function NovaContaRecebimentoModal({
                 {editData ? 'Editar Conta' : 'Nova Conta'}
               </h2>
               <p className="text-sm text-gray-600">
-                {editData ? 'Atualize as informações da conta' : 'Cadastre uma nova conta bancária ou meio de pagamento'}
+                {editData ? 'Atualize as informações da conta' : 'Cadastre uma nova conta para recebimentos e pagamentos'}
               </p>
             </div>
           </div>
@@ -197,204 +211,191 @@ export default function NovaContaRecebimentoModal({
 
         <form onSubmit={handleSubmit}>
           <div className="p-6 space-y-6">
-            {/* Nome e Tipo da Conta */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Nome da Conta *
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Banknote className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => handleInputChange('name', e.target.value)}
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
-                    placeholder="Ex: Banco do Brasil - Conta Principal"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tipo de Conta *
-                </label>
-                <select
-                  value={formData.type}
-                  onChange={(e) => handleInputChange('type', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
-                  required
-                >
-                  {accountTypes.map(type => (
-                    <option key={type.value} value={type.value}>
-                      {type.icon} {type.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* Banco */}
-            {['conta_corrente', 'conta_poupanca', 'cartao_credito', 'cartao_debito'].includes(formData.type) && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Banco
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Building2 className="h-5 w-5 text-gray-400" />
-                    </div>
-                    <input
-                      type="text"
-                      list="banks"
-                      value={formData.bank}
-                      onChange={(e) => handleInputChange('bank', e.target.value)}
-                      className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
-                      placeholder="Nome do banco"
-                    />
-                    <datalist id="banks">
-                      {popularBanks.map(bank => (
-                        <option key={bank} value={bank} />
-                      ))}
-                    </datalist>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Código do Banco
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.bank_code}
-                    onChange={(e) => handleInputChange('bank_code', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
-                    placeholder="Ex: 001, 033, 104"
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Dados Bancários */}
-            {['conta_corrente', 'conta_poupanca'].includes(formData.type) && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Agência
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.agency}
-                    onChange={(e) => handleInputChange('agency', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
-                    placeholder="0000"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Número da Conta
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.account_number}
-                    onChange={(e) => handleInputChange('account_number', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
-                    placeholder="00000000"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Dígito
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.account_digit}
-                    onChange={(e) => handleInputChange('account_digit', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
-                    placeholder="0"
-                    maxLength={1}
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Chave PIX */}
+            {/* Nome da Conta */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Chave PIX (Opcional)
+                Nome da Conta *
               </label>
-              <input
-                type="text"
-                value={formData.pix_key}
-                onChange={(e) => handleInputChange('pix_key', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
-                placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória"
-              />
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <CreditCard className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => handleInputChange('name', e.target.value)}
+                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
+                  placeholder="Ex: Conta Principal, Cartão Nubank, Caixa Empresa"
+                  required
+                />
+              </div>
             </div>
 
-            {/* Saldo e Limite */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Saldo Inicial
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <DollarSign className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={formData.balance || ''}
-                    onChange={(e) => handleInputChange('balance', parseFloat(e.target.value) || 0)}
-                    className="w-full pl-10 pr-12 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
-                    placeholder="0,00"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowBalance(!showBalance)}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  >
-                    {showBalance ? (
-                      <EyeOff className="h-4 w-4 text-gray-400" />
-                    ) : (
-                      <Eye className="h-4 w-4 text-gray-400" />
-                    )}
-                  </button>
-                </div>
-                {showBalance && (
-                  <p className="text-sm text-gray-600 mt-1">
-                    Valor formatado: {formatCurrency(formData.balance)}
-                  </p>
-                )}
-              </div>
-
-              {formData.type === 'cartao_credito' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Limite de Crédito
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <DollarSign className="h-5 w-5 text-gray-400" />
-                    </div>
+            {/* Tipo de Conta */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Tipo de Conta *
+              </label>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {accountTypes.map((type) => (
+                  <div key={type.value}>
                     <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formData.credit_limit || ''}
-                      onChange={(e) => handleInputChange('credit_limit', parseFloat(e.target.value) || 0)}
-                      className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
-                      placeholder="0,00"
+                      type="radio"
+                      id={type.value}
+                      name="account_type"
+                      value={type.value}
+                      checked={formData.type === type.value}
+                      onChange={(e) => handleInputChange('type', e.target.value)}
+                      className="sr-only"
+                    />
+                    <label
+                      htmlFor={type.value}
+                      className={`block w-full p-3 border rounded-lg cursor-pointer transition-colors text-center ${
+                        formData.type === type.value
+                          ? 'border-blue-500 bg-blue-50 text-blue-700'
+                          : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    >
+                      <div className="text-xl mb-1">{type.icon}</div>
+                      <div className="text-xs font-medium">{type.label}</div>
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Dados Bancários */}
+            {['conta_corrente', 'conta_poupanca', 'cartao_credito', 'cartao_debito'].includes(formData.type) && (
+              <div className="space-y-6">
+                <h3 className="text-lg font-medium text-gray-900 border-b border-gray-200 pb-2">
+                  Dados Bancários
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Banco */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Banco
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Building2 className="h-5 w-5 text-gray-400" />
+                      </div>
+                      <select
+                        value={formData.bank}
+                        onChange={(e) => handleInputChange('bank', e.target.value)}
+                        className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
+                      >
+                        <option value="">Selecione o banco</option>
+                        {popularBanks.map(bank => (
+                          <option key={bank} value={bank}>{bank}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Titular da Conta */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Titular da Conta
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.account_holder}
+                      onChange={(e) => handleInputChange('account_holder', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
+                      placeholder="Nome completo do titular"
+                    />
+                  </div>
+
+                  {/* CPF/CNPJ */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      CPF/CNPJ do Titular
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.cpf_cnpj}
+                      onChange={(e) => handleInputChange('cpf_cnpj', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
+                      placeholder="000.000.000-00 ou 00.000.000/0000-00"
+                    />
+                  </div>
+
+                  {/* Agência */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Agência
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.agency}
+                      onChange={(e) => handleInputChange('agency', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
+                      placeholder="0000"
+                    />
+                  </div>
+
+                  {/* Número da Conta */}
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Número da Conta
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.account_number}
+                      onChange={(e) => handleInputChange('account_number', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
+                      placeholder="00000-0"
+                    />
+                  </div>
+
+                  {/* Chave PIX */}
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Chave PIX (Opcional)
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.pix_key}
+                      onChange={(e) => handleInputChange('pix_key', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
+                      placeholder="CPF, CNPJ, email, telefone ou chave aleatória"
                     />
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* Saldo Inicial */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Saldo {editData ? 'Atual' : 'Inicial'}
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <DollarSign className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type={showBalance ? "number" : "password"}
+                  step="0.01"
+                  value={formData.balance || ''}
+                  onChange={(e) => handleInputChange('balance', parseFloat(e.target.value) || 0)}
+                  className="w-full pl-10 pr-12 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
+                  placeholder="0,00"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowBalance(!showBalance)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                >
+                  {showBalance ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              {showBalance && (
+                <p className="text-sm text-gray-500 mt-1">
+                  Valor atual: {formatCurrency(formData.balance)}
+                </p>
               )}
             </div>
 
@@ -412,33 +413,18 @@ export default function NovaContaRecebimentoModal({
               />
             </div>
 
-            {/* Configurações */}
-            <div className="space-y-4">
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="is_main"
-                  checked={formData.is_main}
-                  onChange={(e) => handleInputChange('is_main', e.target.checked)}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <label htmlFor="is_main" className="ml-2 block text-sm text-gray-900">
-                  Conta principal (será usada como padrão nas transações)
-                </label>
-              </div>
-
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="is_active"
-                  checked={formData.is_active}
-                  onChange={(e) => handleInputChange('is_active', e.target.checked)}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <label htmlFor="is_active" className="ml-2 block text-sm text-gray-900">
-                  Conta ativa
-                </label>
-              </div>
+            {/* Status */}
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="is_active"
+                checked={formData.is_active}
+                onChange={(e) => handleInputChange('is_active', e.target.checked)}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <label htmlFor="is_active" className="ml-2 block text-sm text-gray-900">
+                Conta ativa
+              </label>
             </div>
 
             {/* Preview da Conta */}
@@ -449,16 +435,16 @@ export default function NovaContaRecebimentoModal({
               <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                      <CreditCard className="w-5 h-5 text-blue-600" />
+                    <div className="text-2xl">
+                      {selectedAccountType?.icon || '💳'}
                     </div>
                     <div>
                       <h3 className="font-medium text-gray-900">
                         {formData.name || 'Nome da conta'}
                       </h3>
                       <p className="text-sm text-gray-600">
-                        {accountTypes.find(type => type.value === formData.type)?.label || 'Tipo de conta'}
-                        {formData.bank && ` - ${formData.bank}`}
+                        {selectedAccountType?.label || 'Tipo da conta'}
+                        {formData.bank && ` • ${formData.bank}`}
                       </p>
                     </div>
                   </div>
@@ -466,34 +452,24 @@ export default function NovaContaRecebimentoModal({
                     <p className={`font-medium ${formData.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                       {formatCurrency(formData.balance)}
                     </p>
-                    <div className="flex items-center space-x-1">
-                      {formData.is_main && (
-                        <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
-                          Principal
-                        </span>
-                      )}
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        formData.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                      }`}>
-                        {formData.is_active ? 'Ativa' : 'Inativa'}
-                      </span>
-                    </div>
+                    <p className="text-xs text-gray-500">
+                      {editData ? 'Saldo atual' : 'Saldo inicial'}
+                    </p>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Informação de Segurança */}
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            {/* Informações de Ajuda */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <div className="flex items-start">
-                <div className="w-5 h-5 text-yellow-600 mt-0.5 mr-3 flex-shrink-0">
-                  🔒
-                </div>
+                <Info className="w-5 h-5 text-blue-600 mt-0.5 mr-3 flex-shrink-0" />
                 <div>
-                  <h3 className="text-sm font-medium text-yellow-800 mb-1">Segurança</h3>
-                  <p className="text-sm text-yellow-700">
-                    Todas as informações bancárias são criptografadas e armazenadas com segurança. 
-                    Nunca compartilhe suas credenciais de acesso com terceiros.
+                  <h3 className="text-sm font-medium text-blue-800 mb-1">Dica: Organizando Contas</h3>
+                  <p className="text-sm text-blue-700">
+                    Cadastre todas as contas onde você recebe ou faz pagamentos. Isso inclui contas bancárias, 
+                    cartões de crédito, carteiras digitais e até mesmo dinheiro em espécie. Use nomes 
+                    descritivos para facilitar a identificação.
                   </p>
                 </div>
               </div>
