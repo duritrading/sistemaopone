@@ -142,7 +142,7 @@ export default function NovoCentroCustoModal({
                   required
                   value={formData.name}
                   onChange={(e) => handleInputChange('name', e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                   placeholder="Ex: Marketing Digital, TI Infraestrutura"
                 />
               </div>
@@ -156,7 +156,7 @@ export default function NovoCentroCustoModal({
                     required
                     value={formData.code}
                     onChange={(e) => handleInputChange('code', e.target.value.toUpperCase())}
-                    className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                     placeholder="Ex: MKT-DIG-01"
                   />
                   <button
@@ -176,7 +176,7 @@ export default function NovoCentroCustoModal({
                   required
                   value={formData.category}
                   onChange={(e) => handleInputChange('category', e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                 >
                   <option value="">Selecione uma categoria</option>
                   {categories.map(category => (
@@ -196,7 +196,7 @@ export default function NovoCentroCustoModal({
                     type="text"
                     value={formData.responsible_person}
                     onChange={(e) => handleInputChange('responsible_person', e.target.value)}
-                    className="w-full pl-10 border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full pl-10 border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                     placeholder="Nome do responsável"
                   />
                 </div>
@@ -213,7 +213,7 @@ export default function NovoCentroCustoModal({
                     min="0"
                     value={formData.budget_limit || ''}
                     onChange={(e) => handleInputChange('budget_limit', parseFloat(e.target.value) || 0)}
-                    className="w-full pl-10 border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full pl-10 border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                     placeholder="0,00"
                   />
                 </div>
@@ -225,7 +225,7 @@ export default function NovoCentroCustoModal({
                 <select
                   value={formData.parent_cost_center_id}
                   onChange={(e) => handleInputChange('parent_cost_center_id', e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                 >
                   <option value="">Nenhum (Centro de custo raiz)</option>
                   {/* TODO: Buscar centros de custo existentes do Supabase */}
@@ -244,7 +244,7 @@ export default function NovoCentroCustoModal({
                 rows={3}
                 value={formData.description}
                 onChange={(e) => handleInputChange('description', e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                 placeholder="Descreva o objetivo e escopo deste centro de custo..."
               />
             </div>
@@ -256,7 +256,7 @@ export default function NovoCentroCustoModal({
                 rows={4}
                 value={formData.notes}
                 onChange={(e) => handleInputChange('notes', e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                 placeholder="Informações adicionais, regras especiais, etc..."
               />
             </div>

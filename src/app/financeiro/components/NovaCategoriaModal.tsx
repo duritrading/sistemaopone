@@ -203,7 +203,7 @@ export default function NovaCategoriaModal({
                 required
                 value={formData.name}
                 onChange={(e) => handleInputChange('name', e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                 placeholder="Ex: Despesas de Marketing"
               />
             </div>
@@ -214,7 +214,7 @@ export default function NovaCategoriaModal({
               <select
                 value={formData.icon}
                 onChange={(e) => handleInputChange('icon', e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
               >
                 {iconOptions.map(icon => (
                   <option key={icon.value} value={icon.value}>
@@ -256,7 +256,7 @@ export default function NovaCategoriaModal({
               <select
                 value={formData.parent_category_id}
                 onChange={(e) => handleInputChange('parent_category_id', e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
               >
                 <option value="">Nenhuma (Categoria raiz)</option>
                 {/* TODO: Buscar categorias existentes do Supabase */}
@@ -278,7 +278,7 @@ export default function NovaCategoriaModal({
                   key={category}
                   type="button"
                   onClick={() => selectPredefinedCategory(category)}
-                  className="text-left p-3 border border-gray-200 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-colors"
+                  className="text-left p-3 border border-gray-200 rounded-lg hover:bg-blue-50 hover:border-blue-300 text-gray-700 transition-colors"
                 >
                   <span className="text-sm font-medium text-gray-900">{category}</span>
                 </button>
@@ -294,7 +294,7 @@ export default function NovaCategoriaModal({
               rows={3}
               value={formData.description}
               onChange={(e) => handleInputChange('description', e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
               placeholder="Descreva que tipos de transações devem usar esta categoria..."
             />
           </div>
@@ -306,7 +306,7 @@ export default function NovaCategoriaModal({
               rows={3}
               value={formData.notes}
               onChange={(e) => handleInputChange('notes', e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
               placeholder="Informações adicionais, regras especiais, etc..."
             />
           </div>

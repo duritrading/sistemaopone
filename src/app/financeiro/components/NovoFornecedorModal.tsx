@@ -242,7 +242,7 @@ export default function NovoFornecedorModal({
                       required
                       value={formData.company_name}
                       onChange={(e) => handleInputChange('company_name', e.target.value)}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                     />
                   </div>
 
@@ -254,7 +254,7 @@ export default function NovoFornecedorModal({
                         type="text"
                         value={formData.trading_name}
                         onChange={(e) => handleInputChange('trading_name', e.target.value)}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                       />
                     </div>
                   )}
@@ -274,7 +274,7 @@ export default function NovoFornecedorModal({
                           : formatCPF(e.target.value)
                         handleInputChange(formData.person_type === 'juridica' ? 'cnpj' : 'cpf', formatted)
                       }}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                     />
                   </div>
 
@@ -286,7 +286,7 @@ export default function NovoFornecedorModal({
                       required
                       value={formData.email}
                       onChange={(e) => handleInputChange('email', e.target.value)}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                     />
                   </div>
 
@@ -297,7 +297,7 @@ export default function NovoFornecedorModal({
                       type="text"
                       value={formData.phone}
                       onChange={(e) => handleInputChange('phone', formatPhone(e.target.value))}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                     />
                   </div>
 
@@ -308,7 +308,7 @@ export default function NovoFornecedorModal({
                       type="text"
                       value={formData.whatsapp}
                       onChange={(e) => handleInputChange('whatsapp', formatPhone(e.target.value))}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                     />
                   </div>
 
@@ -320,7 +320,7 @@ export default function NovoFornecedorModal({
                         type="text"
                         value={formData.contact_person}
                         onChange={(e) => handleInputChange('contact_person', e.target.value)}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                       />
                     </div>
                   )}
@@ -337,7 +337,7 @@ export default function NovoFornecedorModal({
                     type="text"
                     value={formData.cep}
                     onChange={(e) => handleInputChange('cep', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                   />
                 </div>
 
@@ -347,7 +347,7 @@ export default function NovoFornecedorModal({
                     type="text"
                     value={formData.street}
                     onChange={(e) => handleInputChange('street', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                   />
                 </div>
 
@@ -357,7 +357,7 @@ export default function NovoFornecedorModal({
                     type="text"
                     value={formData.number}
                     onChange={(e) => handleInputChange('number', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                   />
                 </div>
 
@@ -367,7 +367,7 @@ export default function NovoFornecedorModal({
                     type="text"
                     value={formData.complement}
                     onChange={(e) => handleInputChange('complement', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                   />
                 </div>
 
@@ -377,7 +377,7 @@ export default function NovoFornecedorModal({
                     type="text"
                     value={formData.neighborhood}
                     onChange={(e) => handleInputChange('neighborhood', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                   />
                 </div>
 
@@ -387,7 +387,7 @@ export default function NovoFornecedorModal({
                     type="text"
                     value={formData.city}
                     onChange={(e) => handleInputChange('city', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                   />
                 </div>
 
@@ -396,7 +396,7 @@ export default function NovoFornecedorModal({
                   <select
                     value={formData.state}
                     onChange={(e) => handleInputChange('state', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                   >
                     <option value="">Selecione</option>
                     <option value="SP">São Paulo</option>
@@ -420,7 +420,7 @@ export default function NovoFornecedorModal({
                     type="text"
                     value={formData.bank_name}
                     onChange={(e) => handleInputChange('bank_name', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                   />
                 </div>
 
@@ -430,7 +430,7 @@ export default function NovoFornecedorModal({
                     type="text"
                     value={formData.agency}
                     onChange={(e) => handleInputChange('agency', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                   />
                 </div>
 
@@ -440,7 +440,7 @@ export default function NovoFornecedorModal({
                     type="text"
                     value={formData.account}
                     onChange={(e) => handleInputChange('account', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                   />
                 </div>
 
@@ -450,7 +450,7 @@ export default function NovoFornecedorModal({
                     type="text"
                     value={formData.pix_key}
                     onChange={(e) => handleInputChange('pix_key', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                   />
                 </div>
               </div>
@@ -465,7 +465,7 @@ export default function NovoFornecedorModal({
                     rows={6}
                     value={formData.notes}
                     onChange={(e) => handleInputChange('notes', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                     placeholder="Informações adicionais sobre o fornecedor..."
                   />
                 </div>

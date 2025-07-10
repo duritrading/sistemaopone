@@ -227,7 +227,7 @@ export default function NovaContaRecebimentoModal({
                       required
                       value={formData.name}
                       onChange={(e) => handleInputChange('name', e.target.value)}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                       placeholder="Ex: Conta Corrente Principal, Cartão Nubank"
                     />
                   </div>
@@ -239,7 +239,7 @@ export default function NovaContaRecebimentoModal({
                       required
                       value={formData.type}
                       onChange={(e) => handleInputChange('type', e.target.value)}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                     >
                       {accountTypes.map(type => (
                         <option key={type.value} value={type.value}>
@@ -264,7 +264,7 @@ export default function NovaContaRecebimentoModal({
                               handleInputChange('bank_code', selectedBank.code)
                             }
                           }}
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                         >
                           <option value="">Selecione o banco</option>
                           {banks.map(bank => (
@@ -301,7 +301,7 @@ export default function NovaContaRecebimentoModal({
                         min="0"
                         value={formData.balance || ''}
                         onChange={(e) => handleInputChange('balance', parseFloat(e.target.value) || 0)}
-                        className="w-full pl-10 border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full pl-10 border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                         placeholder="0,00"
                       />
                     </div>
@@ -320,7 +320,7 @@ export default function NovaContaRecebimentoModal({
                             type={showCardNumber ? 'text' : 'password'}
                             value={formData.card_number}
                             onChange={(e) => handleInputChange('card_number', formatCardNumber(e.target.value))}
-                            className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-10 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-10 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                             placeholder="1234 5678 9012 3456"
                           />
                           <button
@@ -339,7 +339,7 @@ export default function NovaContaRecebimentoModal({
                           type="text"
                           value={formData.card_holder_name}
                           onChange={(e) => handleInputChange('card_holder_name', e.target.value.toUpperCase())}
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                           placeholder="NOME COMO NO CARTÃO"
                         />
                       </div>
@@ -350,7 +350,7 @@ export default function NovaContaRecebimentoModal({
                           type="text"
                           value={formData.card_expiry}
                           onChange={(e) => handleInputChange('card_expiry', formatExpiry(e.target.value))}
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                           placeholder="MM/AA"
                         />
                       </div>
@@ -366,7 +366,7 @@ export default function NovaContaRecebimentoModal({
                               min="0"
                               value={formData.card_limit || ''}
                               onChange={(e) => handleInputChange('card_limit', parseFloat(e.target.value) || 0)}
-                              className="w-full pl-10 border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              className="w-full pl-10 border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                               placeholder="0,00"
                             />
                           </div>
@@ -392,7 +392,7 @@ export default function NovaContaRecebimentoModal({
                           type="text"
                           value={formData.agency}
                           onChange={(e) => handleInputChange('agency', e.target.value)}
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                           placeholder="Ex: 1234"
                         />
                       </div>
@@ -403,7 +403,7 @@ export default function NovaContaRecebimentoModal({
                           type="text"
                           value={formData.account_number}
                           onChange={(e) => handleInputChange('account_number', e.target.value)}
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                           placeholder="Ex: 12345678"
                         />
                       </div>
@@ -414,7 +414,7 @@ export default function NovaContaRecebimentoModal({
                           type="text"
                           value={formData.account_digit}
                           onChange={(e) => handleInputChange('account_digit', e.target.value)}
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                           placeholder="Ex: 9"
                           maxLength={2}
                         />
@@ -432,7 +432,7 @@ export default function NovaContaRecebimentoModal({
                       <select
                         value={formData.pix_type}
                         onChange={(e) => handleInputChange('pix_type', e.target.value)}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                       >
                         <option value="cpf">CPF</option>
                         <option value="cnpj">CNPJ</option>
@@ -448,7 +448,7 @@ export default function NovaContaRecebimentoModal({
                         type="text"
                         value={formData.pix_key}
                         onChange={(e) => handleInputChange('pix_key', e.target.value)}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                         placeholder={`Digite a chave ${formData.pix_type}`}
                       />
                     </div>
@@ -466,7 +466,7 @@ export default function NovaContaRecebimentoModal({
                     rows={6}
                     value={formData.notes}
                     onChange={(e) => handleInputChange('notes', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                     placeholder="Informações adicionais sobre a conta..."
                   />
                 </div>
