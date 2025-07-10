@@ -9,7 +9,8 @@ import {
   Trash2, 
   Eye, 
   Copy,
-  Download
+  Download,
+  Clock
 } from 'lucide-react'
 
 interface Transaction {
@@ -23,6 +24,7 @@ interface Transaction {
 interface TransactionActionsDropdownProps {
   transaction: Transaction
   onMarkAsPaid: () => void
+  onMarkAsPending: () => void
   onEdit: () => void
   onDelete: () => void
   onView?: () => void
@@ -33,6 +35,7 @@ interface TransactionActionsDropdownProps {
 export default function TransactionActionsDropdown({
   transaction,
   onMarkAsPaid,
+  onMarkAsPending,
   onEdit,
   onDelete,
   onView,
@@ -59,6 +62,7 @@ export default function TransactionActionsDropdown({
   }
 
   const canMarkAsPaid = transaction.status === 'pendente'
+  const canMarkAsPending = transaction.status === 'recebido' || transaction.status === 'pago'
   const isPaid = ['recebido', 'pago'].includes(transaction.status)
 
   return (
@@ -72,15 +76,26 @@ export default function TransactionActionsDropdown({
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+        <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-[60] transform">
           {/* Marcar como pago/recebido */}
           {canMarkAsPaid && (
             <button
               onClick={() => handleAction(onMarkAsPaid)}
-              className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center"
+              className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center transition-colors"
             >
               <Check className="w-4 h-4 mr-3 text-green-500" />
               Marcar como {transaction.type === 'receita' ? 'Recebido' : 'Pago'}
+            </button>
+          )}
+
+          {/* Marcar como pendente */}
+          {canMarkAsPending && (
+            <button
+              onClick={() => handleAction(onMarkAsPending)}
+              className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center transition-colors"
+            >
+              <Clock className="w-4 h-4 mr-3 text-yellow-500" />
+              Marcar como Pendente
             </button>
           )}
 
@@ -88,7 +103,7 @@ export default function TransactionActionsDropdown({
           {onView && (
             <button
               onClick={() => handleAction(onView)}
-              className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center"
+              className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center transition-colors"
             >
               <Eye className="w-4 h-4 mr-3 text-blue-500" />
               Visualizar
@@ -98,7 +113,7 @@ export default function TransactionActionsDropdown({
           {/* Editar */}
           <button
             onClick={() => handleAction(onEdit)}
-            className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center"
+            className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center transition-colors"
           >
             <Edit className="w-4 h-4 mr-3 text-blue-500" />
             Editar
@@ -108,7 +123,7 @@ export default function TransactionActionsDropdown({
           {onDuplicate && (
             <button
               onClick={() => handleAction(onDuplicate)}
-              className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center"
+              className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center transition-colors"
             >
               <Copy className="w-4 h-4 mr-3 text-purple-500" />
               Duplicar
@@ -119,7 +134,7 @@ export default function TransactionActionsDropdown({
           {onDownload && (
             <button
               onClick={() => handleAction(onDownload)}
-              className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center"
+              className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center transition-colors"
             >
               <Download className="w-4 h-4 mr-3 text-indigo-500" />
               Download Anexos
@@ -132,7 +147,7 @@ export default function TransactionActionsDropdown({
           {/* Excluir */}
           <button
             onClick={() => handleAction(onDelete)}
-            className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center"
+            className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center transition-colors"
           >
             <Trash2 className="w-4 h-4 mr-3" />
             Excluir

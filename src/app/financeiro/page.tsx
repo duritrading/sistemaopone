@@ -1,7 +1,7 @@
 // src/app/financeiro/page.tsx - ATUALIZADO COM MELHORIAS
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { 
   Plus, 
@@ -30,7 +30,9 @@ import NovaCategoriaModal from './components/NovaCategoriaModal'
 import NovaContaRecebimentoModal from './components/NovaContaRecebimentoModal'
 import TransactionActionsDropdown from './components/TransactionActionsDropdown'
 import DateFilterDropdown from './components/DateFilterDropdown'
-import EditTransactionModal from './components/EditTransactionModal'
+import ViewTransactionModal from './components/ViewTransactionModal'
+import SimpleEditModal from './components/SimpleEditModal'
+import InfiniteScrollLoader from './components/InfiniteScrollLoader'
 import { useTransactionModals } from './hooks/useTransactionModals'
 
 interface Transaction {
@@ -102,8 +104,10 @@ export default function FinanceiroPage() {
   const [showCentroCustoModal, setShowCentroCustoModal] = useState(false)
   const [showCategoriaModal, setShowCategoriaModal] = useState(false)
   const [showContaModal, setShowContaModal] = useState(false)
-  const [showEditModal, setShowEditModal] = useState(false)
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
+  const [viewingTransaction, setViewingTransaction] = useState<Transaction | null>(null)
+  const [showViewModal, setShowViewModal] = useState(false)
+  const [showSimpleEditModal, setShowSimpleEditModal] = useState(false)
 
   const {
     showTypeModal,
@@ -118,11 +122,39 @@ export default function FinanceiroPage() {
     closeAllModals
   } = useTransactionModals()
 
+  const handleCloseReceitaModal = () => {
+    closeReceitaModal()
+    setEditingTransaction(null)
+  }
+
+  const handleCloseDespesaModal = () => {
+    closeDespesaModal()
+    setEditingTransaction(null)
+  }
+
+  // Debounce search term
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
+  
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm)
+    }, 500)
+
+    return () => clearTimeout(timer)
+  }, [searchTerm])
+
   useEffect(() => {
     loadAccounts()
-    loadTransactions()
+  }, [])
+
+  useEffect(() => {
+    // Reset pagination when filters change
+    setCurrentPage(1)
+    setHasMoreTransactions(true)
+    setTransactions([])
+    loadTransactions(1, true) // Load first page, reset data
     loadMetrics()
-  }, [dateFilter, selectedAccountId])
+  }, [dateFilter, selectedAccountId, debouncedSearchTerm])
 
   const loadAccounts = async () => {
     try {
@@ -139,10 +171,18 @@ export default function FinanceiroPage() {
     }
   }
 
-  const loadTransactions = async () => {
+  const loadMoreTransactions = async () => {
+    if (!hasMoreTransactions || loadingMore) return
+    await loadTransactions(currentPage + 1, false)
+  }
+
+  const loadTransactions = async (page: number = 1, resetData: boolean = false) => {
     try {
-      setLoading(true)
+      if (page === 1) setLoading(true)
+      if (page > 1) setLoadingMore(true)
       setError(null)
+
+      const offset = (page - 1) * TRANSACTIONS_PER_PAGE
 
       let query = supabase
         .from('financial_transactions')
@@ -170,21 +210,37 @@ export default function FinanceiroPage() {
       }
 
       // Apply search filter
-      if (searchTerm) {
-        query = query.or(`description.ilike.%${searchTerm}%,category.ilike.%${searchTerm}%`)
+      if (debouncedSearchTerm) {
+        query = query.or(`description.ilike.%${debouncedSearchTerm}%,category.ilike.%${debouncedSearchTerm}%`)
       }
 
-      query = query.order('transaction_date', { ascending: false }).limit(50)
+      // Apply pagination
+      query = query
+        .order('transaction_date', { ascending: false })
+        .range(offset, offset + TRANSACTIONS_PER_PAGE - 1)
 
       const { data, error } = await query
 
       if (error) throw error
-      setTransactions(data || [])
+
+      const newTransactions = data || []
+      
+      if (resetData || page === 1) {
+        setTransactions(newTransactions)
+      } else {
+        setTransactions(prev => [...prev, ...newTransactions])
+      }
+
+      // Check if there are more transactions
+      setHasMoreTransactions(newTransactions.length === TRANSACTIONS_PER_PAGE)
+      setCurrentPage(page)
+
     } catch (err: any) {
       console.error('Erro ao carregar transações:', err)
       setError(err.message)
     } finally {
       setLoading(false)
+      setLoadingMore(false)
     }
   }
 
@@ -197,10 +253,22 @@ export default function FinanceiroPage() {
         query = query
           .gte('transaction_date', `${dateFilter.year}-01-01`)
           .lte('transaction_date', `${dateFilter.year}-12-31`)
+      } else if (dateFilter.type === 'month' && dateFilter.year && dateFilter.month) {
+        const startDate = `${dateFilter.year}-${dateFilter.month.toString().padStart(2, '0')}-01`
+        const endDate = `${dateFilter.year}-${dateFilter.month.toString().padStart(2, '0')}-31`
+        query = query.gte('transaction_date', startDate).lte('transaction_date', endDate)
+      } else if (dateFilter.type === 'custom' && dateFilter.startDate && dateFilter.endDate) {
+        query = query.gte('transaction_date', dateFilter.startDate).lte('transaction_date', dateFilter.endDate)
       }
 
+      // Apply account filter
       if (selectedAccountId !== 'all') {
         query = query.eq('account_id', selectedAccountId)
+      }
+
+      // Apply search filter
+      if (debouncedSearchTerm) {
+        query = query.or(`description.ilike.%${debouncedSearchTerm}%,category.ilike.%${debouncedSearchTerm}%`)
       }
 
       const { data, error } = await query
@@ -259,7 +327,7 @@ export default function FinanceiroPage() {
     )
   }
 
-  const handleTransactionAction = async (transactionId: string, action: 'mark_paid' | 'edit' | 'delete') => {
+  const handleTransactionAction = async (transactionId: string, action: 'mark_paid' | 'mark_pending' | 'edit' | 'delete' | 'view' | 'duplicate') => {
     try {
       const transaction = transactions.find(t => t.id === transactionId)
       if (!transaction) return
@@ -275,6 +343,23 @@ export default function FinanceiroPage() {
               updated_at: new Date().toISOString()
             })
             .eq('id', transactionId)
+          
+          loadTransactions(1, true)
+          loadMetrics()
+          break
+
+        case 'mark_pending':
+          await supabase
+            .from('financial_transactions')
+            .update({ 
+              status: 'pendente', 
+              payment_date: null,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', transactionId)
+          
+          loadTransactions(1, true)
+          loadMetrics()
           break
 
         case 'delete':
@@ -283,19 +368,58 @@ export default function FinanceiroPage() {
             .from('financial_transactions')
             .delete()
             .eq('id', transactionId)
+          
+          loadTransactions(1, true)
+          loadMetrics()
           break
 
         case 'edit':
           setEditingTransaction(transaction)
-          setShowEditModal(true)
+          setShowSimpleEditModal(true)
+          return
+
+        case 'view':
+          setViewingTransaction(transaction)
+          setShowViewModal(true)
+          return
+
+        case 'duplicate':
+          // Create a duplicate transaction
+          const duplicateData = {
+            description: `${transaction.description} (Cópia)`,
+            amount: transaction.amount,
+            type: transaction.type,
+            category: transaction.category,
+            account_id: transaction.account_id,
+            transaction_date: new Date().toISOString().split('T')[0],
+            status: 'pendente',
+            notes: transaction.notes,
+            installments: 1
+          }
+
+          const { error: duplicateError } = await supabase
+            .from('financial_transactions')
+            .insert([duplicateData])
+
+          if (duplicateError) {
+            console.error('Erro ao duplicar transação:', duplicateError)
+            alert('Erro ao duplicar transação')
+            return
+          }
+
+          loadTransactions(1, true)
+          loadMetrics()
+          alert('Transação duplicada com sucesso!')
+          break
+
+        default:
+          console.error('Ação não reconhecida:', action)
           return
       }
 
-      loadTransactions()
-      loadMetrics()
     } catch (err) {
       console.error('Erro na ação:', err)
-      alert('Erro ao executar ação')
+      alert('Erro ao executar ação: ' + (err as Error).message)
     }
   }
 
@@ -334,7 +458,7 @@ export default function FinanceiroPage() {
       }
 
       setSelectedTransactions([])
-      loadTransactions()
+      loadTransactions(1, true)
       loadMetrics()
     } catch (err) {
       console.error('Erro na ação em massa:', err)
@@ -359,28 +483,37 @@ export default function FinanceiroPage() {
   }
 
   const calculateRunningBalance = (transactionIndex: number): number => {
-    let balance = 0
-    const account = accounts.find(a => a.id === selectedAccountId)
-    
-    if (account && selectedAccountId !== 'all') {
-      balance = account.balance
+    // Get the initial account balance (before any transactions)
+    let initialBalance = 0
+    if (selectedAccountId !== 'all') {
+      const account = accounts.find(a => a.id === selectedAccountId)
+      initialBalance = account?.balance || 0
     } else {
-      balance = accounts.reduce((sum, acc) => sum + acc.balance, 0)
+      initialBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0)
     }
 
-    // Calculate balance up to this transaction
+    // Since transactions are ordered newest first (descending), we need to calculate
+    // the balance by applying transactions from the OLDEST to the current one
+    
+    // Start with initial balance
+    let runningBalance = initialBalance
+
+    // Apply all transactions from the last one (oldest) up to and including the current one
+    // We go backwards through the array (from newest to oldest) and apply transactions
+    // starting from the end up to our current transaction
+    
     for (let i = transactions.length - 1; i >= transactionIndex; i--) {
       const transaction = transactions[i]
-      if (transaction.status === 'recebido' || transaction.status === 'pago') {
+      if (transaction && (transaction.status === 'recebido' || transaction.status === 'pago')) {
         if (transaction.type === 'receita') {
-          balance -= transaction.amount
+          runningBalance += transaction.amount // Add receitas
         } else {
-          balance += transaction.amount
+          runningBalance -= transaction.amount // Subtract despesas
         }
       }
     }
 
-    return balance
+    return runningBalance
   }
 
   if (loading) {
@@ -408,14 +541,7 @@ export default function FinanceiroPage() {
               <h1 className="text-3xl font-bold text-gray-900">Financeiro</h1>
               <p className="text-gray-600 mt-1">Controle suas receitas e despesas</p>
             </div>
-            <div className="flex items-center space-x-4">
-              <NovaDropdownButton 
-                onTypeSelect={openTypeModal}
-                onFornecedorClick={() => setShowFornecedorModal(true)}
-                onCentroCustoClick={() => setShowCentroCustoModal(true)}
-                onCategoriaClick={() => setShowCategoriaModal(true)}
-                onContaClick={() => setShowContaModal(true)}
-              />
+            <div className="flex items-center space-x-3">
               <Link
                 href="/financeiro/gestao"
                 className="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
@@ -423,6 +549,20 @@ export default function FinanceiroPage() {
                 <Settings className="w-4 h-4 mr-2" />
                 Gestão
               </Link>
+              <NovaDropdownButton 
+                onTypeSelect={openTypeModal}
+                onFornecedorClick={() => setShowFornecedorModal(true)}
+                onCentroCustoClick={() => setShowCentroCustoModal(true)}
+                onCategoriaClick={() => setShowCategoriaModal(true)}
+                onContaClick={() => setShowContaModal(true)}
+              />
+              <button
+                onClick={openTypeModal}
+                className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-lg font-semibold shadow-lg"
+              >
+                <Plus className="w-5 h-5 mr-2" />
+                Nova Transação
+              </button>
             </div>
           </div>
         </div>
@@ -502,7 +642,7 @@ export default function FinanceiroPage() {
                 placeholder="Buscar transações..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="border border-gray-300 rounded-lg px-3 py-2 w-64 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="border border-gray-300 rounded-lg px-3 py-2 w-80 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
 
@@ -514,7 +654,7 @@ export default function FinanceiroPage() {
               <option value="all">Todas as contas</option>
               {accounts.map(account => (
                 <option key={account.id} value={account.id}>
-                  {account.name} - {formatCurrency(account.balance)}
+                  {account.name}
                 </option>
               ))}
             </select>
@@ -549,96 +689,99 @@ export default function FinanceiroPage() {
         </div>
 
         {/* Transações Recentes */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="p-6 border-b border-gray-200">
             <h2 className="text-xl font-semibold text-gray-900">Transações Recentes</h2>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left">
-                    <input
-                      type="checkbox"
-                      checked={selectedTransactions.length === transactions.length && transactions.length > 0}
-                      onChange={toggleSelectAll}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Data
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Descrição
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Situação
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Valor (R$)
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Saldo (R$)
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Ações
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {transactions.map((transaction, index) => (
-                  <tr key={transaction.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
+            <div className="min-w-full">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left w-12">
                       <input
                         type="checkbox"
-                        checked={selectedTransactions.includes(transaction.id)}
-                        onChange={() => toggleSelectTransaction(transaction.id)}
+                        checked={selectedTransactions.length === transactions.length && transactions.length > 0}
+                        onChange={toggleSelectAll}
                         className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                       />
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {formatDate(transaction.transaction_date)}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">
-                          {transaction.description}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {transaction.category} • {transaction.account?.name}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {getStatusBadge(transaction.status)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`text-sm font-medium ${
-                        transaction.type === 'receita' ? 'text-green-600' : 'text-red-600'
-                      }`}>
-                        {transaction.type === 'receita' ? '+' : '-'}{formatCurrency(transaction.amount)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {formatCurrency(calculateRunningBalance(index))}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <TransactionActionsDropdown
-                        transaction={transaction}
-                        onMarkAsPaid={() => handleTransactionAction(transaction.id, 'mark_paid')}
-                        onEdit={() => handleTransactionAction(transaction.id, 'edit')}
-                        onDelete={() => handleTransactionAction(transaction.id, 'delete')}
-                        onView={() => console.log('View transaction:', transaction.id)}
-                        onDuplicate={() => console.log('Duplicate transaction:', transaction.id)}
-                      />
-                    </td>
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
+                      Data
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Descrição
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-36">
+                      Situação
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-40">
+                      Valor (R$)
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-40">
+                      Saldo (R$)
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
+                      Ações
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {transactions.map((transaction, index) => (
+                    <tr key={transaction.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4">
+                        <input
+                          type="checkbox"
+                          checked={selectedTransactions.includes(transaction.id)}
+                          onChange={() => toggleSelectTransaction(transaction.id)}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {formatDate(transaction.transaction_date)}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="max-w-xs">
+                          <div className="text-sm font-medium text-gray-900 truncate">
+                            {transaction.description}
+                          </div>
+                          <div className="text-sm text-gray-500 truncate">
+                            {transaction.category} • {transaction.account?.name}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {getStatusBadge(transaction.status)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`text-sm font-medium ${
+                          transaction.type === 'receita' ? 'text-green-600' : 'text-red-600'
+                        }`}>
+                          {transaction.type === 'receita' ? '+' : '-'}{formatCurrency(transaction.amount)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {formatCurrency(calculateRunningBalance(index))}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap relative">
+                        <TransactionActionsDropdown
+                          transaction={transaction}
+                          onMarkAsPaid={() => handleTransactionAction(transaction.id, 'mark_paid')}
+                          onMarkAsPending={() => handleTransactionAction(transaction.id, 'mark_pending')}
+                          onEdit={() => handleTransactionAction(transaction.id, 'edit')}
+                          onDelete={() => handleTransactionAction(transaction.id, 'delete')}
+                          onView={() => handleTransactionAction(transaction.id, 'view')}
+                          onDuplicate={() => handleTransactionAction(transaction.id, 'duplicate')}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
-            {transactions.length === 0 && (
+            {transactions.length === 0 && !loading && (
               <div className="text-center py-12">
                 <div className="text-gray-500">
                   <DollarSign className="w-12 h-12 mx-auto mb-4 opacity-50" />
@@ -648,6 +791,66 @@ export default function FinanceiroPage() {
               </div>
             )}
           </div>
+
+          {/* Pagination Controls */}
+          {transactions.length > 0 && (
+            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <div className="text-sm text-gray-600">
+                    Mostrando {transactions.length} transação{transactions.length !== 1 ? 'ões' : ''}
+                    {hasMoreTransactions && ' (há mais para carregar)'}
+                  </div>
+                  
+                  {/* Toggle between infinite scroll and manual pagination */}
+                  <div className="flex items-center space-x-2">
+                    <label className="text-xs text-gray-500">Modo:</label>
+                    <button
+                      onClick={() => setUseInfiniteScroll(!useInfiniteScroll)}
+                      className={`px-2 py-1 text-xs rounded transition-colors ${
+                        useInfiniteScroll 
+                          ? 'bg-blue-100 text-blue-700' 
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      {useInfiniteScroll ? 'Auto' : 'Manual'}
+                    </button>
+                  </div>
+                </div>
+                
+                {/* Manual load more button (only show if not using infinite scroll) */}
+                {!useInfiniteScroll && hasMoreTransactions && (
+                  <button
+                    onClick={loadMoreTransactions}
+                    disabled={loadingMore}
+                    className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {loadingMore ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Carregando...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-4 h-4 mr-2" />
+                        Carregar mais ({TRANSACTIONS_PER_PAGE})
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Infinite Scroll Loader (only show if using infinite scroll) */}
+          {useInfiniteScroll && (
+            <InfiniteScrollLoader
+              hasMore={hasMoreTransactions}
+              isLoading={loadingMore}
+              onLoadMore={loadMoreTransactions}
+              className="border-t border-gray-200"
+            />
+          )}
         </div>
       </div>
 
@@ -655,27 +858,33 @@ export default function FinanceiroPage() {
       <TransactionTypeModal
         isOpen={showTypeModal}
         onClose={closeTypeModal}
-        onReceitaSelect={openReceitaModal}
-        onDespesaSelect={openDespesaModal}
+        onReceitaSelect={() => {
+          closeTypeModal()
+          openReceitaModal()
+        }}
+        onDespesaSelect={() => {
+          closeTypeModal()
+          openDespesaModal()
+        }}
       />
 
       <NewReceitaModal
         isOpen={showReceitaModal}
-        onClose={closeReceitaModal}
+        onClose={handleCloseReceitaModal}
         onSuccess={() => {
-          loadTransactions()
+          loadTransactions(1, true)
           loadMetrics()
-          closeReceitaModal()
+          handleCloseReceitaModal()
         }}
       />
 
       <NewDespesaModal
         isOpen={showDespesaModal}
-        onClose={closeDespesaModal}
+        onClose={handleCloseDespesaModal}
         onSuccess={() => {
-          loadTransactions()
+          loadTransactions(1, true)
           loadMetrics()
-          closeDespesaModal()
+          handleCloseDespesaModal()
         }}
       />
 
@@ -706,19 +915,28 @@ export default function FinanceiroPage() {
         }}
       />
 
-      <EditTransactionModal
-        isOpen={showEditModal}
+      <SimpleEditModal
+        isOpen={showSimpleEditModal}
         onClose={() => {
-          setShowEditModal(false)
+          setShowSimpleEditModal(false)
           setEditingTransaction(null)
         }}
         onSuccess={() => {
-          loadTransactions()
+          loadTransactions(1, true)
           loadMetrics()
-          setShowEditModal(false)
+          setShowSimpleEditModal(false)
           setEditingTransaction(null)
         }}
         transaction={editingTransaction}
+      />
+
+      <ViewTransactionModal
+        isOpen={showViewModal}
+        onClose={() => {
+          setShowViewModal(false)
+          setViewingTransaction(null)
+        }}
+        transaction={viewingTransaction}
       />
     </div>
   )

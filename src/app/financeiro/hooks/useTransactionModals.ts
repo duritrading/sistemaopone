@@ -1,50 +1,47 @@
-// src/app/financeiro/hooks/useTransactionModals.ts
-import { useState, useCallback } from 'react'
+// src/app/financeiro/hooks/useTransactionModals.ts - VERSÃO LIMPA
+'use client'
+
+import { useState } from 'react'
 
 export function useTransactionModals() {
   const [showTypeModal, setShowTypeModal] = useState(false)
   const [showReceitaModal, setShowReceitaModal] = useState(false)
   const [showDespesaModal, setShowDespesaModal] = useState(false)
 
-  const openTypeModal = useCallback(() => {
+  const openTypeModal = () => {
     setShowTypeModal(true)
-  }, [])
+  }
 
-  const closeTypeModal = useCallback(() => {
+  const closeTypeModal = () => {
     setShowTypeModal(false)
-  }, [])
+  }
 
-  const openReceitaModal = useCallback(() => {
-    setShowTypeModal(false)
+  const openReceitaModal = () => {
     setShowReceitaModal(true)
-  }, [])
+  }
 
-  const closeReceitaModal = useCallback(() => {
+  const closeReceitaModal = () => {
     setShowReceitaModal(false)
-  }, [])
+  }
 
-  const openDespesaModal = useCallback(() => {
-    setShowTypeModal(false)
+  const openDespesaModal = () => {
     setShowDespesaModal(true)
-  }, [])
+  }
 
-  const closeDespesaModal = useCallback(() => {
+  const closeDespesaModal = () => {
     setShowDespesaModal(false)
-  }, [])
+  }
 
-  const closeAllModals = useCallback(() => {
+  const closeAllModals = () => {
     setShowTypeModal(false)
     setShowReceitaModal(false)
     setShowDespesaModal(false)
-  }, [])
+  }
 
   return {
-    // States
     showTypeModal,
     showReceitaModal,
     showDespesaModal,
-    
-    // Actions
     openTypeModal,
     closeTypeModal,
     openReceitaModal,
