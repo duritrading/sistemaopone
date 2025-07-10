@@ -1,4 +1,4 @@
-// src/app/financeiro/components/DateFilterDropdown.tsx
+// src/app/financeiro/components/DateFilterDropdown.tsx - VERSÃO SIMPLIFICADA
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
@@ -9,29 +9,23 @@ interface DateFilter {
   month?: number
   startDate?: string
   endDate?: string
-  type: 'year' | 'month' | 'custom'
 }
 
 interface DateFilterDropdownProps {
   value: DateFilter
   onChange: (filter: DateFilter) => void
-  isOpen: boolean
-  onToggle: () => void
 }
 
-export default function DateFilterDropdown({
-  value,
-  onChange,
-  isOpen,
-  onToggle
-}: DateFilterDropdownProps) {
-  const dropdownRef = useRef<HTMLDivElement>(null)
+export default function DateFilterDropdown({ value, onChange }: DateFilterDropdownProps) {
+  const [isOpen, setIsOpen] = useState(false)
   const [tempFilter, setTempFilter] = useState<DateFilter>(value)
+  const [filterType, setFilterType] = useState<'all' | 'year' | 'month' | 'custom'>('all')
+  const dropdownRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        onToggle()
+        setIsOpen(false)
       }
     }
 
@@ -40,7 +34,7 @@ export default function DateFilterDropdown({
     }
 
     return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [isOpen, onToggle])
+  }, [isOpen])
 
   const currentYear = new Date().getFullYear()
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i)
@@ -60,56 +54,73 @@ export default function DateFilterDropdown({
   ]
 
   const getFilterLabel = () => {
-  if (!value || !value.type) return 'Período'
-
-  if (value.type === 'year' && value.year) {
-    return `Ano: ${value.year}`
+    if (value.year && value.month) {
+      const monthLabel = months.find(m => m.value === value.month)?.label
+      return `${monthLabel} ${value.year}`
+    }
+    if (value.year) {
+      return `Ano: ${value.year}`
+    }
+    if (value.startDate && value.endDate) {
+      const start = new Date(value.startDate).toLocaleDateString('pt-BR')
+      const end = new Date(value.endDate).toLocaleDateString('pt-BR')
+      return `${start} - ${end}`
+    }
+    return 'Período'
   }
-  if (value.type === 'month' && value.year && value.month) {
-    const monthLabel = months.find(m => m.value === value.month)?.label
-    return `${monthLabel} ${value.year}`
-  }
-  if (value.type === 'custom' && value.startDate && value.endDate) {
-    const start = new Date(value.startDate).toLocaleDateString('pt-BR')
-    const end = new Date(value.endDate).toLocaleDateString('pt-BR')
-    return `${start} - ${end}`
-  }
-
-  return 'Período'
-}
-
 
   const handleApply = () => {
-    onChange(tempFilter)
-    onToggle()
+    switch (filterType) {
+      case 'all':
+        onChange({})
+        break
+      case 'year':
+        onChange({ year: tempFilter.year })
+        break
+      case 'month':
+        onChange({ year: tempFilter.year, month: tempFilter.month })
+        break
+      case 'custom':
+        onChange({ startDate: tempFilter.startDate, endDate: tempFilter.endDate })
+        break
+    }
+    setIsOpen(false)
   }
 
   const handleReset = () => {
-    const defaultFilter: DateFilter = { type: 'year', year: currentYear }
-    setTempFilter(defaultFilter)
-    onChange(defaultFilter)
-    onToggle()
+    setFilterType('all')
+    setTempFilter({})
+    onChange({})
+    setIsOpen(false)
   }
 
-  const handleTypeChange = (type: DateFilter['type']) => {
+  const handleTypeChange = (type: typeof filterType) => {
+    setFilterType(type)
+    
     if (type === 'year') {
-      setTempFilter({ type, year: currentYear })
+      setTempFilter({ year: currentYear })
     } else if (type === 'month') {
-      setTempFilter({ type, year: currentYear, month: new Date().getMonth() + 1 })
+      setTempFilter({ year: currentYear, month: new Date().getMonth() + 1 })
+    } else if (type === 'custom') {
+      const today = new Date().toISOString().split('T')[0]
+      const firstDay = new Date(currentYear, new Date().getMonth(), 1).toISOString().split('T')[0]
+      setTempFilter({ startDate: firstDay, endDate: today })
     } else {
-      setTempFilter({ type })
+      setTempFilter({})
     }
   }
 
   return (
     <div className="relative" ref={dropdownRef}>
       <button
-        onClick={onToggle}
-        className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 bg-white"
+        onClick={() => setIsOpen(!isOpen)}
+        className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 bg-white w-full justify-between"
       >
-        <Calendar className="w-4 h-4 mr-2" />
-        {getFilterLabel()}
-        <ChevronDown className="w-4 h-4 ml-2" />
+        <div className="flex items-center">
+          <Calendar className="w-4 h-4 mr-2" />
+          {getFilterLabel()}
+        </div>
+        <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       {isOpen && (
@@ -117,7 +128,7 @@ export default function DateFilterDropdown({
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-medium text-gray-900">Filtrar por período</h3>
             <button
-              onClick={onToggle}
+              onClick={() => setIsOpen(false)}
               className="text-gray-400 hover:text-gray-600"
             >
               <X className="w-4 h-4" />
@@ -129,11 +140,21 @@ export default function DateFilterDropdown({
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Tipo de filtro
             </label>
-            <div className="flex space-x-2">
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => handleTypeChange('all')}
+                className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                  filterType === 'all'
+                    ? 'bg-blue-100 text-blue-700 border border-blue-200'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Todos
+              </button>
               <button
                 onClick={() => handleTypeChange('year')}
                 className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                  tempFilter.type === 'year'
+                  filterType === 'year'
                     ? 'bg-blue-100 text-blue-700 border border-blue-200'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
@@ -143,7 +164,7 @@ export default function DateFilterDropdown({
               <button
                 onClick={() => handleTypeChange('month')}
                 className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                  tempFilter.type === 'month'
+                  filterType === 'month'
                     ? 'bg-blue-100 text-blue-700 border border-blue-200'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
@@ -153,18 +174,18 @@ export default function DateFilterDropdown({
               <button
                 onClick={() => handleTypeChange('custom')}
                 className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                  tempFilter.type === 'custom'
+                  filterType === 'custom'
                     ? 'bg-blue-100 text-blue-700 border border-blue-200'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
-                Período
+                Período customizado
               </button>
             </div>
           </div>
 
           {/* Filtros específicos */}
-          {tempFilter.type === 'year' && (
+          {filterType === 'year' && (
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Ano
@@ -181,7 +202,7 @@ export default function DateFilterDropdown({
             </div>
           )}
 
-          {tempFilter.type === 'month' && (
+          {filterType === 'month' && (
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -214,7 +235,7 @@ export default function DateFilterDropdown({
             </div>
           )}
 
-          {tempFilter.type === 'custom' && (
+          {filterType === 'custom' && (
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -251,7 +272,7 @@ export default function DateFilterDropdown({
             </button>
             <div className="space-x-2">
               <button
-                onClick={onToggle}
+                onClick={() => setIsOpen(false)}
                 className="px-4 py-2 text-sm border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
               >
                 Cancelar

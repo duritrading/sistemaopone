@@ -1,22 +1,23 @@
-// src/app/financeiro/components/NovaDropdownButton.tsx
+// src/app/financeiro/components/NovaDropdownButton.tsx - ATUALIZADO
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
 import { ChevronDown, Plus, Building, Tag, Folder, CreditCard } from 'lucide-react'
 
+type ModalType = 
+  | 'transaction'    
+  | 'receita'        
+  | 'despesa'        
+  | 'fornecedor'     
+  | 'centro-custo'   
+  | 'categoria'      
+  | 'conta'
+
 interface NovaDropdownButtonProps {
-  onNovoFornecedor: () => void
-  onNovoCentroCusto: () => void
-  onNovaCategoria: () => void
-  onNovaContaRecebimento: () => void
+  onSelect: (type: ModalType) => void
 }
 
-export function NovaDropdownButton({
-  onNovoFornecedor,
-  onNovoCentroCusto,
-  onNovaCategoria,
-  onNovaContaRecebimento
-}: NovaDropdownButtonProps) {
+export function NovaDropdownButton({ onSelect }: NovaDropdownButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
@@ -31,8 +32,8 @@ export function NovaDropdownButton({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const handleMenuClick = (action: () => void) => {
-    action()
+  const handleMenuClick = (type: ModalType) => {
+    onSelect(type)
     setIsOpen(false)
   }
 
@@ -40,7 +41,7 @@ export function NovaDropdownButton({
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="inline-flex items-center px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all shadow-lg transform hover:scale-105"
+        className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
       >
         <Plus className="w-4 h-4 mr-2" />
         Nova
@@ -48,37 +49,49 @@ export function NovaDropdownButton({
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+        <div className="absolute top-full right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
           <button
-            onClick={() => handleMenuClick(onNovoFornecedor)}
+            onClick={() => handleMenuClick('fornecedor')}
             className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
           >
             <Building className="w-4 h-4 mr-3 text-gray-500" />
-            Novo Fornecedor
+            <div className="text-left">
+              <div className="font-medium">Novo Fornecedor</div>
+              <div className="text-xs text-gray-500">Cadastrar empresa ou pessoa física</div>
+            </div>
           </button>
           
           <button
-            onClick={() => handleMenuClick(onNovoCentroCusto)}
+            onClick={() => handleMenuClick('centro-custo')}
             className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
           >
             <Tag className="w-4 h-4 mr-3 text-gray-500" />
-            Novo Centro de Custo
+            <div className="text-left">
+              <div className="font-medium">Novo Centro de Custo</div>
+              <div className="text-xs text-gray-500">Organizar gastos por departamento</div>
+            </div>
           </button>
           
           <button
-            onClick={() => handleMenuClick(onNovaCategoria)}
+            onClick={() => handleMenuClick('categoria')}
             className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
           >
             <Folder className="w-4 h-4 mr-3 text-gray-500" />
-            Nova Categoria
+            <div className="text-left">
+              <div className="font-medium">Nova Categoria</div>
+              <div className="text-xs text-gray-500">Classificar receitas ou despesas</div>
+            </div>
           </button>
           
           <button
-            onClick={() => handleMenuClick(onNovaContaRecebimento)}
+            onClick={() => handleMenuClick('conta')}
             className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
           >
             <CreditCard className="w-4 h-4 mr-3 text-gray-500" />
-            Nova Conta de Recebimento
+            <div className="text-left">
+              <div className="font-medium">Nova Conta</div>
+              <div className="text-xs text-gray-500">Banco, cartão ou conta digital</div>
+            </div>
           </button>
         </div>
       )}
