@@ -1,4 +1,4 @@
-// src/app/financeiro/page.tsx - ATUALIZADO
+// src/app/financeiro/page.tsx - ATUALIZADO COM MELHORIAS
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -15,8 +15,6 @@ import {
   Eye,
   Search,
   Upload,
-  Calendar,
-  Filter,
   Settings,
   CreditCard,
   Tag
@@ -30,6 +28,9 @@ import NovoFornecedorModal from './components/NovoFornecedorModal'
 import NovoCentroCustoModal from './components/NovoCentroCustoModal'
 import NovaCategoriaModal from './components/NovaCategoriaModal'
 import NovaContaRecebimentoModal from './components/NovaContaRecebimentoModal'
+import TransactionActionsDropdown from './components/TransactionActionsDropdown'
+import DateFilterDropdown from './components/DateFilterDropdown'
+import EditTransactionModal from './components/EditTransactionModal'
 import { useTransactionModals } from './hooks/useTransactionModals'
 
 interface Transaction {
@@ -46,9 +47,20 @@ interface Transaction {
   created_at: string
   updated_at: string
   account?: {
+    id: string
     name: string
     type: string
+    balance: number
   }
+}
+
+interface Account {
+  id: string
+  name: string
+  type: string
+  bank?: string
+  balance: number
+  is_active: boolean
 }
 
 interface FinancialMetrics {
@@ -69,6 +81,9 @@ interface DateFilter {
 
 export default function FinanceiroPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [accounts, setAccounts] = useState<Account[]>([])
+  const [selectedAccountId, setSelectedAccountId] = useState<string>('all')
+  const [selectedTransactions, setSelectedTransactions] = useState<string[]>([])
   const [metrics, setMetrics] = useState<FinancialMetrics>({
     receitasEmAberto: 0,
     receitasRealizadas: 0,
@@ -87,6 +102,8 @@ export default function FinanceiroPage() {
   const [showCentroCustoModal, setShowCentroCustoModal] = useState(false)
   const [showCategoriaModal, setShowCategoriaModal] = useState(false)
   const [showContaModal, setShowContaModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
 
   const {
     showTypeModal,
@@ -102,9 +119,25 @@ export default function FinanceiroPage() {
   } = useTransactionModals()
 
   useEffect(() => {
+    loadAccounts()
     loadTransactions()
     loadMetrics()
-  }, [dateFilter])
+  }, [dateFilter, selectedAccountId])
+
+  const loadAccounts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('accounts')
+        .select('*')
+        .eq('is_active', true)
+        .order('name')
+
+      if (error) throw error
+      setAccounts(data || [])
+    } catch (err) {
+      console.error('Erro ao carregar contas:', err)
+    }
+  }
 
   const loadTransactions = async () => {
     try {
@@ -115,7 +148,7 @@ export default function FinanceiroPage() {
         .from('financial_transactions')
         .select(`
           *,
-          account:accounts(name, type)
+          account:accounts(id, name, type, balance)
         `)
 
       // Apply date filters
@@ -131,16 +164,25 @@ export default function FinanceiroPage() {
         query = query.gte('transaction_date', dateFilter.startDate).lte('transaction_date', dateFilter.endDate)
       }
 
-      query = query.order('transaction_date', { ascending: false }).limit(100)
+      // Apply account filter
+      if (selectedAccountId !== 'all') {
+        query = query.eq('account_id', selectedAccountId)
+      }
+
+      // Apply search filter
+      if (searchTerm) {
+        query = query.or(`description.ilike.%${searchTerm}%,category.ilike.%${searchTerm}%`)
+      }
+
+      query = query.order('transaction_date', { ascending: false }).limit(50)
 
       const { data, error } = await query
 
       if (error) throw error
-
       setTransactions(data || [])
     } catch (err: any) {
-      setError(`Erro ao carregar transações: ${err.message}`)
       console.error('Erro ao carregar transações:', err)
+      setError(err.message)
     } finally {
       setLoading(false)
     }
@@ -148,22 +190,36 @@ export default function FinanceiroPage() {
 
   const loadMetrics = async () => {
     try {
-      const { data, error } = await supabase
-        .rpc('get_financial_metrics_2025', { p_year: dateFilter.year || 2025 })
+      let query = supabase.from('financial_transactions').select('*')
+
+      // Apply same filters as transactions
+      if (dateFilter.type === 'year' && dateFilter.year) {
+        query = query
+          .gte('transaction_date', `${dateFilter.year}-01-01`)
+          .lte('transaction_date', `${dateFilter.year}-12-31`)
+      }
+
+      if (selectedAccountId !== 'all') {
+        query = query.eq('account_id', selectedAccountId)
+      }
+
+      const { data, error } = await query
 
       if (error) throw error
 
-      if (data && data.length > 0) {
-        const metricsData = data[0]
-        setMetrics({
-          receitasEmAberto: metricsData.receitas_em_aberto || 0,
-          receitasRealizadas: metricsData.receitas_realizadas || 0,
-          despesasEmAberto: metricsData.despesas_em_aberto || 0,
-          despesasRealizadas: metricsData.despesas_realizadas || 0,
-          totalPeriodo: metricsData.total_periodo || 0
-        })
-      }
-    } catch (err: any) {
+      const receitasEmAberto = data?.filter(t => t.type === 'receita' && t.status === 'pendente').reduce((sum, t) => sum + t.amount, 0) || 0
+      const receitasRealizadas = data?.filter(t => t.type === 'receita' && ['recebido', 'pago'].includes(t.status)).reduce((sum, t) => sum + t.amount, 0) || 0
+      const despesasEmAberto = data?.filter(t => t.type === 'despesa' && t.status === 'pendente').reduce((sum, t) => sum + t.amount, 0) || 0
+      const despesasRealizadas = data?.filter(t => t.type === 'despesa' && ['recebido', 'pago'].includes(t.status)).reduce((sum, t) => sum + t.amount, 0) || 0
+
+      setMetrics({
+        receitasEmAberto,
+        receitasRealizadas,
+        despesasEmAberto,
+        despesasRealizadas,
+        totalPeriodo: receitasRealizadas - despesasRealizadas
+      })
+    } catch (err) {
       console.error('Erro ao carregar métricas:', err)
     }
   }
@@ -175,193 +231,260 @@ export default function FinanceiroPage() {
     }).format(value)
   }
 
-  const getStatusColor = (status: string) => {
-    const colors = {
-      pendente: 'bg-yellow-100 text-yellow-800',
-      recebido: 'bg-green-100 text-green-800',
-      pago: 'bg-blue-100 text-blue-800',
-      vencido: 'bg-red-100 text-red-800',
-      cancelado: 'bg-gray-100 text-gray-700'
+  const formatDate = (date: string) => {
+    return new Date(date).toLocaleDateString('pt-BR')
+  }
+
+  const getStatusBadge = (status: string) => {
+    const styles = {
+      pendente: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+      recebido: 'bg-green-100 text-green-800 border-green-200',
+      pago: 'bg-green-100 text-green-800 border-green-200',
+      vencido: 'bg-red-100 text-red-800 border-red-200',
+      cancelado: 'bg-gray-100 text-gray-800 border-gray-200'
     }
-    return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-700'
+
+    const labels = {
+      pendente: 'Pendente',
+      recebido: 'Recebido',
+      pago: 'Pago',
+      vencido: 'Vencido',
+      cancelado: 'Cancelado'
+    }
+
+    return (
+      <span className={`px-2 py-1 text-xs font-medium rounded-full border ${styles[status as keyof typeof styles]}`}>
+        {labels[status as keyof typeof labels]}
+      </span>
+    )
   }
 
-  const filteredTransactions = transactions.filter(transaction =>
-    transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    transaction.category.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const handleTransactionAction = async (transactionId: string, action: 'mark_paid' | 'edit' | 'delete') => {
+    try {
+      const transaction = transactions.find(t => t.id === transactionId)
+      if (!transaction) return
 
-  const handleImportSpreadsheet = () => {
-    console.log('Importar planilha')
-    // TODO: Implementar import
+      switch (action) {
+        case 'mark_paid':
+          const newStatus = transaction.type === 'receita' ? 'recebido' : 'pago'
+          await supabase
+            .from('financial_transactions')
+            .update({ 
+              status: newStatus, 
+              payment_date: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', transactionId)
+          break
+
+        case 'delete':
+          if (!confirm('Tem certeza que deseja excluir esta transação?')) return
+          await supabase
+            .from('financial_transactions')
+            .delete()
+            .eq('id', transactionId)
+          break
+
+        case 'edit':
+          setEditingTransaction(transaction)
+          setShowEditModal(true)
+          return
+      }
+
+      loadTransactions()
+      loadMetrics()
+    } catch (err) {
+      console.error('Erro na ação:', err)
+      alert('Erro ao executar ação')
+    }
   }
 
-  const handleExport = () => {
-    console.log('Exportar dados')
-    // TODO: Implementar export
+  const handleBulkAction = async (action: 'mark_paid' | 'delete') => {
+    if (selectedTransactions.length === 0) {
+      alert('Selecione pelo menos uma transação')
+      return
+    }
+
+    if (!confirm(`Tem certeza que deseja ${action === 'mark_paid' ? 'marcar como pagas' : 'excluir'} ${selectedTransactions.length} transações?`)) {
+      return
+    }
+
+    try {
+      if (action === 'mark_paid') {
+        const updates = selectedTransactions.map(async (id) => {
+          const transaction = transactions.find(t => t.id === id)
+          if (!transaction) return
+
+          const newStatus = transaction.type === 'receita' ? 'recebido' : 'pago'
+          return supabase
+            .from('financial_transactions')
+            .update({ 
+              status: newStatus, 
+              payment_date: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', id)
+        })
+        await Promise.all(updates)
+      } else {
+        await supabase
+          .from('financial_transactions')
+          .delete()
+          .in('id', selectedTransactions)
+      }
+
+      setSelectedTransactions([])
+      loadTransactions()
+      loadMetrics()
+    } catch (err) {
+      console.error('Erro na ação em massa:', err)
+      alert('Erro ao executar ação em massa')
+    }
   }
 
-  const currentYear = new Date().getFullYear()
-  const years = Array.from({ length: 5 }, (_, i) => currentYear - i)
-  const months = [
-    { value: 1, label: 'Janeiro' },
-    { value: 2, label: 'Fevereiro' },
-    { value: 3, label: 'Março' },
-    { value: 4, label: 'Abril' },
-    { value: 5, label: 'Maio' },
-    { value: 6, label: 'Junho' },
-    { value: 7, label: 'Julho' },
-    { value: 8, label: 'Agosto' },
-    { value: 9, label: 'Setembro' },
-    { value: 10, label: 'Outubro' },
-    { value: 11, label: 'Novembro' },
-    { value: 12, label: 'Dezembro' }
-  ]
+  const toggleSelectTransaction = (transactionId: string) => {
+    setSelectedTransactions(prev => 
+      prev.includes(transactionId) 
+        ? prev.filter(id => id !== transactionId)
+        : [...prev, transactionId]
+    )
+  }
+
+  const toggleSelectAll = () => {
+    setSelectedTransactions(
+      selectedTransactions.length === transactions.length 
+        ? [] 
+        : transactions.map(t => t.id)
+    )
+  }
+
+  const calculateRunningBalance = (transactionIndex: number): number => {
+    let balance = 0
+    const account = accounts.find(a => a.id === selectedAccountId)
+    
+    if (account && selectedAccountId !== 'all') {
+      balance = account.balance
+    } else {
+      balance = accounts.reduce((sum, acc) => sum + acc.balance, 0)
+    }
+
+    // Calculate balance up to this transaction
+    for (let i = transactions.length - 1; i >= transactionIndex; i--) {
+      const transaction = transactions[i]
+      if (transaction.status === 'recebido' || transaction.status === 'pago') {
+        if (transaction.type === 'receita') {
+          balance -= transaction.amount
+        } else {
+          balance += transaction.amount
+        }
+      }
+    }
+
+    return balance
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-4 lg:p-8">
+        <div className="max-w-full mx-auto" style={{ maxWidth: '1600px' }}>
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+              <p className="mt-4 text-gray-600">Carregando dados financeiros...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-[1400px] mx-auto space-y-8">
+    <div className="min-h-screen bg-gray-50 p-4 lg:p-8">
+      <div className="max-w-full mx-auto space-y-8" style={{ maxWidth: '1600px' }}>
         {/* Header */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-          <div className="flex justify-between items-start">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-4xl font-bold text-gray-900 mb-2">Financeiro</h1>
-              <p className="text-gray-700 text-lg">
-                Gestão financeira completa • {transactions.length} transações registradas
-              </p>
+              <h1 className="text-3xl font-bold text-gray-900">Financeiro</h1>
+              <p className="text-gray-600 mt-1">Controle suas receitas e despesas</p>
             </div>
-            
             <div className="flex items-center space-x-4">
-              {/* Link para Gestão */}
+              <NovaDropdownButton 
+                onTypeSelect={openTypeModal}
+                onFornecedorClick={() => setShowFornecedorModal(true)}
+                onCentroCustoClick={() => setShowCentroCustoModal(true)}
+                onCategoriaClick={() => setShowCategoriaModal(true)}
+                onContaClick={() => setShowContaModal(true)}
+              />
               <Link
                 href="/financeiro/gestao"
-                className="inline-flex items-center px-4 py-3 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+                className="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
               >
                 <Settings className="w-4 h-4 mr-2" />
                 Gestão
               </Link>
-
-              <button 
-                onClick={handleImportSpreadsheet}
-                className="inline-flex items-center px-4 py-3 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
-              >
-                <Upload className="w-4 h-4 mr-2" />
-                Importar Planilha
-              </button>
-              
-              <button 
-                onClick={handleExport}
-                className="inline-flex items-center px-4 py-3 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Exportar
-              </button>
-            
-            <NovaDropdownButton
-  onNovoFornecedor={() => setShowFornecedorModal(true)}
-  onNovoCentroCusto={() => setShowCentroCustoModal(true)}
-  onNovaCategoria={() => setShowCategoriaModal(true)}
-  onNovaContaRecebimento={() => setShowContaModal(true)}
-/>
-              
-              <button 
-                onClick={openTypeModal}
-                className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg transform hover:scale-105"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Nova Transação
-              </button>
             </div>
           </div>
         </div>
 
-        {/* Metrics Cards */}
+        {/* Métricas Financeiras */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-          {/* Receitas em Aberto */}
-          <div className="bg-white rounded-xl shadow border border-gray-200 p-6">
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
             <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                  <Clock className="w-6 h-6 text-blue-600" />
-                </div>
+              <div className="flex items-center justify-center w-12 h-12 bg-green-100 rounded-lg">
+                <TrendingUp className="w-6 h-6 text-green-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-700">Receitas em Aberto</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {formatCurrency(metrics.receitasEmAberto)}
-                </p>
+                <p className="text-sm font-medium text-gray-600">Receitas em Aberto</p>
+                <p className="text-2xl font-bold text-green-600">{formatCurrency(metrics.receitasEmAberto)}</p>
               </div>
             </div>
           </div>
 
-          {/* Receitas Realizadas */}
-          <div className="bg-white rounded-xl shadow border border-gray-200 p-6">
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
             <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-                  <CheckCircle className="w-6 h-6 text-green-600" />
-                </div>
+              <div className="flex items-center justify-center w-12 h-12 bg-green-100 rounded-lg">
+                <CheckCircle className="w-6 h-6 text-green-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-700">Receitas Realizadas</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {formatCurrency(metrics.receitasRealizadas)}
-                </p>
+                <p className="text-sm font-medium text-gray-600">Receitas Realizadas</p>
+                <p className="text-2xl font-bold text-green-600">{formatCurrency(metrics.receitasRealizadas)}</p>
               </div>
             </div>
           </div>
 
-          {/* Despesas em Aberto */}
-          <div className="bg-white rounded-xl shadow border border-gray-200 p-6">
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
             <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center">
-                  <AlertTriangle className="w-6 h-6 text-yellow-600" />
-                </div>
+              <div className="flex items-center justify-center w-12 h-12 bg-red-100 rounded-lg">
+                <Clock className="w-6 h-6 text-red-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-700">Despesas em Aberto</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {formatCurrency(metrics.despesasEmAberto)}
-                </p>
+                <p className="text-sm font-medium text-gray-600">Despesas em Aberto</p>
+                <p className="text-2xl font-bold text-red-600">{formatCurrency(metrics.despesasEmAberto)}</p>
               </div>
             </div>
           </div>
 
-          {/* Despesas Realizadas */}
-          <div className="bg-white rounded-xl shadow border border-gray-200 p-6">
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
             <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
-                  <TrendingDown className="w-6 h-6 text-red-600" />
-                </div>
+              <div className="flex items-center justify-center w-12 h-12 bg-red-100 rounded-lg">
+                <TrendingDown className="w-6 h-6 text-red-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-700">Despesas Realizadas</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {formatCurrency(metrics.despesasRealizadas)}
-                </p>
+                <p className="text-sm font-medium text-gray-600">Despesas Realizadas</p>
+                <p className="text-2xl font-bold text-red-600">{formatCurrency(metrics.despesasRealizadas)}</p>
               </div>
             </div>
           </div>
 
-          {/* Total do Período */}
-          <div className="bg-white rounded-xl shadow border border-gray-200 p-6">
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
             <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                  metrics.totalPeriodo >= 0 ? 'bg-green-100' : 'bg-red-100'
-                }`}>
-                  <DollarSign className={`w-6 h-6 ${
-                    metrics.totalPeriodo >= 0 ? 'text-green-600' : 'text-red-600'
-                  }`} />
-                </div>
+              <div className="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-lg">
+                <DollarSign className="w-6 h-6 text-blue-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-700">Total do Período</p>
-                <p className={`text-2xl font-bold ${
-                  metrics.totalPeriodo >= 0 ? 'text-green-600' : 'text-red-600'
-                }`}>
+                <p className="text-sm font-medium text-gray-600">Saldo do Período</p>
+                <p className={`text-2xl font-bold ${metrics.totalPeriodo >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                   {formatCurrency(metrics.totalPeriodo)}
                 </p>
               </div>
@@ -369,309 +492,234 @@ export default function FinanceiroPage() {
           </div>
         </div>
 
-        {/* Filters and Search */}
-        <div className="bg-white rounded-xl shadow border border-gray-200 p-6">
-          <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-            <div className="relative flex-1 max-w-2xl">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-700 w-4 h-4" />
+        {/* Filtros */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center space-x-2">
+              <Search className="w-5 h-5 text-gray-400" />
               <input
                 type="text"
-                placeholder="Buscar transações por descrição, categoria, cliente..."
+                placeholder="Buscar transações..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-700"
+                className="border border-gray-300 rounded-lg px-3 py-2 w-64 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
 
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-              {/* Filtro por Conta */}
-              <div className="relative min-w-[200px]">
-                <select
-                  value=""
-                  onChange={(e) => {
-                    // TODO: Implementar filtro por conta
-                    console.log('Filtrar por conta:', e.target.value)
-                  }}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-700 appearance-none bg-white"
-                >
-                  <option value="">Todas as contas</option>
-                  <option value="conta_corrente">Conta Corrente</option>
-                  <option value="conta_poupanca">Conta Poupança</option>
-                  <option value="cartao_credito">Cartão de Crédito</option>
-                  <option value="dinheiro">Dinheiro</option>
-                </select>
-              </div>
+            <select
+              value={selectedAccountId}
+              onChange={(e) => setSelectedAccountId(e.target.value)}
+              className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="all">Todas as contas</option>
+              {accounts.map(account => (
+                <option key={account.id} value={account.id}>
+                  {account.name} - {formatCurrency(account.balance)}
+                </option>
+              ))}
+            </select>
 
-              {/* Filtros de Data */}
-              {/* Filtros de Data */}
-              <div className="relative">
+            <DateFilterDropdown
+              value={dateFilter}
+              onChange={setDateFilter}
+              isOpen={showDateFilter}
+              onToggle={() => setShowDateFilter(!showDateFilter)}
+            />
+
+            {selectedTransactions.length > 0 && (
+              <div className="flex items-center space-x-2 ml-auto">
+                <span className="text-sm text-gray-600">
+                  {selectedTransactions.length} selecionadas
+                </span>
                 <button
-                  onClick={() => setShowDateFilter(!showDateFilter)}
-                  className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                  onClick={() => handleBulkAction('mark_paid')}
+                  className="px-3 py-1.5 bg-green-600 text-white rounded-md text-sm hover:bg-green-700"
                 >
-                  <Calendar className="w-4 h-4 mr-2" />
-                  {dateFilter.type === 'year' ? `Ano ${dateFilter.year}` : 
-                   dateFilter.type === 'month' ? `${months.find(m => m.value === dateFilter.month)?.label} ${dateFilter.year}` :
-                   'Período personalizado'}
-                  <Filter className="w-4 h-4 ml-2" />
+                  Marcar como Pagas
                 </button>
-
-                {showDateFilter && (
-                  <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 text-gray-700 z-10">
-                    <div className="p-4">
-                      <div className="space-y-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Filtro por:</label>
-                          <select
-                            value={dateFilter.type}
-                            onChange={(e) => setDateFilter({ ...dateFilter, type: e.target.value as 'year' | 'month' | 'custom' })}
-                            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          >
-                            <option value="year">Ano</option>
-                            <option value="month">Mês</option>
-                            <option value="custom">Período customizado</option>
-                          </select>
-                        </div>
-
-                        {dateFilter.type === 'year' && (
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Ano:</label>
-                            <select
-                              value={dateFilter.year}
-                              onChange={(e) => setDateFilter({ ...dateFilter, year: Number(e.target.value) })}
-                              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            >
-                              {years.map(year => (
-                                <option key={year} value={year}>{year}</option>
-                              ))}
-                            </select>
-                          </div>
-                        )}
-
-                        {dateFilter.type === 'month' && (
-                          <>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">Ano:</label>
-                              <select
-                                value={dateFilter.year}
-                                onChange={(e) => setDateFilter({ ...dateFilter, year: Number(e.target.value) })}
-                                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                              >
-                                {years.map(year => (
-                                  <option key={year} value={year}>{year}</option>
-                                ))}
-                              </select>
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">Mês:</label>
-                              <select
-                                value={dateFilter.month}
-                                onChange={(e) => setDateFilter({ ...dateFilter, month: Number(e.target.value) })}
-                                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                              >
-                                {months.map(month => (
-                                  <option key={month.value} value={month.value}>{month.label}</option>
-                                ))}
-                              </select>
-                            </div>
-                          </>
-                        )}
-
-                        {dateFilter.type === 'custom' && (
-                          <>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">Data inicial:</label>
-                              <input
-                                type="date"
-                                value={dateFilter.startDate}
-                                onChange={(e) => setDateFilter({ ...dateFilter, startDate: e.target.value })}
-                                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">Data final:</label>
-                              <input
-                                type="date"
-                                value={dateFilter.endDate}
-                                onChange={(e) => setDateFilter({ ...dateFilter, endDate: e.target.value })}
-                                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                              />
-                            </div>
-                          </>
-                        )}
-
-                        <div className="flex justify-end space-x-2 pt-2">
-                          <button
-                            onClick={() => setShowDateFilter(false)}
-                            className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
-                          >
-                            Fechar
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                <button
+                  onClick={() => handleBulkAction('delete')}
+                  className="px-3 py-1.5 bg-red-600 text-white rounded-md text-sm hover:bg-red-700"
+                >
+                  Excluir
+                </button>
               </div>
-            </div>
+            )}
           </div>
         </div>
 
-        {/* Transactions List */}
-        <div className="bg-white rounded-xl shadow border border-gray-200">
+        {/* Transações Recentes */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
           <div className="p-6 border-b border-gray-200">
             <h2 className="text-xl font-semibold text-gray-900">Transações Recentes</h2>
-            <p className="text-gray-700 text-sm mt-1">{filteredTransactions.length} transações encontradas</p>
           </div>
 
-          <div className="divide-y divide-gray-200">
-            {loading ? (
-              <div className="p-8 text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                <p className="mt-4 text-gray-700">Carregando transações...</p>
-              </div>
-            ) : error ? (
-              <div className="p-8 text-center">
-                <AlertTriangle className="mx-auto h-8 w-8 text-red-500" />
-                <p className="mt-4 text-red-600">{error}</p>
-                <button
-                  onClick={loadTransactions}
-                  className="mt-4 inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                >
-                  Tentar novamente
-                </button>
-              </div>
-            ) : filteredTransactions.length === 0 ? (
-              <div className="p-8 text-center">
-                <DollarSign className="mx-auto h-8 w-8 text-gray-700" />
-                <h3 className="mt-2 text-sm font-medium text-gray-900">
-                  {searchTerm ? 'Nenhuma transação encontrada' : 'Nenhuma transação cadastrada'}
-                </h3>
-                <p className="mt-1 text-sm text-gray-700">
-                  {searchTerm 
-                    ? 'Tente ajustar os termos de busca ou filtros' 
-                    : 'Comece criando sua primeira transação financeira'
-                  }
-                </p>
-                {!searchTerm && (
-                  <button
-                    onClick={openTypeModal}
-                    className="mt-6 inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Nova Transação
-                  </button>
-                )}
-              </div>
-            ) : (
-              filteredTransactions.map((transaction) => (
-                <div key={transaction.id} className="p-6 hover:bg-gray-50">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                      <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
-                        transaction.type === 'receita' ? 'bg-green-100' : 'bg-red-100'
-                      }`}>
-                        {transaction.type === 'receita' ? 
-                          <TrendingUp className="w-6 h-6 text-green-600" /> :
-                          <TrendingDown className="w-6 h-6 text-red-600" />
-                        }
-                      </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left">
+                    <input
+                      type="checkbox"
+                      checked={selectedTransactions.length === transactions.length && transactions.length > 0}
+                      onChange={toggleSelectAll}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Data
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Descrição
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Situação
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Valor (R$)
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Saldo (R$)
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Ações
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {transactions.map((transaction, index) => (
+                  <tr key={transaction.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4">
+                      <input
+                        type="checkbox"
+                        checked={selectedTransactions.includes(transaction.id)}
+                        onChange={() => toggleSelectTransaction(transaction.id)}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {formatDate(transaction.transaction_date)}
+                    </td>
+                    <td className="px-6 py-4">
                       <div>
-                        <h3 className="font-medium text-gray-900">{transaction.description}</h3>
-                        <div className="flex items-center space-x-4 mt-1">
-                          <p className="text-sm text-gray-700">{transaction.category}</p>
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(transaction.status)}`}>
-                            {transaction.status}
-                          </span>
-                          {transaction.account && (
-                            <p className="text-sm text-gray-700">{transaction.account.name}</p>
-                          )}
+                        <div className="text-sm font-medium text-gray-900">
+                          {transaction.description}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {transaction.category} • {transaction.account?.name}
                         </div>
                       </div>
-                    </div>
-                    <div className="text-right">
-                      <p className={`text-lg font-semibold ${
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {getStatusBadge(transaction.status)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`text-sm font-medium ${
                         transaction.type === 'receita' ? 'text-green-600' : 'text-red-600'
                       }`}>
                         {transaction.type === 'receita' ? '+' : '-'}{formatCurrency(transaction.amount)}
-                      </p>
-                      <p className="text-sm text-gray-700">
-                        {new Date(transaction.transaction_date).toLocaleDateString('pt-BR')}
-                      </p>
-                    </div>
-                  </div>
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {formatCurrency(calculateRunningBalance(index))}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <TransactionActionsDropdown
+                        transaction={transaction}
+                        onMarkAsPaid={() => handleTransactionAction(transaction.id, 'mark_paid')}
+                        onEdit={() => handleTransactionAction(transaction.id, 'edit')}
+                        onDelete={() => handleTransactionAction(transaction.id, 'delete')}
+                        onView={() => console.log('View transaction:', transaction.id)}
+                        onDuplicate={() => console.log('Duplicate transaction:', transaction.id)}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {transactions.length === 0 && (
+              <div className="text-center py-12">
+                <div className="text-gray-500">
+                  <DollarSign className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <h3 className="text-lg font-medium mb-2">Nenhuma transação encontrada</h3>
+                  <p>Comece criando sua primeira transação financeira.</p>
                 </div>
-              ))
+              </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* Modals */}
-      {showTypeModal && (
-        <TransactionTypeModal
-          isOpen={showTypeModal}
-          onClose={closeTypeModal}
-          onSelectReceita={openReceitaModal}
-          onSelectDespesa={openDespesaModal}
-        />
-      )}
+      {/* Modais */}
+      <TransactionTypeModal
+        isOpen={showTypeModal}
+        onClose={closeTypeModal}
+        onReceitaSelect={openReceitaModal}
+        onDespesaSelect={openDespesaModal}
+      />
 
-      {showReceitaModal && (
-        <NewReceitaModal
-          isOpen={showReceitaModal}
-          onClose={closeReceitaModal}
-          onSuccess={() => {
-            closeReceitaModal()
-            loadTransactions()
-            loadMetrics()
-          }}
-        />
-      )}
+      <NewReceitaModal
+        isOpen={showReceitaModal}
+        onClose={closeReceitaModal}
+        onSuccess={() => {
+          loadTransactions()
+          loadMetrics()
+          closeReceitaModal()
+        }}
+      />
 
-      {showDespesaModal && (
-        <NewDespesaModal
-          isOpen={showDespesaModal}
-          onClose={closeDespesaModal}
-          onSuccess={() => {
-            closeDespesaModal()
-            loadTransactions()
-            loadMetrics()
-          }}
-        />
-      )}
+      <NewDespesaModal
+        isOpen={showDespesaModal}
+        onClose={closeDespesaModal}
+        onSuccess={() => {
+          loadTransactions()
+          loadMetrics()
+          closeDespesaModal()
+        }}
+      />
 
-      {showFornecedorModal && (
-        <NovoFornecedorModal
-          isOpen={showFornecedorModal}
-          onClose={() => setShowFornecedorModal(false)}
-          onSuccess={() => setShowFornecedorModal(false)}
-        />
-      )}
+      <NovoFornecedorModal
+        isOpen={showFornecedorModal}
+        onClose={() => setShowFornecedorModal(false)}
+        onSuccess={() => setShowFornecedorModal(false)}
+      />
 
-      {showCentroCustoModal && (
-        <NovoCentroCustoModal
-          isOpen={showCentroCustoModal}
-          onClose={() => setShowCentroCustoModal(false)}
-          onSuccess={() => setShowCentroCustoModal(false)}
-        />
-      )}
+      <NovoCentroCustoModal
+        isOpen={showCentroCustoModal}
+        onClose={() => setShowCentroCustoModal(false)}
+        onSuccess={() => setShowCentroCustoModal(false)}
+      />
 
-      {showCategoriaModal && (
-        <NovaCategoriaModal
-          isOpen={showCategoriaModal}
-          onClose={() => setShowCategoriaModal(false)}
-          onSuccess={() => setShowCategoriaModal(false)}
-        />
-      )}
+      <NovaCategoriaModal
+        isOpen={showCategoriaModal}
+        onClose={() => setShowCategoriaModal(false)}
+        onSuccess={() => setShowCategoriaModal(false)}
+      />
 
-      {showContaModal && (
-        <NovaContaRecebimentoModal
-          isOpen={showContaModal}
-          onClose={() => setShowContaModal(false)}
-          onSuccess={() => setShowContaModal(false)}
-        />
-      )}
+      <NovaContaRecebimentoModal
+        isOpen={showContaModal}
+        onClose={() => setShowContaModal(false)}
+        onSuccess={() => {
+          setShowContaModal(false)
+          loadAccounts()
+        }}
+      />
+
+      <EditTransactionModal
+        isOpen={showEditModal}
+        onClose={() => {
+          setShowEditModal(false)
+          setEditingTransaction(null)
+        }}
+        onSuccess={() => {
+          loadTransactions()
+          loadMetrics()
+          setShowEditModal(false)
+          setEditingTransaction(null)
+        }}
+        transaction={editingTransaction}
+      />
     </div>
   )
 }
