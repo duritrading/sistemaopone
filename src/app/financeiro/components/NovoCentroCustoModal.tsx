@@ -1,7 +1,7 @@
 // src/app/financeiro/components/NovoCentroCustoModal.tsx
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { 
   X, 
@@ -17,6 +17,7 @@ interface NovoCentroCustoModalProps {
   isOpen: boolean
   onClose: () => void
   onSuccess: () => void
+  editData?: any
 }
 
 interface CostCenterFormData {
@@ -34,7 +35,8 @@ interface CostCenterFormData {
 export default function NovoCentroCustoModal({
   isOpen,
   onClose,
-  onSuccess
+  onSuccess,
+  editData
 }: NovoCentroCustoModalProps) {
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState<CostCenterFormData>({
@@ -48,6 +50,35 @@ export default function NovoCentroCustoModal({
     is_active: true,
     notes: ''
   })
+
+  useEffect(() => {
+    if (editData) {
+      setFormData({
+        name: editData.name || '',
+        code: editData.code || '',
+        description: editData.description || '',
+        category: editData.category || '',
+        responsible_person: editData.responsible_person || '',
+        budget_limit: editData.budget_limit || 0,
+        parent_cost_center_id: editData.parent_cost_center_id || '',
+        is_active: editData.is_active ?? true,
+        notes: editData.notes || ''
+      })
+    } else {
+      // Reset form for new cost center
+      setFormData({
+        name: '',
+        code: '',
+        description: '',
+        category: '',
+        responsible_person: '',
+        budget_limit: 0,
+        parent_cost_center_id: '',
+        is_active: true,
+        notes: ''
+      })
+    }
+  }, [editData])
 
   if (!isOpen) return null
 
@@ -75,108 +106,130 @@ export default function NovoCentroCustoModal({
     setLoading(true)
 
     try {
-      const { error } = await supabase
-        .from('cost_centers')
-        .insert([{
-          ...formData,
-          budget_limit: formData.budget_limit || null,
-          parent_cost_center_id: formData.parent_cost_center_id || null,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }])
+      const costCenterData = {
+        ...formData,
+        budget_limit: formData.budget_limit || null,
+        parent_cost_center_id: formData.parent_cost_center_id || null,
+        updated_at: new Date().toISOString()
+      }
 
-      if (error) throw error
+      if (editData) {
+        // Update existing cost center
+        const { error } = await supabase
+          .from('cost_centers')
+          .update(costCenterData)
+          .eq('id', editData.id)
+
+        if (error) throw error
+      } else {
+        // Create new cost center
+        const { error } = await supabase
+          .from('cost_centers')
+          .insert([{
+            ...costCenterData,
+            created_at: new Date().toISOString()
+          }])
+
+        if (error) throw error
+      }
 
       onSuccess()
       onClose()
     } catch (err: any) {
-      console.error('Erro ao criar centro de custo:', err)
-      alert('Erro ao criar centro de custo: ' + err.message)
+      console.error('Erro ao salvar centro de custo:', err)
+      alert(`Erro ao ${editData ? 'atualizar' : 'criar'} centro de custo: ${err.message}`)
     } finally {
       setLoading(false)
     }
   }
 
-  const generateCode = () => {
-    if (formData.name && formData.category) {
-      const nameCode = formData.name.substring(0, 3).toUpperCase()
-      const categoryCode = formData.category.substring(0, 3).toUpperCase()
-      const randomNumber = Math.floor(Math.random() * 100).toString().padStart(2, '0')
-      const code = `${categoryCode}-${nameCode}-${randomNumber}`
-      handleInputChange('code', code)
-    }
-  }
-
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-              <Tag className="w-5 h-5 text-blue-600" />
+            <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+              <Building className="w-5 h-5 text-purple-600" />
             </div>
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">Novo Centro de Custo</h2>
-              <p className="text-sm text-gray-600">Cadastre um novo centro de custo para organização financeira</p>
+              <h2 className="text-xl font-semibold text-gray-900">
+                {editData ? 'Editar Centro de Custo' : 'Novo Centro de Custo'}
+              </h2>
+              <p className="text-sm text-gray-600">
+                {editData ? 'Atualize as informações do centro de custo' : 'Cadastre um novo centro de custo'}
+              </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="text-gray-400 hover:text-gray-600 transition-colors"
           >
-            <X className="w-5 h-5 text-gray-500" />
+            <X className="w-6 h-6" />
           </button>
         </div>
 
-        {/* Content */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {/* Informações Básicas */}
-          <div className="space-y-6">
+        <form onSubmit={handleSubmit}>
+          <div className="p-6 space-y-6">
+            {/* Nome e Código */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Nome */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Nome do Centro de Custo *</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.name}
-                  onChange={(e) => handleInputChange('name', e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
-                  placeholder="Ex: Marketing Digital, TI Infraestrutura"
-                />
-              </div>
-
-              {/* Código */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Código *</label>
-                <div className="flex space-x-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Nome do Centro de Custo *
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Tag className="h-5 w-5 text-gray-400" />
+                  </div>
                   <input
                     type="text"
+                    value={formData.name}
+                    onChange={(e) => handleInputChange('name', e.target.value)}
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-gray-700 focus:border-transparent"
+                    placeholder="Ex: Marketing Digital"
                     required
-                    value={formData.code}
-                    onChange={(e) => handleInputChange('code', e.target.value.toUpperCase())}
-                    className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
-                    placeholder="Ex: MKT-DIG-01"
                   />
-                  <button
-                    type="button"
-                    onClick={generateCode}
-                    className="px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors text-sm"
-                  >
-                    Gerar
-                  </button>
                 </div>
               </div>
 
-              {/* Categoria */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Categoria *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Código (Opcional)
+                </label>
+                <input
+                  type="text"
+                  value={formData.code}
+                  onChange={(e) => handleInputChange('code', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-gray-700 focus:border-transparent"
+                  placeholder="Ex: MKT-001"
+                />
+              </div>
+            </div>
+
+            {/* Descrição */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Descrição
+              </label>
+              <textarea
+                value={formData.description}
+                onChange={(e) => handleInputChange('description', e.target.value)}
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-gray-700 focus:border-transparent"
+                placeholder="Descreva a finalidade deste centro de custo..."
+              />
+            </div>
+
+            {/* Categoria e Responsável */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Categoria
+                </label>
                 <select
-                  required
                   value={formData.category}
                   onChange={(e) => handleInputChange('category', e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-gray-700 focus:border-transparent"
                 >
                   <option value="">Selecione uma categoria</option>
                   {categories.map(category => (
@@ -187,131 +240,111 @@ export default function NovoCentroCustoModal({
                 </select>
               </div>
 
-              {/* Responsável */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Responsável</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Responsável
+                </label>
                 <div className="relative">
-                  <User className="w-4 h-4 absolute left-3 top-3 text-gray-700" />
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <User className="h-5 w-5 text-gray-400" />
+                  </div>
                   <input
                     type="text"
                     value={formData.responsible_person}
                     onChange={(e) => handleInputChange('responsible_person', e.target.value)}
-                    className="w-full pl-10 border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-gray-700 focus:border-transparent"
                     placeholder="Nome do responsável"
                   />
                 </div>
               </div>
-
-              {/* Limite de Orçamento */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Limite de Orçamento (Opcional)</label>
-                <div className="relative">
-                  <DollarSign className="w-4 h-4 absolute left-3 top-3 text-gray-700" />
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.budget_limit || ''}
-                    onChange={(e) => handleInputChange('budget_limit', parseFloat(e.target.value) || 0)}
-                    className="w-full pl-10 border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
-                    placeholder="0,00"
-                  />
-                </div>
-              </div>
-
-              {/* Centro de Custo Pai */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Centro de Custo Pai (Opcional)</label>
-                <select
-                  value={formData.parent_cost_center_id}
-                  onChange={(e) => handleInputChange('parent_cost_center_id', e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
-                >
-                  <option value="">Nenhum (Centro de custo raiz)</option>
-                  {/* TODO: Buscar centros de custo existentes do Supabase */}
-                </select>
-                <p className="text-xs text-gray-500 mt-1">
-                  Para criar uma hierarquia, selecione o centro de custo pai
-                </p>
-              </div>
             </div>
 
-            {/* Descrição */}
+            {/* Limite de Orçamento */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Descrição *</label>
-              <textarea
-                required
-                rows={3}
-                value={formData.description}
-                onChange={(e) => handleInputChange('description', e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
-                placeholder="Descreva o objetivo e escopo deste centro de custo..."
-              />
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Limite de Orçamento (Opcional)
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <DollarSign className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.budget_limit || ''}
+                  onChange={(e) => handleInputChange('budget_limit', parseFloat(e.target.value) || 0)}
+                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-gray-700 focus:border-transparent"
+                  placeholder="0,00"
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Deixe vazio para não definir limite de orçamento
+              </p>
             </div>
 
             {/* Observações */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Observações Adicionais</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Observações
+              </label>
               <textarea
-                rows={4}
                 value={formData.notes}
                 onChange={(e) => handleInputChange('notes', e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
-                placeholder="Informações adicionais, regras especiais, etc..."
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-gray-700 focus:border-transparent"
+                placeholder="Informações adicionais..."
               />
             </div>
 
-            {/* Status Ativo */}
-            <div>
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={formData.is_active}
-                  onChange={(e) => handleInputChange('is_active', e.target.checked)}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <span className="ml-2 text-sm text-gray-700">Centro de custo ativo</span>
+            {/* Status */}
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="is_active"
+                checked={formData.is_active}
+                onChange={(e) => handleInputChange('is_active', e.target.checked)}
+                className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+              />
+              <label htmlFor="is_active" className="ml-2 block text-sm text-gray-900">
+                Centro de custo ativo
               </label>
-              <p className="text-xs text-gray-700 mt-1 ml-6">
-                Centros de custo inativos não aparecerão nas opções de seleção
-              </p>
             </div>
-          </div>
 
-          {/* Informações de Ajuda */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div className="flex items-start">
-              <Target className="w-5 h-5 text-blue-600 mt-0.5 mr-3 flex-shrink-0" />
-              <div>
-                <h3 className="text-sm font-medium text-blue-800 mb-1">Dica: Como usar Centros de Custo</h3>
-                <p className="text-sm text-blue-700">
-                  Os centros de custo ajudam a organizar suas despesas por departamento, projeto ou área. 
-                  Use códigos padronizados para facilitar relatórios e análises financeiras.
-                </p>
+            {/* Informação de Ajuda */}
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+              <div className="flex items-start">
+                <Target className="w-5 h-5 text-purple-600 mt-0.5 mr-3 flex-shrink-0" />
+                <div>
+                  <h3 className="text-sm font-medium text-purple-800 mb-1">Dica: Organizando Centros de Custo</h3>
+                  <p className="text-sm text-purple-700">
+                    Use centros de custo para agrupar despesas por departamento, projeto ou atividade. 
+                    Isso facilita o controle orçamentário e análise de gastos por área específica.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
-        </form>
 
-        {/* Footer */}
-        <div className="flex justify-end space-x-3 p-6 border-t border-gray-200">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            Cancelar
-          </button>
-          <button
-            type="submit"
-            onClick={handleSubmit}
-            disabled={loading}
-            className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors inline-flex items-center"
-          >
-            <Save className="w-4 h-4 mr-2" />
-            {loading ? 'Salvando...' : 'Salvar Centro de Custo'}
-          </button>
-        </div>
+          {/* Footer */}
+          <div className="flex justify-end space-x-3 p-6 border-t border-gray-200">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors inline-flex items-center"
+            >
+              <Save className="w-4 h-4 mr-2" />
+              {loading ? 'Salvando...' : (editData ? 'Atualizar' : 'Salvar')} Centro de Custo
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   )

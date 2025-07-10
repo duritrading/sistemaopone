@@ -1,7 +1,7 @@
 // src/app/financeiro/components/NovoFornecedorModal.tsx
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { 
   X, 
@@ -11,13 +11,15 @@ import {
   Phone, 
   MapPin,
   FileText,
-  CreditCard
+  CreditCard,
+  User
 } from 'lucide-react'
 
 interface NovoFornecedorModalProps {
   isOpen: boolean
   onClose: () => void
   onSuccess: () => void
+  editData?: any
 }
 
 interface SupplierFormData {
@@ -53,7 +55,8 @@ interface SupplierFormData {
 export default function NovoFornecedorModal({
   isOpen,
   onClose,
-  onSuccess
+  onSuccess,
+  editData
 }: NovoFornecedorModalProps) {
   const [loading, setLoading] = useState(false)
   const [currentTab, setCurrentTab] = useState('dados')
@@ -85,7 +88,74 @@ export default function NovoFornecedorModal({
     is_active: true
   })
 
+  useEffect(() => {
+    if (editData) {
+      setFormData({
+        company_name: editData.company_name || '',
+        trading_name: editData.trading_name || '',
+        cnpj: editData.cnpj || '',
+        cpf: editData.cpf || '',
+        person_type: editData.person_type || 'juridica',
+        email: editData.email || '',
+        phone: editData.phone || '',
+        whatsapp: editData.whatsapp || '',
+        contact_person: editData.contact_person || '',
+        
+        cep: editData.cep || '',
+        street: editData.street || '',
+        number: editData.number || '',
+        complement: editData.complement || '',
+        neighborhood: editData.neighborhood || '',
+        city: editData.city || '',
+        state: editData.state || '',
+        
+        bank_name: editData.bank_name || '',
+        agency: editData.agency || '',
+        account: editData.account || '',
+        pix_key: editData.pix_key || '',
+        
+        notes: editData.notes || '',
+        is_active: editData.is_active ?? true
+      })
+    } else {
+      // Reset form for new supplier
+      setFormData({
+        company_name: '',
+        trading_name: '',
+        cnpj: '',
+        cpf: '',
+        person_type: 'juridica',
+        email: '',
+        phone: '',
+        whatsapp: '',
+        contact_person: '',
+        
+        cep: '',
+        street: '',
+        number: '',
+        complement: '',
+        neighborhood: '',
+        city: '',
+        state: '',
+        
+        bank_name: '',
+        agency: '',
+        account: '',
+        pix_key: '',
+        
+        notes: '',
+        is_active: true
+      })
+    }
+  }, [editData])
+
   if (!isOpen) return null
+
+  const brazilianStates = [
+    'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 
+    'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 
+    'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
+  ]
 
   const handleInputChange = (field: keyof SupplierFormData, value: string | boolean) => {
     setFormData(prev => ({
@@ -99,63 +169,51 @@ export default function NovoFornecedorModal({
     setLoading(true)
 
     try {
-      const { error } = await supabase
-        .from('suppliers')
-        .insert([{
-          ...formData,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }])
+      const supplierData = {
+        ...formData,
+        updated_at: new Date().toISOString()
+      }
 
-      if (error) throw error
+      if (editData) {
+        // Update existing supplier
+        const { error } = await supabase
+          .from('suppliers')
+          .update(supplierData)
+          .eq('id', editData.id)
+
+        if (error) throw error
+      } else {
+        // Create new supplier
+        const { error } = await supabase
+          .from('suppliers')
+          .insert([{
+            ...supplierData,
+            created_at: new Date().toISOString()
+          }])
+
+        if (error) throw error
+      }
 
       onSuccess()
       onClose()
     } catch (err: any) {
-      console.error('Erro ao criar fornecedor:', err)
-      alert('Erro ao criar fornecedor: ' + err.message)
+      console.error('Erro ao salvar fornecedor:', err)
+      alert(`Erro ao ${editData ? 'atualizar' : 'criar'} fornecedor: ${err.message}`)
     } finally {
       setLoading(false)
     }
   }
 
-  const formatCNPJ = (value: string) => {
-    return value
-      .replace(/\D/g, '')
-      .replace(/(\d{2})(\d)/, '$1.$2')
-      .replace(/(\d{3})(\d)/, '$1.$2')
-      .replace(/(\d{3})(\d)/, '$1/$2')
-      .replace(/(\d{4})(\d)/, '$1-$2')
-      .slice(0, 18)
-  }
-
-  const formatCPF = (value: string) => {
-    return value
-      .replace(/\D/g, '')
-      .replace(/(\d{3})(\d)/, '$1.$2')
-      .replace(/(\d{3})(\d)/, '$1.$2')
-      .replace(/(\d{3})(\d)/, '$1-$2')
-      .slice(0, 14)
-  }
-
-  const formatPhone = (value: string) => {
-    return value
-      .replace(/\D/g, '')
-      .replace(/(\d{2})(\d)/, '($1) $2')
-      .replace(/(\d{4,5})(\d)/, '$1-$2')
-      .slice(0, 15)
-  }
-
   const tabs = [
-    { id: 'dados', label: 'Dados Gerais', icon: Building2 },
+    { id: 'dados', label: 'Dados Básicos', icon: Building2 },
     { id: 'endereco', label: 'Endereço', icon: MapPin },
     { id: 'bancarios', label: 'Dados Bancários', icon: CreditCard },
     { id: 'observacoes', label: 'Observações', icon: FileText }
   ]
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center space-x-3">
@@ -163,295 +221,397 @@ export default function NovoFornecedorModal({
               <Building2 className="w-5 h-5 text-blue-600" />
             </div>
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">Novo Fornecedor</h2>
-              <p className="text-sm text-gray-600">Cadastre um novo fornecedor no sistema</p>
+              <h2 className="text-xl font-semibold text-gray-900">
+                {editData ? 'Editar Fornecedor' : 'Novo Fornecedor'}
+              </h2>
+              <p className="text-sm text-gray-600">
+                {editData ? 'Atualize as informações do fornecedor' : 'Cadastre um novo fornecedor no sistema'}
+              </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="text-gray-400 hover:text-gray-600 transition-colors"
           >
-            <X className="w-5 h-5 text-gray-500" />
+            <X className="w-6 h-6" />
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-gray-200">
-          {tabs.map(tab => {
-            const Icon = tab.icon
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setCurrentTab(tab.id)}
-                className={`flex items-center space-x-2 px-6 py-4 text-sm font-medium transition-colors ${
-                  currentTab === tab.id
-                    ? 'border-b-2 border-blue-500 text-blue-600 bg-blue-50'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                <Icon className="w-4 h-4" />
-                <span>{tab.label}</span>
-              </button>
-            )
-          })}
+        <div className="border-b border-gray-200">
+          <nav className="flex space-x-8 px-6">
+            {tabs.map((tab) => {
+              const Icon = tab.icon
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setCurrentTab(tab.id)}
+                  className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                    currentTab === tab.id
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  <div className="flex items-center space-x-2">
+                    <Icon className="w-4 h-4" />
+                    <span>{tab.label}</span>
+                  </div>
+                </button>
+              )
+            })}
+          </nav>
         </div>
 
-        {/* Content */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
+        <form onSubmit={handleSubmit}>
           <div className="p-6">
-            {/* Dados Gerais */}
+            {/* Dados Básicos */}
             {currentTab === 'dados' && (
               <div className="space-y-6">
                 {/* Tipo de Pessoa */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">Tipo de Pessoa</label>
-                  <div className="flex space-x-4">
-                    <button
-                      type="button"
-                      onClick={() => handleInputChange('person_type', 'juridica')}
-                      className={`px-4 py-2 rounded-lg border ${
-                        formData.person_type === 'juridica'
-                          ? 'bg-blue-50 border-blue-300 text-blue-700'
-                          : 'bg-white border-gray-300 text-gray-700'
-                      }`}
-                    >
-                      Pessoa Jurídica
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleInputChange('person_type', 'fisica')}
-                      className={`px-4 py-2 rounded-lg border ${
-                        formData.person_type === 'fisica'
-                          ? 'bg-blue-50 border-blue-300 text-blue-700'
-                          : 'bg-white border-gray-300 text-gray-700'
-                      }`}
-                    >
-                      Pessoa Física
-                    </button>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    Tipo de Pessoa *
+                  </label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <input
+                        type="radio"
+                        id="juridica"
+                        name="person_type"
+                        value="juridica"
+                        checked={formData.person_type === 'juridica'}
+                        onChange={(e) => handleInputChange('person_type', e.target.value as 'juridica' | 'fisica')}
+                        className="sr-only"
+                      />
+                      <label
+                        htmlFor="juridica"
+                        className={`block w-full p-3 border rounded-lg cursor-pointer transition-colors ${
+                          formData.person_type === 'juridica'
+                            ? 'border-blue-500 bg-blue-50 text-blue-700'
+                            : 'border-gray-300 hover:border-gray-400'
+                        }`}
+                      >
+                        <div className="flex items-center space-x-2">
+                          <Building2 className="w-5 h-5" />
+                          <span className="font-medium">Pessoa Jurídica</span>
+                        </div>
+                      </label>
+                    </div>
+                    <div>
+                      <input
+                        type="radio"
+                        id="fisica"
+                        name="person_type"
+                        value="fisica"
+                        checked={formData.person_type === 'fisica'}
+                        onChange={(e) => handleInputChange('person_type', e.target.value as 'juridica' | 'fisica')}
+                        className="sr-only"
+                      />
+                      <label
+                        htmlFor="fisica"
+                        className={`block w-full p-3 border rounded-lg cursor-pointer transition-colors ${
+                          formData.person_type === 'fisica'
+                            ? 'border-blue-500 bg-blue-50 text-blue-700'
+                            : 'border-gray-300 hover:border-gray-400'
+                        }`}
+                      >
+                        <div className="flex items-center space-x-2">
+                          <User className="w-5 h-5" />
+                          <span className="font-medium">Pessoa Física</span>
+                        </div>
+                      </label>
+                    </div>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Razão Social / Nome */}
+                  {/* Nome/Razão Social */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      {formData.person_type === 'juridica' ? 'Razão Social' : 'Nome Completo'} *
+                      {formData.person_type === 'juridica' ? 'Razão Social *' : 'Nome Completo *'}
                     </label>
                     <input
                       type="text"
-                      required
                       value={formData.company_name}
                       onChange={(e) => handleInputChange('company_name', e.target.value)}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
+                      placeholder={formData.person_type === 'juridica' ? 'Razão social da empresa' : 'Nome completo'}
+                      required
                     />
                   </div>
 
-                  {/* Nome Fantasia */}
-                  {formData.person_type === 'juridica' && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Nome Fantasia</label>
-                      <input
-                        type="text"
-                        value={formData.trading_name}
-                        onChange={(e) => handleInputChange('trading_name', e.target.value)}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
-                      />
-                    </div>
-                  )}
-
-                  {/* CNPJ ou CPF */}
+                  {/* Nome Fantasia/Apelido */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      {formData.person_type === 'juridica' ? 'CNPJ' : 'CPF'} *
+                      {formData.person_type === 'juridica' ? 'Nome Fantasia' : 'Apelido'}
                     </label>
                     <input
                       type="text"
-                      required
+                      value={formData.trading_name}
+                      onChange={(e) => handleInputChange('trading_name', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
+                      placeholder={formData.person_type === 'juridica' ? 'Nome fantasia' : 'Como é conhecido'}
+                    />
+                  </div>
+
+                  {/* CNPJ/CPF */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      {formData.person_type === 'juridica' ? 'CNPJ' : 'CPF'}
+                    </label>
+                    <input
+                      type="text"
                       value={formData.person_type === 'juridica' ? formData.cnpj : formData.cpf}
-                      onChange={(e) => {
-                        const formatted = formData.person_type === 'juridica' 
-                          ? formatCNPJ(e.target.value)
-                          : formatCPF(e.target.value)
-                        handleInputChange(formData.person_type === 'juridica' ? 'cnpj' : 'cpf', formatted)
-                      }}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
+                      onChange={(e) => handleInputChange(
+                        formData.person_type === 'juridica' ? 'cnpj' : 'cpf', 
+                        e.target.value
+                      )}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
+                      placeholder={formData.person_type === 'juridica' ? '00.000.000/0000-00' : '000.000.000-00'}
                     />
                   </div>
 
                   {/* Email */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
-                    <input
-                      type="email"
-                      required
-                      value={formData.email}
-                      onChange={(e) => handleInputChange('email', e.target.value)}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
-                    />
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      E-mail
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Mail className="h-5 w-5 text-gray-400" />
+                      </div>
+                      <input
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) => handleInputChange('email', e.target.value)}
+                        className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
+                        placeholder="email@exemplo.com"
+                      />
+                    </div>
                   </div>
 
                   {/* Telefone */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Telefone</label>
-                    <input
-                      type="text"
-                      value={formData.phone}
-                      onChange={(e) => handleInputChange('phone', formatPhone(e.target.value))}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
-                    />
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Telefone
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Phone className="h-5 w-5 text-gray-400" />
+                      </div>
+                      <input
+                        type="tel"
+                        value={formData.phone}
+                        onChange={(e) => handleInputChange('phone', e.target.value)}
+                        className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
+                        placeholder="(11) 99999-9999"
+                      />
+                    </div>
                   </div>
 
                   {/* WhatsApp */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">WhatsApp</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      WhatsApp
+                    </label>
                     <input
-                      type="text"
+                      type="tel"
                       value={formData.whatsapp}
-                      onChange={(e) => handleInputChange('whatsapp', formatPhone(e.target.value))}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
+                      onChange={(e) => handleInputChange('whatsapp', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
+                      placeholder="(11) 99999-9999"
                     />
                   </div>
+                </div>
 
-                  {/* Pessoa de Contato */}
-                  {formData.person_type === 'juridica' && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Pessoa de Contato</label>
-                      <input
-                        type="text"
-                        value={formData.contact_person}
-                        onChange={(e) => handleInputChange('contact_person', e.target.value)}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
-                      />
-                    </div>
-                  )}
+                {/* Pessoa de Contato */}
+                {formData.person_type === 'juridica' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Pessoa de Contato
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.contact_person}
+                      onChange={(e) => handleInputChange('contact_person', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
+                      placeholder="Nome da pessoa responsável"
+                    />
+                  </div>
+                )}
+
+                {/* Status */}
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="is_active"
+                    checked={formData.is_active}
+                    onChange={(e) => handleInputChange('is_active', e.target.checked)}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="is_active" className="ml-2 block text-sm text-gray-900">
+                    Fornecedor ativo
+                  </label>
                 </div>
               </div>
             )}
 
             {/* Endereço */}
             {currentTab === 'endereco' && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">CEP</label>
-                  <input
-                    type="text"
-                    value={formData.cep}
-                    onChange={(e) => handleInputChange('cep', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
-                  />
-                </div>
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      CEP
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.cep}
+                      onChange={(e) => handleInputChange('cep', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
+                      placeholder="00000-000"
+                    />
+                  </div>
 
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Logradouro</label>
-                  <input
-                    type="text"
-                    value={formData.street}
-                    onChange={(e) => handleInputChange('street', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
-                  />
-                </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Logradouro
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.street}
+                      onChange={(e) => handleInputChange('street', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
+                      placeholder="Nome da rua, avenida, etc."
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Número</label>
-                  <input
-                    type="text"
-                    value={formData.number}
-                    onChange={(e) => handleInputChange('number', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
-                  />
-                </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Número
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.number}
+                      onChange={(e) => handleInputChange('number', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
+                      placeholder="123"
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Complemento</label>
-                  <input
-                    type="text"
-                    value={formData.complement}
-                    onChange={(e) => handleInputChange('complement', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
-                  />
-                </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Complemento
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.complement}
+                      onChange={(e) => handleInputChange('complement', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
+                      placeholder="Apto, sala, etc."
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Bairro</label>
-                  <input
-                    type="text"
-                    value={formData.neighborhood}
-                    onChange={(e) => handleInputChange('neighborhood', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
-                  />
-                </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Bairro
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.neighborhood}
+                      onChange={(e) => handleInputChange('neighborhood', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
+                      placeholder="Nome do bairro"
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Cidade</label>
-                  <input
-                    type="text"
-                    value={formData.city}
-                    onChange={(e) => handleInputChange('city', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
-                  />
-                </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Cidade
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.city}
+                      onChange={(e) => handleInputChange('city', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
+                      placeholder="Nome da cidade"
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Estado</label>
-                  <select
-                    value={formData.state}
-                    onChange={(e) => handleInputChange('state', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
-                  >
-                    <option value="">Selecione</option>
-                    <option value="SP">São Paulo</option>
-                    <option value="RJ">Rio de Janeiro</option>
-                    <option value="MG">Minas Gerais</option>
-                    <option value="RS">Rio Grande do Sul</option>
-                    <option value="SC">Santa Catarina</option>
-                    <option value="PR">Paraná</option>
-                    {/* Adicionar outros estados conforme necessário */}
-                  </select>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Estado
+                    </label>
+                    <select
+                      value={formData.state}
+                      onChange={(e) => handleInputChange('state', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
+                    >
+                      <option value="">Selecione</option>
+                      {brazilianStates.map(state => (
+                        <option key={state} value={state}>{state}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
             )}
 
             {/* Dados Bancários */}
             {currentTab === 'bancarios' && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Banco</label>
-                  <input
-                    type="text"
-                    value={formData.bank_name}
-                    onChange={(e) => handleInputChange('bank_name', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
-                  />
-                </div>
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Banco
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.bank_name}
+                      onChange={(e) => handleInputChange('bank_name', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
+                      placeholder="Nome do banco"
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Agência</label>
-                  <input
-                    type="text"
-                    value={formData.agency}
-                    onChange={(e) => handleInputChange('agency', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
-                  />
-                </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Agência
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.agency}
+                      onChange={(e) => handleInputChange('agency', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
+                      placeholder="0000-0"
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Conta</label>
-                  <input
-                    type="text"
-                    value={formData.account}
-                    onChange={(e) => handleInputChange('account', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
-                  />
-                </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Conta
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.account}
+                      onChange={(e) => handleInputChange('account', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
+                      placeholder="00000-0"
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Chave PIX</label>
-                  <input
-                    type="text"
-                    value={formData.pix_key}
-                    onChange={(e) => handleInputChange('pix_key', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
-                  />
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Chave PIX
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.pix_key}
+                      onChange={(e) => handleInputChange('pix_key', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
+                      placeholder="CPF, CNPJ, email ou telefone"
+                    />
+                  </div>
                 </div>
               </div>
             )}
@@ -460,51 +620,40 @@ export default function NovoFornecedorModal({
             {currentTab === 'observacoes' && (
               <div className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Observações Gerais</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Observações Gerais
+                  </label>
                   <textarea
-                    rows={6}
                     value={formData.notes}
                     onChange={(e) => handleInputChange('notes', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
+                    rows={6}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                     placeholder="Informações adicionais sobre o fornecedor..."
                   />
-                </div>
-
-                <div>
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={formData.is_active}
-                      onChange={(e) => handleInputChange('is_active', e.target.checked)}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                    />
-                    <span className="ml-2 text-sm text-gray-700">Fornecedor ativo</span>
-                  </label>
                 </div>
               </div>
             )}
           </div>
-        </form>
 
-        {/* Footer */}
-        <div className="flex justify-end space-x-3 p-6 border-t border-gray-200">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            Cancelar
-          </button>
-          <button
-            type="submit"
-            onClick={handleSubmit}
-            disabled={loading}
-            className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors inline-flex items-center"
-          >
-            <Save className="w-4 h-4 mr-2" />
-            {loading ? 'Salvando...' : 'Salvar Fornecedor'}
-          </button>
-        </div>
+          {/* Footer */}
+          <div className="flex justify-end space-x-3 p-6 border-t border-gray-200">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors inline-flex items-center"
+            >
+              <Save className="w-4 h-4 mr-2" />
+              {loading ? 'Salvando...' : (editData ? 'Atualizar' : 'Salvar')} Fornecedor
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   )

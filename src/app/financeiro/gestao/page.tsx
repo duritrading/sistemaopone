@@ -12,23 +12,40 @@ import {
   Plus,
   Edit2,
   Trash2,
-  Eye
+  Eye,
+  Search,
+  Filter,
+  X
 } from 'lucide-react'
 import Link from 'next/link'
+import NovoFornecedorModal from '../components/NovoFornecedorModal'
+import NovoCentroCustoModal from '../components/NovoCentroCustoModal'
+import NovaCategoriaModal from '../components/NovaCategoriaModal'
+import NovaContaRecebimentoModal from '../components/NovaContaRecebimentoModal'
 
 interface Supplier {
   id: string
-  name: string
+  company_name: string
+  trading_name?: string
   email?: string
   phone?: string
+  cnpj?: string
+  cpf?: string
+  person_type: 'juridica' | 'fisica'
   is_active: boolean
+  created_at: string
 }
 
 interface CostCenter {
   id: string
   name: string
+  code?: string
   description?: string
+  category?: string
+  responsible_person?: string
+  budget_limit?: number
   is_active: boolean
+  created_at: string
 }
 
 interface Category {
@@ -36,7 +53,10 @@ interface Category {
   name: string
   type: 'receita' | 'despesa'
   color: string
+  icon?: string
+  description?: string
   is_active: boolean
+  created_at: string
 }
 
 interface Account {
@@ -46,6 +66,7 @@ interface Account {
   bank?: string
   balance: number
   is_active: boolean
+  created_at: string
 }
 
 type ActiveTab = 'fornecedores' | 'centro-custo' | 'categorias' | 'contas'
@@ -57,6 +78,16 @@ export default function GestaoFinanceiraPage() {
   const [categories, setCategories] = useState<Category[]>([])
   const [accounts, setAccounts] = useState<Account[]>([])
   const [loading, setLoading] = useState(true)
+
+  // Modal states
+  const [showFornecedorModal, setShowFornecedorModal] = useState(false)
+  const [showCentroCustoModal, setShowCentroCustoModal] = useState(false)
+  const [showCategoriaModal, setShowCategoriaModal] = useState(false)
+  const [showContaModal, setShowContaModal] = useState(false)
+
+  // Edit states
+  const [editingItem, setEditingItem] = useState<any>(null)
+  const [showDetailsModal, setShowDetailsModal] = useState(false)
 
   useEffect(() => {
     loadData()
@@ -78,7 +109,12 @@ export default function GestaoFinanceiraPage() {
 
   const loadSuppliers = async () => {
     try {
-      const { data } = await supabase.from('suppliers').select('*').order('name')
+      const { data, error } = await supabase
+        .from('suppliers')
+        .select('*')
+        .order('company_name')
+      
+      if (error) throw error
       setSuppliers(data || [])
     } catch (err) {
       console.error('Erro ao carregar fornecedores:', err)
@@ -87,7 +123,12 @@ export default function GestaoFinanceiraPage() {
 
   const loadCostCenters = async () => {
     try {
-      const { data } = await supabase.from('cost_centers').select('*').order('name')
+      const { data, error } = await supabase
+        .from('cost_centers')
+        .select('*')
+        .order('name')
+      
+      if (error) throw error
       setCostCenters(data || [])
     } catch (err) {
       console.error('Erro ao carregar centros de custo:', err)
@@ -96,7 +137,12 @@ export default function GestaoFinanceiraPage() {
 
   const loadCategories = async () => {
     try {
-      const { data } = await supabase.from('custom_categories').select('*').order('name')
+      const { data, error } = await supabase
+        .from('custom_categories')
+        .select('*')
+        .order('name')
+      
+      if (error) throw error
       setCategories(data || [])
     } catch (err) {
       console.error('Erro ao carregar categorias:', err)
@@ -105,7 +151,12 @@ export default function GestaoFinanceiraPage() {
 
   const loadAccounts = async () => {
     try {
-      const { data } = await supabase.from('accounts').select('*').order('name')
+      const { data, error } = await supabase
+        .from('accounts')
+        .select('*')
+        .order('name')
+      
+      if (error) throw error
       setAccounts(data || [])
     } catch (err) {
       console.error('Erro ao carregar contas:', err)
@@ -126,6 +177,104 @@ export default function GestaoFinanceiraPage() {
       categorias: categories.length,
       contas: accounts.length
     }
+  }
+
+  // Delete functions
+  const handleDeleteSupplier = async (id: string) => {
+    if (!confirm('Tem certeza que deseja excluir este fornecedor?')) return
+    
+    try {
+      const { error } = await supabase
+        .from('suppliers')
+        .delete()
+        .eq('id', id)
+      
+      if (error) throw error
+      
+      loadSuppliers()
+      alert('Fornecedor excluído com sucesso!')
+    } catch (err) {
+      console.error('Erro ao excluir fornecedor:', err)
+      alert('Erro ao excluir fornecedor')
+    }
+  }
+
+  const handleDeleteCostCenter = async (id: string) => {
+    if (!confirm('Tem certeza que deseja excluir este centro de custo?')) return
+    
+    try {
+      const { error } = await supabase
+        .from('cost_centers')
+        .delete()
+        .eq('id', id)
+      
+      if (error) throw error
+      
+      loadCostCenters()
+      alert('Centro de custo excluído com sucesso!')
+    } catch (err) {
+      console.error('Erro ao excluir centro de custo:', err)
+      alert('Erro ao excluir centro de custo')
+    }
+  }
+
+  const handleDeleteCategory = async (id: string) => {
+    if (!confirm('Tem certeza que deseja excluir esta categoria?')) return
+    
+    try {
+      const { error } = await supabase
+        .from('custom_categories')
+        .delete()
+        .eq('id', id)
+      
+      if (error) throw error
+      
+      loadCategories()
+      alert('Categoria excluída com sucesso!')
+    } catch (err) {
+      console.error('Erro ao excluir categoria:', err)
+      alert('Erro ao excluir categoria')
+    }
+  }
+
+  const handleDeleteAccount = async (id: string) => {
+    if (!confirm('Tem certeza que deseja excluir esta conta?')) return
+    
+    try {
+      const { error } = await supabase
+        .from('accounts')
+        .delete()
+        .eq('id', id)
+      
+      if (error) throw error
+      
+      loadAccounts()
+      alert('Conta excluída com sucesso!')
+    } catch (err) {
+      console.error('Erro ao excluir conta:', err)
+      alert('Erro ao excluir conta')
+    }
+  }
+
+  // View details functions
+  const handleViewSupplier = (supplier: Supplier) => {
+    setEditingItem(supplier)
+    setShowDetailsModal(true)
+  }
+
+  const handleViewCostCenter = (costCenter: CostCenter) => {
+    setEditingItem(costCenter)
+    setShowDetailsModal(true)
+  }
+
+  const handleViewCategory = (category: Category) => {
+    setEditingItem(category)
+    setShowDetailsModal(true)
+  }
+
+  const handleViewAccount = (account: Account) => {
+    setEditingItem(account)
+    setShowDetailsModal(true)
   }
 
   const counts = getTabCounts()
@@ -251,7 +400,15 @@ export default function GestaoFinanceiraPage() {
                 {activeTab === 'categorias' && 'Categorias'}
                 {activeTab === 'contas' && 'Contas'}
               </h2>
-              <button className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+              <button 
+                onClick={() => {
+                  if (activeTab === 'fornecedores') setShowFornecedorModal(true)
+                  if (activeTab === 'centro-custo') setShowCentroCustoModal(true)
+                  if (activeTab === 'categorias') setShowCategoriaModal(true)
+                  if (activeTab === 'contas') setShowContaModal(true)
+                }}
+                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
                 <Plus className="w-4 h-4 mr-2" />
                 Novo {activeTab === 'fornecedores' ? 'Fornecedor' : 
                       activeTab === 'centro-custo' ? 'Centro de Custo' :
@@ -271,21 +428,44 @@ export default function GestaoFinanceiraPage() {
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {suppliers.map((supplier) => (
-                      <div key={supplier.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                      <div key={supplier.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200 hover:shadow-md transition-shadow">
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
-                            <h3 className="font-medium text-gray-900">{supplier.name}</h3>
+                            <h3 className="font-medium text-gray-900">{supplier.company_name}</h3>
+                            {supplier.trading_name && <p className="text-sm text-gray-600">{supplier.trading_name}</p>}
                             {supplier.email && <p className="text-sm text-gray-600">{supplier.email}</p>}
                             {supplier.phone && <p className="text-sm text-gray-600">{supplier.phone}</p>}
+                            <div className="mt-2">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                supplier.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                              }`}>
+                                {supplier.is_active ? 'Ativo' : 'Inativo'}
+                              </span>
+                            </div>
                           </div>
                           <div className="flex items-center space-x-2">
-                            <button className="p-1 text-blue-600 hover:bg-blue-50 rounded">
+                            <button 
+                              onClick={() => handleViewSupplier(supplier)}
+                              className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                              title="Visualizar"
+                            >
                               <Eye className="w-4 h-4" />
                             </button>
-                            <button className="p-1 text-gray-600 hover:bg-gray-100 rounded">
+                            <button 
+                              onClick={() => {
+                                setEditingItem(supplier)
+                                setShowFornecedorModal(true)
+                              }}
+                              className="p-1 text-gray-600 hover:bg-gray-100 rounded transition-colors"
+                              title="Editar"
+                            >
                               <Edit2 className="w-4 h-4" />
                             </button>
-                            <button className="p-1 text-red-600 hover:bg-red-50 rounded">
+                            <button 
+                              onClick={() => handleDeleteSupplier(supplier.id)}
+                              className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
+                              title="Excluir"
+                            >
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
@@ -309,20 +489,46 @@ export default function GestaoFinanceiraPage() {
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {costCenters.map((costCenter) => (
-                      <div key={costCenter.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                      <div key={costCenter.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200 hover:shadow-md transition-shadow">
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <h3 className="font-medium text-gray-900">{costCenter.name}</h3>
+                            {costCenter.code && <p className="text-sm text-gray-600">Código: {costCenter.code}</p>}
                             {costCenter.description && <p className="text-sm text-gray-600">{costCenter.description}</p>}
+                            {costCenter.budget_limit && (
+                              <p className="text-sm text-gray-600">Limite: {formatCurrency(costCenter.budget_limit)}</p>
+                            )}
+                            <div className="mt-2">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                costCenter.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                              }`}>
+                                {costCenter.is_active ? 'Ativo' : 'Inativo'}
+                              </span>
+                            </div>
                           </div>
                           <div className="flex items-center space-x-2">
-                            <button className="p-1 text-blue-600 hover:bg-blue-50 rounded">
+                            <button 
+                              onClick={() => handleViewCostCenter(costCenter)}
+                              className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                              title="Visualizar"
+                            >
                               <Eye className="w-4 h-4" />
                             </button>
-                            <button className="p-1 text-gray-600 hover:bg-gray-100 rounded">
+                            <button 
+                              onClick={() => {
+                                setEditingItem(costCenter)
+                                setShowCentroCustoModal(true)
+                              }}
+                              className="p-1 text-gray-600 hover:bg-gray-100 rounded transition-colors"
+                              title="Editar"
+                            >
                               <Edit2 className="w-4 h-4" />
                             </button>
-                            <button className="p-1 text-red-600 hover:bg-red-50 rounded">
+                            <button 
+                              onClick={() => handleDeleteCostCenter(costCenter.id)}
+                              className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
+                              title="Excluir"
+                            >
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
@@ -346,26 +552,53 @@ export default function GestaoFinanceiraPage() {
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {categories.map((category) => (
-                      <div key={category.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                      <div key={category.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200 hover:shadow-md transition-shadow">
                         <div className="flex items-start justify-between">
-                          <div className="flex items-center space-x-3 flex-1">
-                            <div 
-                              className="w-4 h-4 rounded-full"
-                              style={{ backgroundColor: category.color }}
-                            ></div>
-                            <div>
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-2 mb-2">
+                              <div 
+                                className="w-4 h-4 rounded-full"
+                                style={{ backgroundColor: category.color }}
+                              ></div>
                               <h3 className="font-medium text-gray-900">{category.name}</h3>
-                              <p className="text-sm text-gray-600 capitalize">{category.type}</p>
+                            </div>
+                            {category.description && <p className="text-sm text-gray-600">{category.description}</p>}
+                            <div className="mt-2 flex items-center space-x-2">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                category.type === 'receita' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                              }`}>
+                                {category.type === 'receita' ? 'Receita' : 'Despesa'}
+                              </span>
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                category.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                              }`}>
+                                {category.is_active ? 'Ativo' : 'Inativo'}
+                              </span>
                             </div>
                           </div>
                           <div className="flex items-center space-x-2">
-                            <button className="p-1 text-blue-600 hover:bg-blue-50 rounded">
+                            <button 
+                              onClick={() => handleViewCategory(category)}
+                              className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                              title="Visualizar"
+                            >
                               <Eye className="w-4 h-4" />
                             </button>
-                            <button className="p-1 text-gray-600 hover:bg-gray-100 rounded">
+                            <button 
+                              onClick={() => {
+                                setEditingItem(category)
+                                setShowCategoriaModal(true)
+                              }}
+                              className="p-1 text-gray-600 hover:bg-gray-100 rounded transition-colors"
+                              title="Editar"
+                            >
                               <Edit2 className="w-4 h-4" />
                             </button>
-                            <button className="p-1 text-red-600 hover:bg-red-50 rounded">
+                            <button 
+                              onClick={() => handleDeleteCategory(category.id)}
+                              className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
+                              title="Excluir"
+                            >
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
@@ -389,24 +622,46 @@ export default function GestaoFinanceiraPage() {
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {accounts.map((account) => (
-                      <div key={account.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                      <div key={account.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200 hover:shadow-md transition-shadow">
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <h3 className="font-medium text-gray-900">{account.name}</h3>
-                            <p className="text-sm text-gray-600">{account.type}</p>
-                            {account.bank && <p className="text-sm text-gray-600">{account.bank}</p>}
-                            <p className="text-sm font-medium text-green-600 mt-1">
-                              {formatCurrency(account.balance)}
+                            <p className="text-sm text-gray-600">Tipo: {account.type}</p>
+                            {account.bank && <p className="text-sm text-gray-600">Banco: {account.bank}</p>}
+                            <p className={`text-sm font-medium ${account.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              Saldo: {formatCurrency(account.balance)}
                             </p>
+                            <div className="mt-2">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                account.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                              }`}>
+                                {account.is_active ? 'Ativa' : 'Inativa'}
+                              </span>
+                            </div>
                           </div>
                           <div className="flex items-center space-x-2">
-                            <button className="p-1 text-blue-600 hover:bg-blue-50 rounded">
+                            <button 
+                              onClick={() => handleViewAccount(account)}
+                              className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                              title="Visualizar"
+                            >
                               <Eye className="w-4 h-4" />
                             </button>
-                            <button className="p-1 text-gray-600 hover:bg-gray-100 rounded">
+                            <button 
+                              onClick={() => {
+                                setEditingItem(account)
+                                setShowContaModal(true)
+                              }}
+                              className="p-1 text-gray-600 hover:bg-gray-100 rounded transition-colors"
+                              title="Editar"
+                            >
                               <Edit2 className="w-4 h-4" />
                             </button>
-                            <button className="p-1 text-red-600 hover:bg-red-50 rounded">
+                            <button 
+                              onClick={() => handleDeleteAccount(account.id)}
+                              className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
+                              title="Excluir"
+                            >
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
@@ -419,6 +674,100 @@ export default function GestaoFinanceiraPage() {
             )}
           </div>
         </div>
+
+        {/* Modals */}
+        {showFornecedorModal && (
+          <NovoFornecedorModal
+            isOpen={showFornecedorModal}
+            onClose={() => {
+              setShowFornecedorModal(false)
+              setEditingItem(null)
+            }}
+            onSuccess={() => {
+              setShowFornecedorModal(false)
+              setEditingItem(null)
+              loadSuppliers()
+            }}
+            editData={editingItem}
+          />
+        )}
+
+        {showCentroCustoModal && (
+          <NovoCentroCustoModal
+            isOpen={showCentroCustoModal}
+            onClose={() => {
+              setShowCentroCustoModal(false)
+              setEditingItem(null)
+            }}
+            onSuccess={() => {
+              setShowCentroCustoModal(false)
+              setEditingItem(null)
+              loadCostCenters()
+            }}
+            editData={editingItem}
+          />
+        )}
+
+        {showCategoriaModal && (
+          <NovaCategoriaModal
+            isOpen={showCategoriaModal}
+            onClose={() => {
+              setShowCategoriaModal(false)
+              setEditingItem(null)
+            }}
+            onSuccess={() => {
+              setShowCategoriaModal(false)
+              setEditingItem(null)
+              loadCategories()
+            }}
+            editData={editingItem}
+          />
+        )}
+
+        {showContaModal && (
+          <NovaContaRecebimentoModal
+            isOpen={showContaModal}
+            onClose={() => {
+              setShowContaModal(false)
+              setEditingItem(null)
+            }}
+            onSuccess={() => {
+              setShowContaModal(false)
+              setEditingItem(null)
+              loadAccounts()
+            }}
+            editData={editingItem}
+          />
+        )}
+
+        {/* Details Modal */}
+        {showDetailsModal && editingItem && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+              <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                <h2 className="text-lg font-semibold">
+                  Detalhes {activeTab === 'fornecedores' ? 'do Fornecedor' : 
+                           activeTab === 'centro-custo' ? 'do Centro de Custo' :
+                           activeTab === 'categorias' ? 'da Categoria' : 'da Conta'}
+                </h2>
+                <button 
+                  onClick={() => {
+                    setShowDetailsModal(false)
+                    setEditingItem(null)
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-6">
+                <pre className="bg-gray-50 p-4 rounded-lg text-sm overflow-auto">
+                  {JSON.stringify(editingItem, null, 2)}
+                </pre>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
