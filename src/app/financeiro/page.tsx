@@ -1,4 +1,4 @@
-// src/app/financeiro/page.tsx - ATUALIZADO COM MELHORIAS
+// src/app/financeiro/page.tsx - CORRIGIDO COMPLETAMENTE
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
@@ -34,6 +34,9 @@ import ViewTransactionModal from './components/ViewTransactionModal'
 import SimpleEditModal from './components/SimpleEditModal'
 import InfiniteScrollLoader from './components/InfiniteScrollLoader'
 import { useTransactionModals } from './hooks/useTransactionModals'
+
+// Constantes
+const TRANSACTIONS_PER_PAGE = 20
 
 interface Transaction {
   id: string
@@ -82,6 +85,13 @@ interface DateFilter {
 }
 
 export default function FinanceiroPage() {
+  // Estados de paginação (CORRIGIDOS)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [hasMoreTransactions, setHasMoreTransactions] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [useInfiniteScroll, setUseInfiniteScroll] = useState(true)
+
+  // Estados principais
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [accounts, setAccounts] = useState<Account[]>([])
   const [selectedAccountId, setSelectedAccountId] = useState<string>('all')
@@ -384,7 +394,6 @@ export default function FinanceiroPage() {
           return
 
         case 'duplicate':
-          // Create a duplicate transaction
           const duplicateData = {
             description: `${transaction.description} (Cópia)`,
             amount: transaction.amount,
@@ -393,7 +402,7 @@ export default function FinanceiroPage() {
             account_id: transaction.account_id,
             transaction_date: new Date().toISOString().split('T')[0],
             status: 'pendente',
-            notes: transaction.notes,
+            notes: transaction.notes || '',
             installments: 1
           }
 
@@ -416,7 +425,6 @@ export default function FinanceiroPage() {
           console.error('Ação não reconhecida:', action)
           return
       }
-
     } catch (err) {
       console.error('Erro na ação:', err)
       alert('Erro ao executar ação: ' + (err as Error).message)
@@ -437,7 +445,7 @@ export default function FinanceiroPage() {
       if (action === 'mark_paid') {
         const updates = selectedTransactions.map(async (id) => {
           const transaction = transactions.find(t => t.id === id)
-          if (!transaction) return
+          if (!transaction) return null
 
           const newStatus = transaction.type === 'receita' ? 'recebido' : 'pago'
           return supabase
@@ -449,7 +457,7 @@ export default function FinanceiroPage() {
             })
             .eq('id', id)
         })
-        await Promise.all(updates)
+        await Promise.all(updates.filter(Boolean))
       } else {
         await supabase
           .from('financial_transactions')
@@ -483,7 +491,6 @@ export default function FinanceiroPage() {
   }
 
   const calculateRunningBalance = (transactionIndex: number): number => {
-    // Get the initial account balance (before any transactions)
     let initialBalance = 0
     if (selectedAccountId !== 'all') {
       const account = accounts.find(a => a.id === selectedAccountId)
@@ -492,23 +499,15 @@ export default function FinanceiroPage() {
       initialBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0)
     }
 
-    // Since transactions are ordered newest first (descending), we need to calculate
-    // the balance by applying transactions from the OLDEST to the current one
-    
-    // Start with initial balance
     let runningBalance = initialBalance
 
-    // Apply all transactions from the last one (oldest) up to and including the current one
-    // We go backwards through the array (from newest to oldest) and apply transactions
-    // starting from the end up to our current transaction
-    
     for (let i = transactions.length - 1; i >= transactionIndex; i--) {
       const transaction = transactions[i]
       if (transaction && (transaction.status === 'recebido' || transaction.status === 'pago')) {
         if (transaction.type === 'receita') {
-          runningBalance += transaction.amount // Add receitas
+          runningBalance += transaction.amount
         } else {
-          runningBalance -= transaction.amount // Subtract despesas
+          runningBalance -= transaction.amount
         }
       }
     }
@@ -660,10 +659,8 @@ export default function FinanceiroPage() {
             </select>
 
             <DateFilterDropdown
-              value={dateFilter}
-              onChange={setDateFilter}
-              isOpen={showDateFilter}
-              onToggle={() => setShowDateFilter(!showDateFilter)}
+              dateFilter={dateFilter}
+              onDateFilterChange={setDateFilter}
             />
 
             {selectedTransactions.length > 0 && (
@@ -802,7 +799,6 @@ export default function FinanceiroPage() {
                     {hasMoreTransactions && ' (há mais para carregar)'}
                   </div>
                   
-                  {/* Toggle between infinite scroll and manual pagination */}
                   <div className="flex items-center space-x-2">
                     <label className="text-xs text-gray-500">Modo:</label>
                     <button
@@ -818,7 +814,6 @@ export default function FinanceiroPage() {
                   </div>
                 </div>
                 
-                {/* Manual load more button (only show if not using infinite scroll) */}
                 {!useInfiniteScroll && hasMoreTransactions && (
                   <button
                     onClick={loadMoreTransactions}
@@ -842,7 +837,6 @@ export default function FinanceiroPage() {
             </div>
           )}
 
-          {/* Infinite Scroll Loader (only show if using infinite scroll) */}
           {useInfiniteScroll && (
             <InfiniteScrollLoader
               hasMore={hasMoreTransactions}

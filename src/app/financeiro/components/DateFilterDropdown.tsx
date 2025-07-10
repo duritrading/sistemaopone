@@ -60,20 +60,24 @@ export default function DateFilterDropdown({
   ]
 
   const getFilterLabel = () => {
-    if (value.type === 'year' && value.year) {
-      return `Ano: ${value.year}`
-    }
-    if (value.type === 'month' && value.year && value.month) {
-      const monthLabel = months.find(m => m.value === value.month)?.label
-      return `${monthLabel} ${value.year}`
-    }
-    if (value.type === 'custom' && value.startDate && value.endDate) {
-      const start = new Date(value.startDate).toLocaleDateString('pt-BR')
-      const end = new Date(value.endDate).toLocaleDateString('pt-BR')
-      return `${start} - ${end}`
-    }
-    return 'Período'
+  if (!value || !value.type) return 'Período'
+
+  if (value.type === 'year' && value.year) {
+    return `Ano: ${value.year}`
   }
+  if (value.type === 'month' && value.year && value.month) {
+    const monthLabel = months.find(m => m.value === value.month)?.label
+    return `${monthLabel} ${value.year}`
+  }
+  if (value.type === 'custom' && value.startDate && value.endDate) {
+    const start = new Date(value.startDate).toLocaleDateString('pt-BR')
+    const end = new Date(value.endDate).toLocaleDateString('pt-BR')
+    return `${start} - ${end}`
+  }
+
+  return 'Período'
+}
+
 
   const handleApply = () => {
     onChange(tempFilter)
