@@ -182,7 +182,7 @@ export default function NewReceitaModal({
                 </label>
                 <select
                   {...register('client_id')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                 >
                   <option value="">Selecione o cliente</option>
                   {clients.map(client => (
@@ -204,7 +204,7 @@ export default function NewReceitaModal({
                 <input
                   type="date"
                   {...register('transaction_date')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                 />
                 {errors.transaction_date && (
                   <p className="text-red-500 text-sm mt-1">{errors.transaction_date.message}</p>
@@ -219,7 +219,7 @@ export default function NewReceitaModal({
                 <input
                   type="text"
                   {...register('description')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                   placeholder="Descrição da receita"
                 />
                 {errors.description && (
@@ -240,7 +240,7 @@ export default function NewReceitaModal({
                     type="number"
                     step="0.01"
                     {...register('amount', { valueAsNumber: true })}
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                     placeholder="0,00"
                   />
                 </div>
@@ -253,11 +253,11 @@ export default function NewReceitaModal({
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Categoria *
-                  <HelpCircle className="w-4 h-4 text-gray-400 inline ml-1" />
+                  <HelpCircle className="w-4 h-4 text-gray-700 inline ml-1" />
                 </label>
                 <select
                   {...register('category')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                 >
                   <option value="">Selecione a categoria</option>
                   <option value="receitas_servicos">Receitas de Serviços</option>
@@ -278,7 +278,7 @@ export default function NewReceitaModal({
                 </label>
                 <select
                   {...register('cost_center')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                 >
                   <option value="">Selecione o centro de custo</option>
                   <option value="vendas">Vendas</option>
@@ -297,7 +297,7 @@ export default function NewReceitaModal({
                 <input
                   type="text"
                   {...register('reference_code')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                   placeholder="Código de referência"
                 />
               </div>
@@ -308,7 +308,7 @@ export default function NewReceitaModal({
               <input
                 type="checkbox"
                 {...register('repeat_transaction')}
-                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 text-gray-700"
               />
               <label className="text-sm text-gray-700">Repetir lançamento?</label>
               {repeatTransaction && (
@@ -334,7 +334,7 @@ export default function NewReceitaModal({
                 </label>
                 <select
                   {...register('installment_type')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                 >
                   <option value="vista">À vista</option>
                   <option value="parcelado">Parcelado</option>
@@ -349,7 +349,7 @@ export default function NewReceitaModal({
                 <input
                   type="date"
                   {...register('due_date')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                 />
                 {errors.due_date && (
                   <p className="text-red-500 text-sm mt-1">{errors.due_date.message}</p>
@@ -363,7 +363,7 @@ export default function NewReceitaModal({
                 </label>
                 <select
                   {...register('payment_method')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                 >
                   <option value="">Selecione</option>
                   <option value="pix">PIX</option>
@@ -385,7 +385,7 @@ export default function NewReceitaModal({
                 </label>
                 <select
                   {...register('account_id')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                 >
                   <option value="">Selecione a conta</option>
                   {accounts.map(account => (
@@ -453,7 +453,7 @@ export default function NewReceitaModal({
                 <textarea
                   {...register('notes')}
                   rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                   placeholder="Descreva observações relevantes sobre esse lançamento financeiro"
                 />
               </div>

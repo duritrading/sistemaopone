@@ -185,7 +185,7 @@ export default function NewDespesaModal({
                 </label>
                 <select
                   {...register('supplier_id')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                 >
                   <option value="">Selecione o fornecedor</option>
                   {suppliers.map(supplier => (
@@ -207,7 +207,7 @@ export default function NewDespesaModal({
                 <input
                   type="date"
                   {...register('transaction_date')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                 />
                 {errors.transaction_date && (
                   <p className="text-red-500 text-sm mt-1">{errors.transaction_date.message}</p>
@@ -222,7 +222,7 @@ export default function NewDespesaModal({
                 <input
                   type="text"
                   {...register('description')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                   placeholder="Descrição da despesa"
                 />
                 {errors.description && (
@@ -243,7 +243,7 @@ export default function NewDespesaModal({
                     type="number"
                     step="0.01"
                     {...register('amount', { valueAsNumber: true })}
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                     placeholder="0,00"
                   />
                 </div>
@@ -260,7 +260,7 @@ export default function NewDespesaModal({
                 </label>
                 <select
                   {...register('category')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                 >
                   <option value="">Selecione a categoria</option>
                   <option value="despesas_operacionais">Despesas Operacionais</option>
@@ -282,7 +282,7 @@ export default function NewDespesaModal({
                 </label>
                 <select
                   {...register('cost_center')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                 >
                   <option value="">Selecione o centro de custo</option>
                   <option value="vendas">Vendas</option>
@@ -301,7 +301,7 @@ export default function NewDespesaModal({
                 <input
                   type="text"
                   {...register('reference_code')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                   placeholder="Código de referência"
                 />
               </div>
@@ -338,7 +338,7 @@ export default function NewDespesaModal({
                 </label>
                 <select
                   {...register('installment_type')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                 >
                   <option value="vista">À vista</option>
                   <option value="parcelado">Parcelado</option>
@@ -353,7 +353,7 @@ export default function NewDespesaModal({
                 <input
                   type="date"
                   {...register('due_date')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                 />
                 {errors.due_date && (
                   <p className="text-red-500 text-sm mt-1">{errors.due_date.message}</p>
@@ -367,7 +367,7 @@ export default function NewDespesaModal({
                 </label>
                 <select
                   {...register('payment_method')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                 >
                   <option value="">Selecione</option>
                   <option value="pix">PIX</option>
@@ -389,7 +389,7 @@ export default function NewDespesaModal({
                 </label>
                 <select
                   {...register('account_id')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                 >
                   <option value="">Selecione a conta</option>
                   {accounts.map(account => (
@@ -471,7 +471,7 @@ export default function NewDespesaModal({
                 <textarea
                   {...register('notes')}
                   rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                   placeholder="Descreva observações relevantes sobre esse lançamento financeiro"
                 />
               </div>
