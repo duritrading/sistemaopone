@@ -1073,45 +1073,61 @@ export default function ProjectsPage() {
     }
   }
 
-  const loadProjectsAndMetrics = async () => {
-    try {
-      setIsLoading(true)
-      setError(null)
-      
-      const { data: projectsData, error: projectsError } = await supabase
-        .from('projects')
-        .select(`
-          id, name, status, health, progress_percentage, total_budget, used_budget,
-          project_type, risk_level, estimated_end_date, next_milestone, start_date,
-          client:clients(company_name),
-          manager:team_members(full_name),
-          team_members:project_team_members(team_member:team_members(full_name))
-        `)
-        .order('created_at', { ascending: false })
+// src/app/projetos/page.tsx - loadProjectsAndMetrics função corrigida completa
+const loadProjectsAndMetrics = async () => {
+  try {
+    setIsLoading(true)
+    setError(null)
+    
+    const { data: projectsData, error: projectsError } = await supabase
+      .from('projects')
+      .select(`
+        id, name, status, health, progress_percentage, total_budget, used_budget,
+        project_type, risk_level, estimated_end_date, next_milestone, start_date,
+        client:clients(id, company_name),
+        manager:team_members(id, full_name),
+        team_members:project_team_members(team_member:team_members(full_name))
+      `)
+      .order('created_at', { ascending: false })
 
-      if (projectsError) throw projectsError
+    if (projectsError) throw projectsError
 
-      const activeProjects = projectsData?.filter(p => p.status === 'Executando')?.length || 0
-      const criticalProjects = projectsData?.filter(p => p.health === 'Crítico')?.length || 0
-      const totalValue = projectsData?.reduce((sum, p) => sum + (p.total_budget || 0), 0) || 0
-      const avgProgress = projectsData?.length > 0 
-        ? Math.round(projectsData.reduce((sum, p) => sum + (p.progress_percentage || 0), 0) / projectsData.length)
-        : 0
+    // MAPEAR OS DADOS CORRETAMENTE
+    const mappedProjects = projectsData?.map(project => ({
+      ...project,
+      client: Array.isArray(project.client) && project.client.length > 0 
+        ? project.client[0] 
+        : project.client || undefined,
+      manager: Array.isArray(project.manager) && project.manager.length > 0 
+        ? project.manager[0] 
+        : project.manager || undefined,
+      team_members: Array.isArray(project.team_members) 
+        ? project.team_members 
+        : []
+    })) || []
 
-      setProjects(projectsData || [])
-      setMetrics({
-        active_projects: activeProjects,
-        critical_projects: criticalProjects,
-        total_value: totalValue,
-        average_progress: avgProgress
-      })
-    } catch (err: any) {
-      console.error('Erro ao carregar dados:', err)
-      setError(err.message || 'Erro desconhecido')
-    } finally {
-      setIsLoading(false)
-    }
+    // CALCULAR MÉTRICAS COM DADOS MAPEADOS
+    const activeProjects = mappedProjects.filter(p => p.status === 'Executando').length
+    const criticalProjects = mappedProjects.filter(p => p.health === 'Crítico').length
+    const totalValue = mappedProjects.reduce((sum, p) => sum + (p.total_budget || 0), 0)
+    const avgProgress = mappedProjects.length > 0 
+      ? Math.round(mappedProjects.reduce((sum, p) => sum + (p.progress_percentage || 0), 0) / mappedProjects.length)
+      : 0
+
+    setProjects(mappedProjects)
+    setMetrics({
+      active_projects: activeProjects,
+      critical_projects: criticalProjects,
+      total_value: totalValue,
+      average_progress: avgProgress
+    })
+  } catch (err: any) {
+    console.error('Erro ao carregar dados:', err)
+    setError(err.message || 'Erro desconhecido')
+  } finally {
+    setIsLoading(false)
   }
+}
 
   const formatCurrency = (value: number) => {
     if (value >= 1000000) {
