@@ -771,7 +771,15 @@ export default function VendasPage() {
       setShowDetailsModal(false)
       setSelectedOpportunity(null)
     }}
-    onEdit={() => handleEditOpportunity(selectedOpportunity!)}
+    onEdit={() => {
+      if (selectedOpportunity) {
+        handleEditOpportunity(selectedOpportunity)
+      }
+    }}
+    onSuccess={() => {
+      fetchOpportunities()
+      fetchStats()
+    }}
   />
 )}
 
