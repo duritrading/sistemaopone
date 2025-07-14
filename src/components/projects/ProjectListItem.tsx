@@ -48,10 +48,17 @@ const getStatusIcon = (status: string) => {
     }
 }
 
-const Tag = ({ text, colorClass, isStrong = false }) => (
-    <span className={`px-2 py-1 text-xs rounded-full ${colorClass} ${isStrong ? 'font-bold' : 'font-medium'}`}>
-        {text}
-    </span>
+// src/components/projects/ProjectListItem.tsx - linha 51 corrigida
+interface TagProps {
+  text: string
+  colorClass: string
+  isStrong?: boolean
+}
+
+const Tag = ({ text, colorClass, isStrong = false }: TagProps) => (
+  <span className={`px-2 py-1 text-xs rounded-full ${colorClass} ${isStrong ? 'font-bold' : 'font-medium'}`}>
+    {text}
+  </span>
 );
 
 export default function ProjectListItem({ project }: ProjectListItemProps) {
