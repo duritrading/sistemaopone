@@ -544,14 +544,17 @@ export default function ProjectDetailPage() {
     }
   }
 
-  // === CONFIGURAÇÃO DAS TABS ===
-  const tabs = [
+// === CONFIGURAÇÃO DAS TABS ===
+const tabs = useMemo(() => {
+  if (!project) return []
+  
+  return [
     { 
       id: 'overview' as TabId, 
       label: 'Visão Geral', 
       icon: BarChart3,
       component: OverviewTab,
-      props: { project, kpis: kpis }
+      props: { project, kpis }
     },
     { 
       id: 'deliverables' as TabId, 
@@ -588,11 +591,12 @@ export default function ProjectDetailPage() {
       }
     }
   ]
+}, [project, kpis, milestones, activities, teamMembers, projectId])
 
-  // === RENDERS ===
-  if (!mounted) {
-    return <LoadingSpinner />
-  }
+// === RENDERS ===
+if (!mounted) {
+  return <LoadingSpinner />
+}
 
 if (error) {
   return (
@@ -616,153 +620,156 @@ if (!project) {
   )
 }
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header do Projeto */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto p-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => router.push('/projetos')}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <ArrowLeft className="w-5 h-5 text-gray-600" />
-              </button>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">{project.name}</h1>
-                <div className="flex items-center space-x-4 mt-1">
-                  <StatusBadge status={project.status} />
-                  <span className="text-sm text-gray-600">
-                    {project.project_type}
-                  </span>
-                </div>
+// Agora project é garantidamente não-null
+return (
+  <div className="min-h-screen bg-gray-50">
+    {/* Header do Projeto */}
+    <div className="bg-white border-b border-gray-200">
+      <div className="max-w-7xl mx-auto p-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={() => router.push('/projetos')}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5 text-gray-600" />
+            </button>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">{project.name}</h1>
+              <div className="flex items-center space-x-4 mt-1">
+                <StatusBadge status={project.status} />
+                <span className="text-sm text-gray-600">
+                  {project.project_type}
+                </span>
               </div>
             </div>
-            <button 
-              onClick={handleEditProject}
-              className="flex items-center space-x-2 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors"
+          </div>
+          <button 
+            onClick={handleEditProject}
+            className="flex items-center space-x-2 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors"
+          >
+            <Edit className="w-4 h-4" />
+            <span>Editar Projeto</span>
+          </button>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex space-x-8 mt-6">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center space-x-2 pb-3 border-b-2 transition-colors ${
+                activeTab === tab.id
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+              aria-current={activeTab === tab.id ? 'page' : undefined}
             >
-              <Edit className="w-4 h-4" />
-              <span>Editar Projeto</span>
+              <tab.icon className="w-4 h-4" />
+              <span>{tab.label}</span>
             </button>
-          </div>
-
-          {/* Tabs */}
-          <div className="flex space-x-8 mt-6">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center space-x-2 pb-3 border-b-2 transition-colors ${
-                  activeTab === tab.id
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
-                aria-current={activeTab === tab.id ? 'page' : undefined}
-              >
-                <tab.icon className="w-4 h-4" />
-                <span>{tab.label}</span>
-              </button>
-            ))}
-          </div>
+          ))}
         </div>
       </div>
-
-      {/* KPIs Estáticos - Agora ficam sempre visíveis */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto p-6">
-          {loading ? (
-            <KPISkeleton />
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <KPICard
-                title="Progresso"
-                value={`${kpis.overallProgress}%`}
-                icon={BarChart3}
-                subtitle="do projeto concluído"
-                trend={getTrendDirection(kpis.overallProgress, { good: 70, warning: 30 })}
-                colorClass="bg-blue-500"
-              />
-              
-              <KPICard
-                title="Orçamento Usado"
-                value={formatCurrencyCompact(project.used_budget)}
-                icon={DollarSign}
-                subtitle={`de ${formatCurrencyCompact(project.total_budget)}`}
-                trend={kpis.budgetUtilization <= kpis.overallProgress ? 'up' : 'down'}
-                colorClass="bg-green-500"
-              />
-              
-              <KPICard
-                title="Marcos Concluídos"
-                value={kpis.completedMilestones}
-                icon={Target}
-                subtitle={`de ${kpis.totalMilestones} marcos`}
-                trend={kpis.completedMilestones > 0 ? 'up' : 'neutral'}
-                colorClass="bg-purple-500"
-              />
-              
-              <KPICard
-                title="Dias Restantes"
-                value={kpis.daysRemaining}
-                icon={Clock}
-                subtitle="até o prazo final"
-                trend={getTrendDirection(kpis.daysRemaining, { good: 30, warning: 7 })}
-                colorClass={kpis.daysRemaining > 30 ? 'bg-green-500' : kpis.daysRemaining > 7 ? 'bg-yellow-500' : 'bg-red-500'}
-              />
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Conteúdo das Tabs */}
-      <div className="max-w-7xl mx-auto p-6">
-        {tabs.map(tab => {
-          if (tab.id !== activeTab) return null
-          
-          const TabComponent = tab.component
-
-          return (
-            <Suspense key={tab.id} fallback={<TabSkeleton />}>
-              <TabComponent 
-                {...tab.props}
-                loading={loading}
-              />
-            </Suspense>
-          )
-        })}
-      </div>
-
-      {/* Modais */}
-      <NewMilestoneModal
-        isOpen={modals.isNewMilestoneModalOpen}
-        onClose={() => closeModal('isNewMilestoneModalOpen')}
-        onSubmit={handleNewMilestone}
-        teamMembers={teamMembers}
-      />
-
-      <NewActivityModal
-        isOpen={modals.isNewActivityModalOpen}
-        onClose={() => closeModal('isNewActivityModalOpen')}
-        onSubmit={handleNewActivity}
-        teamMembers={teamMembers}
-      />
-
-      <EditItemModal
-        isOpen={!!modals.editingItem}
-        onClose={() => closeModal('editingItem')}
-        onSubmit={handleUpdateItem}
-        item={modals.editingItem}
-        teamMembers={teamMembers}
-      />
-
-      <EditProjectModal
-        isOpen={isEditProjectModalOpen}
-        onClose={() => setIsEditProjectModalOpen(false)}
-        project={project}
-        onSubmit={handleUpdateProject}
-      />
     </div>
-  )
-}
+
+    {/* KPIs Estáticos */}
+    <div className="bg-white border-b border-gray-200">
+      <div className="max-w-7xl mx-auto p-6">
+        {loading ? (
+          <KPISkeleton />
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <KPICard
+              title="Progresso Geral"
+              value={`${kpis.overallProgress}%`}
+              icon={Target}
+              subtitle={`${kpis.completedMilestones} marcos concluídos`}
+              trend={getTrendDirection(kpis.overallProgress, { good: 75, warning: 50 })}
+              colorClass="bg-blue-500"
+            />
+            
+            <KPICard
+              title="Orçamento"
+              value={formatCurrencyCompact(project.used_budget)}
+              icon={DollarSign}
+              subtitle={`de ${formatCurrencyCompact(project.total_budget)}`}
+              trend={getTrendDirection(
+                ((project.total_budget - project.used_budget) / project.total_budget) * 100,
+                { good: 50, warning: 20 }
+              )}
+              colorClass="bg-green-500"
+            />
+            
+            <KPICard
+              title="Entregas Pendentes"
+              value={kpis.pendingDeliverables}
+              icon={Clock}
+              subtitle="marcos e atividades"
+              trend={kpis.pendingDeliverables <= 3 ? 'up' : 'neutral'}
+              colorClass="bg-purple-500"
+            />
+            
+            <KPICard
+              title="Dias Restantes"
+              value={kpis.daysRemaining}
+              icon={Clock}
+              subtitle="até o prazo final"
+              trend={getTrendDirection(kpis.daysRemaining, { good: 30, warning: 7 })}
+              colorClass={kpis.daysRemaining > 30 ? 'bg-green-500' : kpis.daysRemaining > 7 ? 'bg-yellow-500' : 'bg-red-500'}
+            />
+          </div>
+        )}
+      </div>
+    </div>
+
+    {/* Conteúdo das Tabs */}
+    <div className="max-w-7xl mx-auto p-6">
+      {tabs.map(tab => {
+        if (tab.id !== activeTab) return null
+        
+        const TabComponent = tab.component
+
+        return (
+          <Suspense key={tab.id} fallback={<TabSkeleton />}>
+            <TabComponent 
+              {...tab.props}
+              loading={loading}
+            />
+          </Suspense>
+        )
+      })}
+    </div>
+
+    {/* Modais */}
+    <NewMilestoneModal
+      isOpen={modals.isNewMilestoneModalOpen}
+      onClose={() => closeModal('isNewMilestoneModalOpen')}
+      onSubmit={handleNewMilestone}
+      teamMembers={teamMembers}
+    />
+
+    <NewActivityModal
+      isOpen={modals.isNewActivityModalOpen}
+      onClose={() => closeModal('isNewActivityModalOpen')}
+      onSubmit={handleNewActivity}
+      teamMembers={teamMembers}
+    />
+
+    <EditItemModal
+      isOpen={!!modals.editingItem}
+      onClose={() => closeModal('editingItem')}
+      onSubmit={handleUpdateItem}
+      item={modals.editingItem}
+      teamMembers={teamMembers}
+    />
+
+    <EditProjectModal
+      isOpen={isEditProjectModalOpen}
+      onClose={() => setIsEditProjectModalOpen(false)}
+      project={project}
+      onSubmit={handleUpdateProject}
+    />
+  </div>
+)
