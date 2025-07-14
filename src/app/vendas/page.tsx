@@ -459,10 +459,11 @@ export default function VendasPage() {
         await fetchStats()
       }
       
-    } catch (error) {
-      console.error('Error moving opportunity:', error)
-      alert(`Erro ao mover oportunidade: ${error.message || 'Erro desconhecido'}`)
-    }
+    // src/app/vendas/page.tsx - linha 464 corrigida
+} catch (error) {
+  console.error('Error moving opportunity:', error)
+  alert(`Erro ao mover oportunidade: ${error instanceof Error ? error.message : 'Erro desconhecido'}`)
+}
 
     setDraggedItem(null)
     setDragOverStage(null)
@@ -653,15 +654,19 @@ export default function VendasPage() {
                     )}
                   </div>
 
-                  <div 
-                    ref={(el) => stageRefs.current[stage] = el}
-                    className="space-y-3 min-h-[400px]"
-                  >
-                    {stageOpportunities.map((opportunity, index) => (
-                      <div key={opportunity.id}>
-                        {dragOverStage === stage && dragOverPosition === index && draggedItem !== opportunity.id && (
-                          <div className="h-1 bg-blue-400 rounded-full mb-3 animate-pulse"></div>
-                        )}
+                  <div
+  ref={(el) => {
+    if (stageRefs.current) {
+      stageRefs.current[stage] = el
+    }
+  }}
+  className="space-y-3 min-h-[400px]"
+>
+  {stageOpportunities.map((opportunity, index) => (
+    <div key={opportunity.id}>
+      {dragOverStage === stage && dragOverPosition === index && draggedItem !== opportunity.id && (
+        <div className="h-1 bg-blue-400 rounded-full mb-3 animate-pulse"></div>
+      )}
                         
                         <div
                           draggable
@@ -758,32 +763,32 @@ export default function VendasPage() {
         />
       )}
 
-      {showDetailsModal && selectedOpportunity && (
-        <OpportunityDetailsModal
-          isOpen={showDetailsModal}
-          opportunity={selectedOpportunity}
-          onClose={() => {
-            setShowDetailsModal(false)
-            setSelectedOpportunity(null)
-          }}
-          onEdit={() => handleEditOpportunity(selectedOpportunity)}
-        />
-      )}
+   {showDetailsModal && selectedOpportunity && (
+  <OpportunityDetailsModal
+    isOpen={showDetailsModal}
+    opportunity={selectedOpportunity as SalesOpportunity}
+    onClose={() => {
+      setShowDetailsModal(false)
+      setSelectedOpportunity(null)
+    }}
+    onEdit={() => handleEditOpportunity(selectedOpportunity!)}
+  />
+)}
 
-      {showEditModal && selectedOpportunity && (
-        <EditOpportunityModal
-          isOpen={showEditModal}
-          opportunity={selectedOpportunity}
-          onClose={() => {
-            setShowEditModal(false)
-            setSelectedOpportunity(null)
-          }}
-          onSuccess={() => {
-            fetchOpportunities()
-            fetchStats()
-          }}
-        />
-      )}
+{showEditModal && selectedOpportunity && (
+  <EditOpportunityModal
+    isOpen={showEditModal}
+    opportunity={selectedOpportunity}
+    onClose={() => {
+      setShowEditModal(false)
+      setSelectedOpportunity(null)
+    }}
+    onSuccess={() => {
+      fetchOpportunities()
+      fetchStats()
+    }}
+  />
+)}
 
       {showAutomationModal && (
         <SalesAutomationModal
