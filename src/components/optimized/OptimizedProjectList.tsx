@@ -1,18 +1,42 @@
-// src/components/optimized/OptimizedProjectList.tsx
-/**
- * Componente de lista otimizado com virtualização e memoização inteligente
- * Implementa lazy loading, infinite scroll e performance monitoring
- */
+// src/components/optimized/OptimizedProjectList.tsx - REESCRITA COMPLETA
+'use client'
 
-import React, { memo, useCallback, useMemo, Suspense, lazy } from 'react'
-import { FixedSizeList as List } from 'react-window'
-import InfiniteLoader from 'react-window-infinite-loader'
-import { useOptimizedProjects } from '@/hooks/useOptimizedProjects'
-import { ErrorBoundary } from '@/components/ErrorBoundary'
+import React, { memo, useCallback, useMemo, useState, useEffect } from 'react'
+import { supabase } from '@/lib/supabase'
+import { 
+  Eye, 
+  Calendar, 
+  Users, 
+  DollarSign, 
+  TrendingUp,
+  AlertTriangle,
+  CheckCircle,
+  Clock,
+  Building
+} from 'lucide-react'
 
-// Lazy load de componentes pesados
-const ProjectDetailsModal = lazy(() => import('@/components/modals/ProjectDetailsModal'))
-const ProjectGanttChart = lazy(() => import('@/components/charts/ProjectGanttChart'))
+// === INTERFACES ===
+interface Project {
+  id: string
+  name: string
+  status: string
+  health: string
+  progress_percentage: number
+  total_budget: number
+  used_budget: number
+  project_type: string
+  estimated_end_date?: string
+  client?: {
+    id: string
+    company_name: string
+  }
+  manager?: {
+    id: string
+    full_name: string
+  }
+  team_count?: number
+  days_remaining?: number
+}
 
 interface OptimizedProjectListProps {
   filters?: {
@@ -20,198 +44,219 @@ interface OptimizedProjectListProps {
     health?: string[]
     search?: string
   }
-  onProjectSelect?: (project: any) => void
+  onProjectSelect?: (project: Project) => void
   height?: number
-  itemHeight?: number
   enableVirtualization?: boolean
 }
 
-/**
- * Item memoizado da lista para evitar re-renders desnecessários
- */
+// === COMPONENTE DE ITEM DA LISTA ===
 const ProjectListItem = memo(function ProjectListItem({ 
-  index, 
-  style, 
-  data 
-}: {
-  index: number
-  style: React.CSSProperties
-  data: {
-    projects: any[]
-    onProjectSelect: (project: any) => void
-    loadMore: () => void
-    hasMore: boolean
-  }
+  project, 
+  onProjectSelect 
+}: { 
+  project: Project
+  onProjectSelect?: (project: Project) => void
 }) {
-  const { projects, onProjectSelect, loadMore, hasMore } = data
-  const project = projects[index]
-
-  // Trigger load more quando próximo do final
-  React.useEffect(() => {
-    if (index >= projects.length - 5 && hasMore) {
-      loadMore()
-    }
-  }, [index, projects.length, hasMore, loadMore])
-
-  if (!project) {
-    return (
-      <div style={style} className="p-4 animate-pulse">
-        <div className="bg-gray-200 h-24 rounded-lg"></div>
-      </div>
-    )
-  }
-
-  const healthConfig = {
-    'healthy': { color: 'bg-green-100 text-green-800', label: 'Saudável' },
-    'warning': { color: 'bg-yellow-100 text-yellow-800', label: 'Atenção' },
-    'critical': { color: 'bg-red-100 text-red-800', label: 'Crítico' }
-  }[project.health] || { color: 'bg-gray-100 text-gray-800', label: 'N/A' }
-
   const budgetUtilization = project.total_budget > 0 
     ? (project.used_budget / project.total_budget) * 100 
     : 0
 
+  const getHealthConfig = (health: string) => {
+    switch (health.toLowerCase()) {
+      case 'excelente': case 'healthy': case 'verde':
+        return { color: 'bg-green-100 text-green-800', label: 'Saudável' }
+      case 'bom': case 'warning': case 'amarelo':
+        return { color: 'bg-yellow-100 text-yellow-800', label: 'Atenção' }
+      case 'crítico': case 'critical': case 'vermelho':
+        return { color: 'bg-red-100 text-red-800', label: 'Crítico' }
+      default:
+        return { color: 'bg-gray-100 text-gray-800', label: 'N/A' }
+    }
+  }
+
+  const healthConfig = getHealthConfig(project.health)
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(value)
+  }
+
+  const getDaysRemaining = () => {
+    if (!project.estimated_end_date) return 'Sem prazo'
+    
+    const endDate = new Date(project.estimated_end_date)
+    const today = new Date()
+    const diffTime = endDate.getTime() - today.getTime()
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    
+    if (diffDays < 0) return `${Math.abs(diffDays)} dias atrasado`
+    if (diffDays === 0) return 'Vence hoje'
+    return `${diffDays} dias restantes`
+  }
+
   return (
-    <div style={style} className="p-2">
-      <div 
-        className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
-        onClick={() => onProjectSelect(project)}
-      >
-        {/* Header */}
-        <div className="flex justify-between items-start mb-3">
-          <div className="flex-1 min-w-0">
-            <h3 className="text-lg font-semibold text-gray-900 truncate">
-              {project.name}
-            </h3>
-            <p className="text-sm text-gray-600 truncate">
-              {project.client?.company_name || 'Cliente não definido'}
-            </p>
-          </div>
-          <span className={`px-2 py-1 rounded-full text-xs font-medium ${healthConfig.color}`}>
-            {healthConfig.label}
-          </span>
+    <div 
+      className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all duration-200 cursor-pointer"
+      onClick={() => onProjectSelect?.(project)}
+    >
+      {/* Header */}
+      <div className="flex justify-between items-start mb-3">
+        <div className="flex-1 min-w-0">
+          <h3 className="text-lg font-semibold text-gray-900 truncate">
+            {project.name}
+          </h3>
+          <p className="text-sm text-gray-600 truncate">
+            {project.client?.company_name || 'Cliente não definido'}
+          </p>
         </div>
+        <span className={`px-2 py-1 rounded-full text-xs font-medium ${healthConfig.color}`}>
+          {healthConfig.label}
+        </span>
+      </div>
 
-        {/* Métricas */}
-        <div className="grid grid-cols-3 gap-4 mb-3">
-          <div>
-            <p className="text-xs text-gray-500">Progresso</p>
-            <div className="flex items-center gap-2">
-              <div className="flex-1 bg-gray-200 rounded-full h-2">
-                <div 
-                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${project.progress_percentage}%` }}
-                />
-              </div>
-              <span className="text-sm font-medium text-gray-900">
-                {project.progress_percentage}%
-              </span>
+      {/* Métricas */}
+      <div className="grid grid-cols-3 gap-4 mb-3">
+        <div>
+          <p className="text-xs text-gray-500 mb-1">Progresso</p>
+          <div className="flex items-center gap-2">
+            <div className="flex-1 bg-gray-200 rounded-full h-2">
+              <div 
+                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                style={{ width: `${project.progress_percentage || 0}%` }}
+              />
             </div>
+            <span className="text-sm font-medium text-gray-900">
+              {project.progress_percentage || 0}%
+            </span>
           </div>
-          
-          <div>
-            <p className="text-xs text-gray-500">Orçamento</p>
-            <div className="flex items-center gap-2">
-              <div className="flex-1 bg-gray-200 rounded-full h-2">
-                <div 
-                  className={`h-2 rounded-full transition-all duration-300 ${
-                    budgetUtilization > 90 ? 'bg-red-500' : 
-                    budgetUtilization > 70 ? 'bg-yellow-500' : 
-                    'bg-green-500'
-                  }`}
-                  style={{ width: `${Math.min(budgetUtilization, 100)}%` }}
-                />
-              </div>
-              <span className="text-sm font-medium text-gray-900">
-                {Math.round(budgetUtilization)}%
-              </span>
+        </div>
+        
+        <div>
+          <p className="text-xs text-gray-500 mb-1">Orçamento</p>
+          <div className="flex items-center gap-2">
+            <div className="flex-1 bg-gray-200 rounded-full h-2">
+              <div 
+                className={`h-2 rounded-full transition-all duration-300 ${
+                  budgetUtilization > 90 ? 'bg-red-500' : 
+                  budgetUtilization > 70 ? 'bg-yellow-500' : 
+                  'bg-green-500'
+                }`}
+                style={{ width: `${Math.min(budgetUtilization, 100)}%` }}
+              />
             </div>
-          </div>
-
-          <div>
-            <p className="text-xs text-gray-500">Equipe</p>
-            <p className="text-sm font-medium text-gray-900">
-              {project.team_count || 0} membros
-            </p>
+            <span className="text-sm font-medium text-gray-900">
+              {Math.round(budgetUtilization)}%
+            </span>
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="flex justify-between items-center text-xs text-gray-500">
-          <span>{project.project_type}</span>
-          <span>
-            {project.days_remaining !== null 
-              ? `${project.days_remaining > 0 ? '' : '-'}${Math.abs(project.days_remaining)} dias`
-              : 'Sem prazo'
-            }
-          </span>
+        <div>
+          <p className="text-xs text-gray-500 mb-1">Valor Total</p>
+          <p className="text-sm font-medium text-gray-900">
+            {formatCurrency(project.total_budget || 0)}
+          </p>
         </div>
+      </div>
+
+      {/* Footer */}
+      <div className="flex justify-between items-center text-xs text-gray-500">
+        <span className="flex items-center gap-1">
+          <Building className="w-3 h-3" />
+          {project.project_type}
+        </span>
+        <span className="flex items-center gap-1">
+          <Clock className="w-3 h-3" />
+          {getDaysRemaining()}
+        </span>
       </div>
     </div>
   )
 })
 
-/**
- * Componente principal otimizado
- */
+// === HOOK PERSONALIZADO PARA PROJETOS ===
+function useOptimizedProjects(filters: OptimizedProjectListProps['filters'] = {}) {
+  const [projects, setProjects] = useState<Project[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const loadProjects = useCallback(async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      let query = supabase
+        .from('projects')
+        .select(`
+          id, name, status, health, progress_percentage, total_budget, used_budget,
+          project_type, estimated_end_date,
+          client:clients(id, company_name),
+          manager:team_members(id, full_name)
+        `)
+        .eq('is_active', true)
+        .order('updated_at', { ascending: false })
+
+      // Aplicar filtros
+      if (filters.status?.length) {
+        query = query.in('status', filters.status)
+      }
+      if (filters.health?.length) {
+        query = query.in('health', filters.health)
+      }
+      if (filters.search) {
+        query = query.ilike('name', `%${filters.search}%`)
+      }
+
+      const { data, error: fetchError } = await query
+
+      if (fetchError) throw fetchError
+
+      // Mapear dados com cálculos
+      const mappedProjects = (data || []).map(project => ({
+        ...project,
+        client: Array.isArray(project.client) ? project.client[0] : project.client,
+        manager: Array.isArray(project.manager) ? project.manager[0] : project.manager,
+        team_count: 0, // Mock value
+        days_remaining: project.estimated_end_date 
+          ? Math.ceil((new Date(project.estimated_end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+          : null
+      }))
+
+      setProjects(mappedProjects as Project[])
+    } catch (err: any) {
+      console.error('Erro ao carregar projetos:', err)
+      setError(err.message || 'Erro desconhecido')
+    } finally {
+      setLoading(false)
+    }
+  }, [filters])
+
+  useEffect(() => {
+    loadProjects()
+  }, [loadProjects])
+
+  return {
+    projects,
+    loading,
+    error,
+    refetch: loadProjects
+  }
+}
+
+// === COMPONENTE PRINCIPAL ===
 export default function OptimizedProjectList({
   filters = {},
   onProjectSelect,
   height = 600,
-  itemHeight = 140,
-  enableVirtualization = true
+  enableVirtualization = false
 }: OptimizedProjectListProps) {
-  const {
-    projects,
-    loading,
-    error,
-    hasMore,
-    metrics,
-    loadMore,
-    invalidateCache
-  } = useOptimizedProjects(filters, {
-    enabled: true,
-    refetchInterval: 30000 // Refetch a cada 30s
-  })
+  const { projects, loading, error, refetch } = useOptimizedProjects(filters)
 
-  // Memoizar dados para react-window
-  const listData = useMemo(() => ({
-    projects,
-    onProjectSelect: onProjectSelect || (() => {}),
-    loadMore,
-    hasMore
-  }), [projects, onProjectSelect, loadMore, hasMore])
-
-  // Callback otimizado para item loaded
-  const isItemLoaded = useCallback(
-    (index: number) => index < projects.length,
-    [projects.length]
-  )
-
-  // Callback para load more items
-  const loadMoreItems = useCallback(
-    () => hasMore && !loading ? loadMore() : Promise.resolve(),
-    [hasMore, loading, loadMore]
-  )
-
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <div className="text-red-600 text-lg font-medium mb-2">
-          Erro ao carregar projetos
-        </div>
-        <p className="text-gray-600 mb-4">{error}</p>
-        <button 
-          onClick={invalidateCache}
-          className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
-        >
-          Tentar Novamente
-        </button>
-      </div>
-    )
-  }
-
-  if (loading && !projects.length) {
+  // Loading state
+  if (loading) {
     return (
       <div className="space-y-4">
         {Array.from({ length: 5 }, (_, i) => (
@@ -238,6 +283,25 @@ export default function OptimizedProjectList({
     )
   }
 
+  // Error state
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <div className="text-red-600 text-lg font-medium mb-2">
+          Erro ao carregar projetos
+        </div>
+        <p className="text-gray-600 mb-4">{error}</p>
+        <button 
+          onClick={refetch}
+          className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+        >
+          Tentar Novamente
+        </button>
+      </div>
+    )
+  }
+
+  // Empty state
   if (!projects.length) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
@@ -251,65 +315,19 @@ export default function OptimizedProjectList({
     )
   }
 
-  // Renderização com virtualização
-  if (enableVirtualization && projects.length > 20) {
-    return (
-      <ErrorBoundary>
-        <InfiniteLoader
-          isItemLoaded={isItemLoaded}
-          itemCount={hasMore ? projects.length + 1 : projects.length}
-          loadMoreItems={loadMoreItems}
-        >
-          {({ onItemsRendered, ref }) => (
-            <List
-              ref={ref}
-              height={height}
-              itemCount={projects.length}
-              itemSize={itemHeight}
-              itemData={listData}
-              onItemsRendered={onItemsRendered}
-              overscanCount={5}
-              className="scrollbar-thin scrollbar-thumb-gray-300"
-            >
-              {ProjectListItem}
-            </List>
-          )}
-        </InfiniteLoader>
-      </ErrorBoundary>
-    )
-  }
-
-  // Renderização tradicional para listas menores
+  // Lista normal
   return (
-    <div className="space-y-4">
-      {projects.map((project, index) => (
+    <div 
+      className="space-y-4 overflow-y-auto"
+      style={{ maxHeight: height }}
+    >
+      {projects.map((project) => (
         <ProjectListItem
           key={project.id}
-          index={index}
-          style={{}}
-          data={listData}
+          project={project}
+          onProjectSelect={onProjectSelect}
         />
       ))}
-      
-      {loading && (
-        <div className="flex justify-center py-4">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        </div>
-      )}
-      
-      {hasMore && !loading && (
-        <div className="flex justify-center py-4">
-          <button
-            onClick={loadMore}
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
-          >
-            Carregar Mais
-          </button>
-        </div>
-      )}
     </div>
   )
 }
-
-// Hook useIntersectionObserver removido para evitar conflitos
-// Se precisar, crie em um arquivo separado: src/hooks/useIntersectionObserver.ts
