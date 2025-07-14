@@ -594,27 +594,27 @@ export default function ProjectDetailPage() {
     return <LoadingSpinner />
   }
 
-  if (error) {
-    return (
-      <ErrorDisplay 
-        message={error} 
-        onRetry={refetchAll}
-      />
-    )
-  }
+if (error) {
+  return (
+    <ErrorDisplay 
+      error={error} 
+      onRetry={refetchAll}
+    />
+  )
+}
 
-  if (loading && !project) {
-    return <LoadingSpinner />
-  }
+if (loading && !project) {
+  return <LoadingSpinner />
+}
 
-  if (!project) {
-    return (
-      <ErrorDisplay 
-        message="Projeto não encontrado" 
-        onRetry={() => router.push('/projetos')}
-      />
-    )
-  }
+if (!project) {
+  return (
+    <ErrorDisplay 
+      error="Projeto não encontrado" 
+      onRetry={() => router.push('/projetos')}
+    />
+  )
+}
 
   return (
     <div className="min-h-screen bg-gray-50">
