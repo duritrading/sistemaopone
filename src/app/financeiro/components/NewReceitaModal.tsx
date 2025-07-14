@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { 
   X, Calendar, DollarSign, HelpCircle, Upload, File, 
-  Repeat, CreditCard, Tag, Building2, User, Paperclip 
+  Repeat, CreditCard, Tag, Building2, User, Paperclip, CheckCircle 
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
