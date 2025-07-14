@@ -1,4 +1,3 @@
-// src/app/financeiro/components/TransactionsList.tsx
 'use client'
 
 import { useState } from 'react'
@@ -15,26 +14,11 @@ import {
   Edit,
   Trash2,
   Eye,
-  Copy
+  Copy,
+  User,
+  CreditCard
 } from 'lucide-react'
-
-interface Transaction {
-  id: string
-  description: string
-  amount: number
-  type: 'receita' | 'despesa'
-  category: string
-  status: 'pendente' | 'recebido' | 'pago' | 'vencido' | 'cancelado'
-  transaction_date: string
-  due_date?: string
-  payment_date?: string
-  account?: {
-    name: string
-    type: string
-  }
-  company?: string
-  notes?: string
-}
+import { Transaction } from '../types/financial'
 
 interface TransactionsListProps {
   transactions: Transaction[]
@@ -44,6 +28,7 @@ interface TransactionsListProps {
   onMarkPending: (id: string) => void
   onView: (transaction: Transaction) => void
   loading?: boolean
+  emptyMessage?: string
 }
 
 export default function TransactionsList({
@@ -53,22 +38,27 @@ export default function TransactionsList({
   onMarkPaid,
   onMarkPending,
   onView,
-  loading = false
+  loading = false,
+  emptyMessage = "Nenhuma transação encontrada"
 }: TransactionsListProps) {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null)
 
-  const formatCurrency = (value: number) => {
+  const formatCurrency = (value: number): string => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL'
     }).format(value)
   }
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR')
+  const formatDate = (dateString: string): string => {
+    try {
+      return new Date(dateString).toLocaleDateString('pt-BR')
+    } catch {
+      return 'Data inválida'
+    }
   }
 
-  const getStatusConfig = (status: string) => {
+  const getStatusConfig = (status: Transaction['status']) => {
     const configs = {
       pendente: {
         icon: Clock,
@@ -101,31 +91,58 @@ export default function TransactionsList({
         label: 'Cancelado'
       }
     }
-    return configs[status as keyof typeof configs] || configs.pendente
+    return configs[status] || configs.pendente
+  }
+
+  const getPaymentMethodLabel = (method?: string): string => {
+    const methods = {
+      dinheiro: 'Dinheiro',
+      pix: 'PIX',
+      cartao_credito: 'Cartão de Crédito',
+      cartao_debito: 'Cartão de Débito',
+      transferencia: 'Transferência',
+      boleto: 'Boleto'
+    }
+    return method ? methods[method as keyof typeof methods] || method : 'Não informado'
   }
 
   const handleAction = (action: string, transaction: Transaction) => {
     setActiveDropdown(null)
     
-    switch (action) {
-      case 'view':
-        onView(transaction)
-        break
-      case 'edit':
-        onEdit(transaction)
-        break
-      case 'mark_paid':
-        onMarkPaid(transaction.id)
-        break
-      case 'mark_pending':
-        onMarkPending(transaction.id)
-        break
-      case 'delete':
-        if (confirm('Tem certeza que deseja excluir esta transação?')) {
-          onDelete(transaction.id)
-        }
-        break
+    try {
+      switch (action) {
+        case 'view':
+          onView(transaction)
+          break
+        case 'edit':
+          onEdit(transaction)
+          break
+        case 'mark_paid':
+          onMarkPaid(transaction.id)
+          break
+        case 'mark_pending':
+          onMarkPending(transaction.id)
+          break
+        case 'delete':
+          if (confirm('Tem certeza que deseja excluir esta transação?')) {
+            onDelete(transaction.id)
+          }
+          break
+        default:
+          console.warn(`Unknown action: ${action}`)
+      }
+    } catch (error) {
+      console.error(`Error handling action ${action}:`, error)
     }
+  }
+
+  const handleDropdownToggle = (transactionId: string) => {
+    setActiveDropdown(activeDropdown === transactionId ? null : transactionId)
+  }
+
+  // Close dropdown when clicking outside
+  const handleClickOutside = () => {
+    setActiveDropdown(null)
   }
 
   if (loading) {
@@ -151,18 +168,18 @@ export default function TransactionsList({
     )
   }
 
-  if (transactions.length === 0) {
+  if (!Array.isArray(transactions) || transactions.length === 0) {
     return (
       <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
         <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-        <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma transação encontrada</h3>
+        <h3 className="text-lg font-medium text-gray-900 mb-2">{emptyMessage}</h3>
         <p className="text-gray-500">Não há transações para exibir com os filtros atuais.</p>
       </div>
     )
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" onClick={handleClickOutside}>
       {transactions.map((transaction) => {
         const statusConfig = getStatusConfig(transaction.status)
         const StatusIcon = statusConfig.icon
@@ -183,102 +200,104 @@ export default function TransactionsList({
                     <h3 className="text-lg font-semibold text-gray-900 truncate">
                       {transaction.description}
                     </h3>
-                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${statusConfig.bg} ${statusConfig.color}`}>
+                    <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusConfig.bg} ${statusConfig.color}`}>
                       <StatusIcon className="w-3 h-3 mr-1" />
                       {statusConfig.label}
-                    </span>
+                    </div>
                   </div>
                   
-                  <div className="flex items-center space-x-4 text-sm text-gray-600">
+                  <div className="flex items-center space-x-4 text-sm text-gray-500">
                     <span className="flex items-center">
                       <Tag className="w-4 h-4 mr-1" />
                       {transaction.category}
                     </span>
-                    {transaction.company && (
+                    {transaction.account?.name && (
                       <span className="flex items-center">
                         <Building className="w-4 h-4 mr-1" />
-                        {transaction.company}
+                        {transaction.account.name}
                       </span>
                     )}
                   </div>
                 </div>
 
                 <div className="flex items-center space-x-3">
-                  {/* Valor */}
                   <div className="text-right">
-                    <p className={`text-2xl font-bold ${isReceita ? 'text-green-600' : 'text-red-600'}`}>
-                      {isReceita ? '+' : '-'}{formatCurrency(transaction.amount)}
+                    <p className={`text-xl font-bold ${isReceita ? 'text-green-600' : 'text-red-600'}`}>
+                      {isReceita ? '+' : '-'} {formatCurrency(transaction.amount)}
                     </p>
-                    <p className="text-sm text-gray-500">
-                      {transaction.account?.name || 'Conta não informada'}
-                    </p>
+                    {transaction.installments && transaction.installments > 1 && (
+                      <p className="text-xs text-gray-500">
+                        {transaction.installments}x parcelas
+                      </p>
+                    )}
                   </div>
 
-                  {/* Menu de ações */}
+                  {/* Actions dropdown */}
                   <div className="relative">
                     <button
-                      onClick={() => setActiveDropdown(activeDropdown === transaction.id ? null : transaction.id)}
-                      className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleDropdownToggle(transaction.id)
+                      }}
+                      className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                     >
                       <MoreHorizontal className="w-5 h-5" />
                     </button>
 
                     {activeDropdown === transaction.id && (
-                      <div className="absolute right-0 top-10 w-56 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
-                        <div className="py-1">
+                      <div className="absolute right-0 top-10 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10">
+                        <button
+                          onClick={() => handleAction('view', transaction)}
+                          className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          <Eye className="w-4 h-4 mr-3" />
+                          Ver detalhes
+                        </button>
+
+                        {canMarkPaid && (
                           <button
-                            onClick={() => handleAction('view', transaction)}
-                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                            onClick={() => handleAction('mark_paid', transaction)}
+                            className="flex items-center w-full px-4 py-2 text-sm text-green-700 hover:bg-green-50"
                           >
-                            <Eye className="w-4 h-4 mr-3" />
-                            Ver detalhes
+                            <CheckCircle className="w-4 h-4 mr-3" />
+                            Marcar como {isReceita ? 'recebido' : 'pago'}
                           </button>
+                        )}
 
-                          {canMarkPaid && (
-                            <button
-                              onClick={() => handleAction('mark_paid', transaction)}
-                              className="flex items-center w-full px-4 py-2 text-sm text-green-700 hover:bg-green-50"
-                            >
-                              <CheckCircle className="w-4 h-4 mr-3" />
-                              Marcar como {isReceita ? 'recebido' : 'pago'}
-                            </button>
-                          )}
-
-                          {canMarkPending && (
-                            <button
-                              onClick={() => handleAction('mark_pending', transaction)}
-                              className="flex items-center w-full px-4 py-2 text-sm text-yellow-700 hover:bg-yellow-50"
-                            >
-                              <Clock className="w-4 h-4 mr-3" />
-                              Marcar como pendente
-                            </button>
-                          )}
-
-                          <div className="border-t border-gray-100 my-1"></div>
-
+                        {canMarkPending && (
                           <button
-                            onClick={() => handleAction('edit', transaction)}
-                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                            onClick={() => handleAction('mark_pending', transaction)}
+                            className="flex items-center w-full px-4 py-2 text-sm text-yellow-700 hover:bg-yellow-50"
                           >
-                            <Edit className="w-4 h-4 mr-3" />
-                            Editar
+                            <Clock className="w-4 h-4 mr-3" />
+                            Marcar como pendente
                           </button>
+                        )}
 
-                          <button
-                            onClick={() => handleAction('delete', transaction)}
-                            className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                          >
-                            <Trash2 className="w-4 h-4 mr-3" />
-                            Excluir
-                          </button>
-                        </div>
+                        <div className="border-t border-gray-100 my-1"></div>
+
+                        <button
+                          onClick={() => handleAction('edit', transaction)}
+                          className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          <Edit className="w-4 h-4 mr-3" />
+                          Editar
+                        </button>
+
+                        <button
+                          onClick={() => handleAction('delete', transaction)}
+                          className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                        >
+                          <Trash2 className="w-4 h-4 mr-3" />
+                          Excluir
+                        </button>
                       </div>
                     )}
                   </div>
                 </div>
               </div>
 
-              {/* Informações detalhadas */}
+              {/* Detailed information */}
               <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 pt-4 border-t border-gray-100">
                 <div className="flex items-center text-sm">
                   <Calendar className="w-4 h-4 text-gray-400 mr-2" />
@@ -298,30 +317,32 @@ export default function TransactionsList({
                   </div>
                 )}
 
-                {transaction.payment_date && (
+                {transaction.payment_method && (
                   <div className="flex items-center text-sm">
-                    <CheckCircle className="w-4 h-4 text-gray-400 mr-2" />
+                    <CreditCard className="w-4 h-4 text-gray-400 mr-2" />
                     <div>
-                      <p className="text-gray-500">Data do pagamento</p>
-                      <p className="font-medium text-gray-900">{formatDate(transaction.payment_date)}</p>
+                      <p className="text-gray-500">Forma de pagamento</p>
+                      <p className="font-medium text-gray-900">{getPaymentMethodLabel(transaction.payment_method)}</p>
                     </div>
                   </div>
                 )}
 
-                <div className="flex items-center text-sm">
-                  <DollarSign className="w-4 h-4 text-gray-400 mr-2" />
-                  <div>
-                    <p className="text-gray-500">Conta</p>
-                    <p className="font-medium text-gray-900">{transaction.account?.name || 'N/A'}</p>
+                {transaction.reference_code && (
+                  <div className="flex items-center text-sm">
+                    <FileText className="w-4 h-4 text-gray-400 mr-2" />
+                    <div>
+                      <p className="text-gray-500">Referência</p>
+                      <p className="font-medium text-gray-900">{transaction.reference_code}</p>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
 
-              {/* Observações (se houver) */}
+              {/* Notes */}
               {transaction.notes && (
                 <div className="mt-4 pt-4 border-t border-gray-100">
-                  <p className="text-sm text-gray-500 mb-1">Observações:</p>
-                  <p className="text-sm text-gray-700 bg-gray-50 rounded-lg p-3">
+                  <p className="text-sm text-gray-500 mb-1">Observações</p>
+                  <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg">
                     {transaction.notes}
                   </p>
                 </div>

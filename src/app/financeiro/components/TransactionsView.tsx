@@ -1,4 +1,3 @@
-// src/app/financeiro/components/TransactionsView.tsx
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -6,6 +5,7 @@ import TransactionsList from './TransactionsList'
 import TransactionsGrid from './TransactionsGrid'
 import TransactionHeader from './TransactionHeader'
 
+// Unified Transaction interface - compatible with both domain and app layers
 interface Transaction {
   id: string
   description: string
@@ -17,15 +17,24 @@ interface Transaction {
   due_date?: string
   payment_date?: string
   account_id: string
-  company?: string
+  client_id?: string
+  supplier_id?: string
+  cost_center?: string
+  reference_code?: string
+  payment_method?: string
+  installments?: number
   notes?: string
+  attachments?: string[]
   created_at: string
   updated_at: string
+  company?: string
+  document?: string
+  // Optional account relation for UI purposes
   account?: {
     id: string
     name: string
     type: string
-    balance: number
+    balance?: number
   }
 }
 
@@ -62,9 +71,9 @@ export default function TransactionsView({
     direction: 'desc' as 'asc' | 'desc' 
   })
 
-  // Salvar preferência de visualização no localStorage
+  // Save view preference to localStorage
   useEffect(() => {
-    const savedViewMode = localStorage.getItem('financial-view-mode') as 'list' | 'grid' | null
+    const savedViewMode = localStorage?.getItem('financial-view-mode') as 'list' | 'grid' | null
     if (savedViewMode) {
       setViewMode(savedViewMode)
     }
@@ -72,21 +81,24 @@ export default function TransactionsView({
 
   const handleViewModeChange = (mode: 'list' | 'grid') => {
     setViewMode(mode)
-    localStorage.setItem('financial-view-mode', mode)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('financial-view-mode', mode)
+    }
   }
 
   const handleSortChange = (field: string, direction: 'asc' | 'desc') => {
     setCurrentSort({ field, direction })
-    if (onSortChange) {
-      onSortChange(field, direction)
-    }
+    onSortChange?.(field, direction)
   }
+
+  // Ensure transactions is always an array
+  const safeTransactions = Array.isArray(transactions) ? transactions : []
 
   return (
     <div className="space-y-6">
-      {/* Header com controles e estatísticas */}
+      {/* Header with controls and statistics */}
       <TransactionHeader
-        transactions={transactions}
+        transactions={safeTransactions}
         totalCount={totalCount}
         onSortChange={handleSortChange}
         currentSort={currentSort}
@@ -94,11 +106,11 @@ export default function TransactionsView({
         onViewModeChange={handleViewModeChange}
       />
 
-      {/* Conteúdo das transações */}
+      {/* Transactions content */}
       <div>
         {viewMode === 'list' ? (
           <TransactionsList
-            transactions={transactions}
+            transactions={safeTransactions}
             onEdit={onEdit}
             onDelete={onDelete}
             onMarkPaid={onMarkPaid}
@@ -108,7 +120,7 @@ export default function TransactionsView({
           />
         ) : (
           <TransactionsGrid
-            transactions={transactions}
+            transactions={safeTransactions}
             onEdit={onEdit}
             onDelete={onDelete}
             onMarkPaid={onMarkPaid}
@@ -131,8 +143,8 @@ export default function TransactionsView({
         </div>
       )}
 
-      {/* Loading state para load more */}
-      {loading && transactions.length > 0 && (
+      {/* Loading state for load more */}
+      {loading && safeTransactions.length > 0 && (
         <div className="text-center py-6">
           <div className="inline-flex items-center space-x-3">
             <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
@@ -141,11 +153,28 @@ export default function TransactionsView({
         </div>
       )}
 
-      {/* Indicador de fim */}
-      {!hasMore && transactions.length > 0 && (
+      {/* End indicator */}
+      {!hasMore && safeTransactions.length > 0 && (
         <div className="text-center py-6">
           <p className="text-gray-500 text-sm">
             Todas as transações foram carregadas ({totalCount} total)
+          </p>
+        </div>
+      )}
+
+      {/* Empty state */}
+      {!loading && safeTransactions.length === 0 && (
+        <div className="text-center py-12">
+          <div className="w-16 h-16 mx-auto mb-4 text-gray-400">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">
+            Nenhuma transação encontrada
+          </h3>
+          <p className="text-gray-500">
+            Não há transações para exibir com os filtros atuais.
           </p>
         </div>
       )}
