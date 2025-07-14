@@ -1,4 +1,4 @@
-// src/app/login/page.tsx - VERSÃO FINAL SEM ERROS
+// src/app/login/page.tsx - VERSÃO COM LOGO SIMPLES
 'use client'
 
 import { useState } from 'react'
@@ -103,23 +103,23 @@ export default function LoginPage() {
       {/* Login Container */}
       <div className="relative z-10 flex items-center justify-center min-h-screen p-8">
         <div className="w-full max-w-md">
-          {/* Logo com Novo Arquivo */}
+          {/* Logo OpOne Real */}
           <div className="text-center mb-12">
             <div className="w-24 h-24 mx-auto mb-6 relative flex items-center justify-center">
               <img
-                src="/images/Logo OpOne sem fundo 500x500.png"
+                src="/images/opone-logo.png"
                 alt="OpOne Logo"
                 className="w-20 h-20 object-contain filter drop-shadow-2xl"
                 style={{
                   filter: 'drop-shadow(0 0 20px rgba(59, 130, 246, 0.3))'
                 }}
-                onLoad={() => console.log('✅ Logo carregada: Logo OpOne sem fundo 500x500.png')}
+                onLoad={() => console.log('✅ Logo OpOne carregada com sucesso!')}
                 onError={(e) => {
-                  console.log('❌ Erro com PNG, tentando JPG...')
+                  console.log('❌ Erro ao carregar opone-logo.png, tentando JPG...')
                   const target = e.target as HTMLImageElement;
-                  target.src = '/images/Logo OpOne sem fundo 500x500.jpg';
+                  target.src = '/images/opone-logo.jpg';
                   target.onerror = () => {
-                    console.log('❌ Erro com JPG também, usando SVG fallback')
+                    console.log('❌ JPG também falhou, usando SVG fallback')
                     target.style.display = 'none';
                     const svg = target.nextElementSibling as HTMLElement;
                     if (svg) svg.style.display = 'block';
@@ -127,7 +127,7 @@ export default function LoginPage() {
                 }}
               />
               
-              {/* SVG Fallback melhorado */}
+              {/* SVG Fallback Melhorado */}
               <svg 
                 width="80" 
                 height="80" 
