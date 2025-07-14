@@ -103,51 +103,49 @@ export default function LoginPage() {
       {/* Login Container */}
       <div className="relative z-10 flex items-center justify-center min-h-screen p-8">
         <div className="w-full max-w-md">
-          {/* Logo SVG Inline OpOne */}
+          {/* Logo com Novo Arquivo */}
           <div className="text-center mb-12">
             <div className="w-24 h-24 mx-auto mb-6 relative flex items-center justify-center">
+              <img
+                src="/images/Logo OpOne sem fundo 500x500.png"
+                alt="OpOne Logo"
+                className="w-20 h-20 object-contain filter drop-shadow-2xl"
+                style={{
+                  filter: 'drop-shadow(0 0 20px rgba(59, 130, 246, 0.3))'
+                }}
+                onLoad={() => console.log('✅ Logo carregada: Logo OpOne sem fundo 500x500.png')}
+                onError={(e) => {
+                  console.log('❌ Erro com PNG, tentando JPG...')
+                  const target = e.target as HTMLImageElement;
+                  target.src = '/images/Logo OpOne sem fundo 500x500.jpg';
+                  target.onerror = () => {
+                    console.log('❌ Erro com JPG também, usando SVG fallback')
+                    target.style.display = 'none';
+                    const svg = target.nextElementSibling as HTMLElement;
+                    if (svg) svg.style.display = 'block';
+                  }
+                }}
+              />
+              
+              {/* SVG Fallback melhorado */}
               <svg 
-                width="96" 
-                height="96" 
-                viewBox="0 0 100 100" 
-                className="filter drop-shadow-2xl"
+                width="80" 
+                height="80" 
+                viewBox="0 0 120 120" 
+                className="hidden filter drop-shadow-2xl"
                 style={{
                   filter: 'drop-shadow(0 0 20px rgba(59, 130, 246, 0.3))'
                 }}
               >
-                {/* Círculo externo */}
-                <circle 
-                  cx="50" 
-                  cy="50" 
-                  r="48" 
-                  fill="white" 
-                  stroke="none"
+                <circle cx="60" cy="60" r="56" fill="white" stroke="none"/>
+                <circle cx="60" cy="60" r="42" fill="#1a1a2e"/>
+                <path
+                  d="M 35 45 Q 35 30 50 30 Q 65 30 65 45 Q 65 60 50 75 Q 45 70 42 65 Q 35 55 35 45 Z"
+                  fill="white"
+                  transform="translate(8, 8)"
                 />
-                {/* Círculo interno escuro */}
-                <circle 
-                  cx="50" 
-                  cy="50" 
-                  r="36" 
-                  fill="#1e293b"
-                />
-                {/* Forma interna (baseada na logo OpOne) */}
-                <ellipse 
-                  cx="42" 
-                  cy="42" 
-                  rx="16" 
-                  ry="20" 
-                  fill="white" 
-                  transform="rotate(-10 42 42)"
-                />
-                {/* Adicionar brilho */}
-                <circle 
-                  cx="50" 
-                  cy="50" 
-                  r="48" 
-                  fill="none" 
-                  stroke="rgba(59, 130, 246, 0.3)" 
-                  strokeWidth="2"
-                />
+                <circle cx="60" cy="60" r="56" fill="none" stroke="rgba(59, 130, 246, 0.4)" strokeWidth="2"/>
+                <circle cx="50" cy="45" r="3" fill="rgba(255, 255, 255, 0.3)"/>
               </svg>
             </div>
             <h1 className="text-4xl font-bold text-white mb-2 tracking-wide">OpOne</h1>
