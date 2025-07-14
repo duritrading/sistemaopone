@@ -1,4 +1,6 @@
 // src/domain/financial/entities/Account.ts
+import { z } from 'zod'
+
 export const AccountSchema = z.object({
   id: z.string().uuid(),
   name: z.string().min(1).max(100),

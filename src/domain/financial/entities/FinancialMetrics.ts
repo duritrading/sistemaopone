@@ -1,4 +1,6 @@
 // src/domain/financial/entities/FinancialMetrics.ts
+import { z } from 'zod'
+
 export const FinancialMetricsSchema = z.object({
   receitas_em_aberto: z.number().default(0),
   receitas_realizadas: z.number().default(0),

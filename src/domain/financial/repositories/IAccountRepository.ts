@@ -1,6 +1,5 @@
 // src/domain/financial/repositories/IAccountRepository.ts
 import { AccountEntity, Account } from '../entities/Account'
-
 export interface IAccountRepository {
   findById(id: string): Promise<AccountEntity | null>
   findAll(): Promise<AccountEntity[]>
