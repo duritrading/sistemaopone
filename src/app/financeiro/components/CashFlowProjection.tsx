@@ -522,13 +522,13 @@ export function CashFlowProjection({ accounts, onClose }: CashFlowProjectionProp
             <div className="bg-white rounded-lg border border-gray-200 p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Insights e Alertas</h3>
               <div className="space-y-3">
-                {getProjectionStats.lowestBalance < 0 && (
+                {(getProjectionStats?.lowestBalance ?? 0) < 0 &&
                   <div className="flex items-center space-x-3 p-3 bg-red-50 border border-red-200 rounded-lg">
                     <AlertTriangle className="w-5 h-5 text-red-600" />
                     <div>
                       <p className="text-sm font-medium text-red-800">Atenção: Saldo negativo previsto</p>
                       <p className="text-xs text-red-600">
-                        O menor saldo será de {formatCurrency(getProjectionStats.lowestBalance)}
+                        O menor saldo será de {formatCurrency(getProjectionStats?.lowestBalance ?? 0)}
                       </p>
                     </div>
                   </div>
