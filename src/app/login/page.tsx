@@ -1,4 +1,4 @@
-// src/app/login/page.tsx - VERSÃO COM LOGO SIMPLES
+// src/app/login/page.tsx - COM ANIMAÇÕES INSPIRADAS NO EXEMPLO
 'use client'
 
 import { useState } from 'react'
@@ -59,7 +59,12 @@ export default function LoginPage() {
     <div className="min-h-screen relative overflow-hidden" style={{ backgroundColor: '#060E16' }}>
       {/* Enhanced Technology Background */}
       <div className="absolute inset-0">
-        {/* Advanced Grid Pattern */}
+        {/* Floating circles */}
+        <div className="absolute top-20 left-20 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl animate-float"></div>
+        <div className="absolute bottom-20 right-20 w-80 h-80 bg-indigo-500/5 rounded-full blur-2xl animate-float-delayed"></div>
+        <div className="absolute top-1/2 left-1/3 w-64 h-64 bg-cyan-500/5 rounded-full blur-xl animate-float-slow"></div>
+        
+        {/* Grid Pattern */}
         <div className="absolute inset-0 opacity-20">
           <div className="absolute inset-0" style={{
             backgroundImage: `
@@ -78,59 +83,47 @@ export default function LoginPage() {
         <div className="absolute top-1/4 left-0 w-full h-px bg-gradient-to-r from-transparent via-blue-500/20 to-transparent"></div>
         <div className="absolute bottom-1/4 left-0 w-full h-px bg-gradient-to-r from-transparent via-indigo-500/20 to-transparent"></div>
         
-        {/* Floating Tech Elements */}
-        <div className="absolute top-20 left-20 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-20 right-20 w-80 h-80 bg-indigo-500/5 rounded-full blur-2xl animate-pulse delay-1000"></div>
-        <div className="absolute top-1/2 left-1/3 w-64 h-64 bg-cyan-500/5 rounded-full blur-xl animate-pulse delay-500"></div>
-        <div className="absolute top-1/3 right-1/3 w-48 h-48 bg-purple-500/5 rounded-full blur-lg animate-pulse delay-700"></div>
-        
-        {/* Matrix-style dots */}
+        {/* Animated dots */}
         <div className="absolute top-32 right-32 w-3 h-3 bg-blue-400/30 rounded-full animate-ping"></div>
         <div className="absolute bottom-32 left-32 w-2 h-2 bg-indigo-400/40 rounded-full animate-ping delay-300"></div>
         <div className="absolute top-2/3 right-1/4 w-1 h-1 bg-cyan-400/50 rounded-full animate-ping delay-700"></div>
-        <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-purple-400/30 rounded-full animate-ping delay-1000"></div>
-        
-        {/* Tech nodes */}
-        <div className="absolute top-40 left-1/2 w-4 h-4 border border-blue-400/30 rounded-full animate-pulse"></div>
-        <div className="absolute bottom-40 left-1/3 w-3 h-3 border border-indigo-400/40 rounded-sm rotate-45 animate-pulse delay-500"></div>
-        <div className="absolute top-1/2 right-20 w-2 h-2 border border-cyan-400/50 rounded-full animate-pulse delay-300"></div>
-        
-        {/* Hexagonal patterns */}
-        <div className="absolute top-20 right-20 w-8 h-8 border border-blue-400/20 transform rotate-12 animate-spin-slow"></div>
-        <div className="absolute bottom-20 left-20 w-6 h-6 border border-indigo-400/25 transform -rotate-12 animate-spin-slow delay-1000"></div>
       </div>
 
       {/* Login Container */}
       <div className="relative z-10 flex items-center justify-center min-h-screen p-8">
         <div className="w-full max-w-md">
-          {/* Logo OpOne Real */}
-          <div className="text-center mb-12">
-            <div className="w-24 h-24 mx-auto mb-6 relative flex items-center justify-center">
+          {/* Logo com animação fadeInDown */}
+          <div className="text-center mb-12 animate-fadeInDown">
+            <div className="w-28 h-28 mx-auto mb-6 relative flex items-center justify-center">
               <img
-                src="/images/opone-logo.png"
+                src="/opone-logo.png"
                 alt="OpOne Logo"
-                className="w-20 h-20 object-contain filter drop-shadow-2xl"
+                className="w-24 h-24 object-contain filter drop-shadow-2xl"
                 style={{
                   filter: 'drop-shadow(0 0 20px rgba(59, 130, 246, 0.3))'
                 }}
-                onLoad={() => console.log('✅ Logo OpOne carregada com sucesso!')}
+                onLoad={() => console.log('✅ Logo carregada de /opone-logo.png')}
                 onError={(e) => {
-                  console.log('❌ Erro ao carregar opone-logo.png, tentando JPG...')
+                  console.log('❌ Tentando /images/opone-logo.png...')
                   const target = e.target as HTMLImageElement;
-                  target.src = '/images/opone-logo.jpg';
+                  target.src = '/images/opone-logo.png';
                   target.onerror = () => {
-                    console.log('❌ JPG também falhou, usando SVG fallback')
-                    target.style.display = 'none';
-                    const svg = target.nextElementSibling as HTMLElement;
-                    if (svg) svg.style.display = 'block';
+                    console.log('❌ Tentando JPG...')
+                    target.src = '/opone-logo.jpg';
+                    target.onerror = () => {
+                      console.log('❌ Usando SVG fallback')
+                      target.style.display = 'none';
+                      const svg = target.nextElementSibling as HTMLElement;
+                      if (svg) svg.style.display = 'block';
+                    }
                   }
                 }}
               />
               
-              {/* SVG Fallback Melhorado */}
+              {/* SVG Fallback */}
               <svg 
-                width="80" 
-                height="80" 
+                width="96" 
+                height="96" 
                 viewBox="0 0 120 120" 
                 className="hidden filter drop-shadow-2xl"
                 style={{
@@ -145,15 +138,15 @@ export default function LoginPage() {
                   transform="translate(8, 8)"
                 />
                 <circle cx="60" cy="60" r="56" fill="none" stroke="rgba(59, 130, 246, 0.4)" strokeWidth="2"/>
-                <circle cx="50" cy="45" r="3" fill="rgba(255, 255, 255, 0.3)"/>
               </svg>
             </div>
-            <h1 className="text-4xl font-bold text-white mb-2 tracking-wide">OpOne</h1>
-            <div className="w-20 h-px bg-gradient-to-r from-transparent via-blue-400 to-transparent mx-auto"></div>
+            <h1 className="text-5xl font-bold text-white mb-3 tracking-wide">OpOne</h1>
+            <p className="text-slate-300 text-lg">Sistema de Gestão</p>
+            <div className="w-24 h-px bg-gradient-to-r from-transparent via-blue-400 to-transparent mx-auto mt-4"></div>
           </div>
 
-          {/* Login Card */}
-          <div className="bg-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-white/20 relative overflow-hidden">
+          {/* Login Card com animação fadeInUp */}
+          <div className="bg-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-white/20 relative overflow-hidden animate-fadeInUp">
             {/* Card glow effect */}
             <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-transparent to-indigo-500/10 rounded-3xl"></div>
             
@@ -164,8 +157,8 @@ export default function LoginPage() {
               </div>
 
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-                {/* Email Field */}
-                <div>
+                {/* Email Field com animação */}
+                <div className="animate-slideInLeft">
                   <label className="block text-sm font-semibold text-gray-200 mb-3">
                     Email
                   </label>
@@ -176,21 +169,21 @@ export default function LoginPage() {
                     <input
                       type="email"
                       {...register('email')}
-                      className="block w-full pl-12 pr-4 py-4 bg-white/20 backdrop-blur-sm border border-white/30 rounded-2xl focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-300 text-white placeholder-gray-300"
+                      className="block w-full pl-12 pr-4 py-4 bg-white/20 backdrop-blur-sm border border-white/30 rounded-2xl focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-300 text-white placeholder-gray-300 hover:bg-white/25 focus:scale-[1.02]"
                       placeholder="seu.email@opone.com"
                       disabled={loading}
                     />
                   </div>
                   {errors.email && (
-                    <p className="mt-2 text-sm text-red-400 flex items-center">
+                    <p className="mt-2 text-sm text-red-400 flex items-center animate-shake">
                       <span className="w-1 h-1 bg-red-400 rounded-full mr-2"></span>
                       {errors.email.message}
                     </p>
                   )}
                 </div>
 
-                {/* Password Field */}
-                <div>
+                {/* Password Field com animação */}
+                <div className="animate-slideInRight">
                   <label className="block text-sm font-semibold text-gray-200 mb-3">
                     Senha
                   </label>
@@ -201,7 +194,7 @@ export default function LoginPage() {
                     <input
                       type={showPassword ? 'text' : 'password'}
                       {...register('password')}
-                      className="block w-full pl-12 pr-12 py-4 bg-white/20 backdrop-blur-sm border border-white/30 rounded-2xl focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-300 text-white placeholder-gray-300"
+                      className="block w-full pl-12 pr-12 py-4 bg-white/20 backdrop-blur-sm border border-white/30 rounded-2xl focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-300 text-white placeholder-gray-300 hover:bg-white/25 focus:scale-[1.02]"
                       placeholder="Digite sua senha"
                       disabled={loading}
                     />
@@ -215,16 +208,16 @@ export default function LoginPage() {
                     </button>
                   </div>
                   {errors.password && (
-                    <p className="mt-2 text-sm text-red-400 flex items-center">
+                    <p className="mt-2 text-sm text-red-400 flex items-center animate-shake">
                       <span className="w-1 h-1 bg-red-400 rounded-full mr-2"></span>
                       {errors.password.message}
                     </p>
                   )}
                 </div>
 
-                {/* Error Message */}
+                {/* Error Message com animação shake */}
                 {error && (
-                  <div className="bg-red-500/20 backdrop-blur-sm border border-red-400/30 rounded-2xl p-4">
+                  <div className="bg-red-500/20 backdrop-blur-sm border border-red-400/30 rounded-2xl p-4 animate-shake">
                     <p className="text-sm text-red-300 text-center flex items-center justify-center">
                       <span className="w-2 h-2 bg-red-400 rounded-full mr-2"></span>
                       {error}
@@ -232,11 +225,11 @@ export default function LoginPage() {
                   </div>
                 )}
 
-                {/* Submit Button */}
+                {/* Submit Button com animação bounce */}
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 disabled:from-blue-400/50 disabled:to-indigo-500/50 text-white py-4 px-6 rounded-2xl font-semibold transition-all duration-300 flex items-center justify-center space-x-3 shadow-lg hover:shadow-xl transform hover:-translate-y-1 disabled:transform-none backdrop-blur-sm"
+                  className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 disabled:from-blue-400/50 disabled:to-indigo-500/50 text-white py-4 px-6 rounded-2xl font-semibold transition-all duration-300 flex items-center justify-center space-x-3 shadow-lg hover:shadow-2xl transform hover:-translate-y-2 active:translate-y-0 disabled:transform-none backdrop-blur-sm animate-bounceIn"
                 >
                   {loading ? (
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
@@ -252,8 +245,8 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Footer */}
-          <div className="text-center mt-8">
+          {/* Footer com animação fadeIn */}
+          <div className="text-center mt-8 animate-fadeIn">
             <p className="text-xs text-gray-400">
               © 2025 OpOne. Sistema de Gestão Empresarial.
             </p>
@@ -262,16 +255,130 @@ export default function LoginPage() {
       </div>
 
       <style jsx>{`
-        @keyframes spin-slow {
+        @keyframes float {
+          0%, 100% { transform: translate(0, 0) rotate(0deg); }
+          33% { transform: translate(-20px, -20px) rotate(1deg); }
+          66% { transform: translate(20px, -10px) rotate(-1deg); }
+        }
+        
+        @keyframes fadeInDown {
           from {
-            transform: rotate(0deg);
+            opacity: 0;
+            transform: translateY(-30px);
           }
           to {
-            transform: rotate(360deg);
+            opacity: 1;
+            transform: translateY(0);
           }
         }
-        .animate-spin-slow {
-          animation: spin-slow 8s linear infinite;
+        
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        @keyframes slideInLeft {
+          from {
+            opacity: 0;
+            transform: translateX(-30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+        
+        @keyframes slideInRight {
+          from {
+            opacity: 0;
+            transform: translateX(30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+        
+        @keyframes bounceIn {
+          0% {
+            opacity: 0;
+            transform: scale(0.3);
+          }
+          50% {
+            opacity: 1;
+            transform: scale(1.05);
+          }
+          70% {
+            transform: scale(0.9);
+          }
+          100% {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+        
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          10%, 30%, 50%, 70%, 90% { transform: translateX(-8px); }
+          20%, 40%, 60%, 80% { transform: translateX(8px); }
+        }
+        
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        
+        .animate-float {
+          animation: float 20s ease-in-out infinite;
+        }
+        
+        .animate-float-delayed {
+          animation: float 20s ease-in-out infinite;
+          animation-delay: 7s;
+        }
+        
+        .animate-float-slow {
+          animation: float 25s ease-in-out infinite;
+          animation-delay: 3s;
+        }
+        
+        .animate-fadeInDown {
+          animation: fadeInDown 0.8s ease-out;
+        }
+        
+        .animate-fadeInUp {
+          animation: fadeInUp 0.8s ease-out 0.2s;
+          animation-fill-mode: both;
+        }
+        
+        .animate-slideInLeft {
+          animation: slideInLeft 0.6s ease-out 0.4s;
+          animation-fill-mode: both;
+        }
+        
+        .animate-slideInRight {
+          animation: slideInRight 0.6s ease-out 0.6s;
+          animation-fill-mode: both;
+        }
+        
+        .animate-bounceIn {
+          animation: bounceIn 0.8s ease-out 0.8s;
+          animation-fill-mode: both;
+        }
+        
+        .animate-shake {
+          animation: shake 0.6s ease-out;
+        }
+        
+        .animate-fadeIn {
+          animation: fadeIn 1s ease-out 1s;
+          animation-fill-mode: both;
         }
       `}</style>
     </div>
