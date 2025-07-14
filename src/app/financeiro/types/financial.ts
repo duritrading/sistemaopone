@@ -16,7 +16,7 @@ export interface Transaction {
   supplier_id?: string
   cost_center?: string
   reference_code?: string
-  payment_method?: 'dinheiro' | 'pix' | 'cartao_credito' | 'cartao_debito' | 'transferencia' | 'boleto'
+  payment_method?: string  // Keep flexible for compatibility
   installments?: number
   notes?: string
   attachments?: string[]
