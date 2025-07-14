@@ -669,15 +669,14 @@ export default function ProjectDetailPage() {
                 colorClass="bg-green-500"
               />
               
-              <KPICard
-                title="Entregas Pendentes"
-                value={kpis.pendingDeliverables}
-                icon={Clock}
-                subtitle="marcos e atividades"
-                trend={kpis.pendingDeliverables <= 3 ? 'up' : 'neutral'}
-                colorClass="bg-purple-500"
-              />
-              
+            <KPICard
+  title="Entregas Pendentes"
+  value={kpis.totalMilestones + kpis.totalActivities - kpis.completedMilestones - kpis.completedActivities}
+  icon={Clock}
+  subtitle="marcos e atividades"
+  trend={(kpis.totalMilestones + kpis.totalActivities - kpis.completedMilestones - kpis.completedActivities) <= 3 ? 'up' : 'neutral'}
+  colorClass="bg-purple-500"
+/>
               <KPICard
                 title="Dias Restantes"
                 value={kpis.daysRemaining}
@@ -693,21 +692,21 @@ export default function ProjectDetailPage() {
 
       {/* Conteúdo das Tabs */}
       <div className="max-w-7xl mx-auto p-6">
-        {tabs.map(tab => {
-          if (tab.id !== activeTab) return null
-          
-          const TabComponent = tab.component
+  {tabs.map(tab => {
+    if (tab.id !== activeTab) return null
+    
+    const TabComponent = tab.component as any // Type assertion para resolver inference
 
-          return (
-            <Suspense key={tab.id} fallback={<TabSkeleton />}>
-              <TabComponent 
-                {...tab.props}
-                loading={loading}
-              />
-            </Suspense>
-          )
-        })}
-      </div>
+    return (
+      <Suspense key={tab.id} fallback={<TabSkeleton />}>
+        <TabComponent 
+          {...tab.props}
+          loading={loading}
+        />
+      </Suspense>
+    )
+  })}
+</div>
 
       {/* Modais */}
       <NewMilestoneModal
