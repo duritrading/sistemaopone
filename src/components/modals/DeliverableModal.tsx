@@ -90,10 +90,10 @@ export default function DeliverableModal({ isOpen, onClose, projectId, deliverab
 
   if (!isOpen) return null;
   
-  const Input = (props) => <input {...props} className={`w-full px-3 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900 placeholder:text-gray-500 ${props.className || ''}`} />;
-  const Select = (props) => <select {...props} className={`w-full px-3 py-2 border rounded-md bg-white focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900 ${props.className || ''}`} />;
-  const TextArea = (props) => <textarea {...props} rows={4} className={`w-full px-3 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900 placeholder:text-gray-500 ${props.className || ''}`} />;
-
+ // src/components/modals/DeliverableModal.tsx - linhas 93-95 corrigidas
+const Input = (props: React.InputHTMLAttributes<HTMLInputElement>) => <input {...props} className={`w-full px-3 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900 placeholder:text-gray-500 ${props.className || ''}`} />;
+const Select = (props: React.SelectHTMLAttributes<HTMLSelectElement>) => <select {...props} className={`w-full px-3 py-2 border rounded-md bg-white focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900 ${props.className || ''}`} />;
+const TextArea = (props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) => <textarea {...props} rows={4} className={`w-full px-3 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900 placeholder:text-gray-500 ${props.className || ''}`} />;
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl" onClick={e => e.stopPropagation()}>
