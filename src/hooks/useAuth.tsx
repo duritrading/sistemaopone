@@ -1,4 +1,4 @@
-// src/hooks/useAuth.tsx
+// src/hooks/useAuth.tsx - CORRIGIDO
 'use client'
 
 import React, { useState, useEffect, createContext, useContext, ReactNode } from 'react'
@@ -20,6 +20,7 @@ interface AuthContextType {
   loading: boolean
   logout: () => Promise<void>
   refreshUser: () => Promise<void>
+  setUser: (user: AuthUser | null) => void // ADICIONADO para atualização manual
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -44,17 +45,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const fetchUser = async (): Promise<void> => {
     try {
       const response = await fetch('/api/auth/me', {
-        credentials: 'include'
+        credentials: 'include',
+        cache: 'no-store' // FORÇA BUSCAR DADOS FRESCOS
       })
       
       if (response.ok) {
         const data = await response.json()
+        console.log('✅ Usuário carregado:', data.user)
         setUser(data.user)
       } else {
+        console.log('❌ Sem usuário logado')
         setUser(null)
       }
     } catch (error) {
-      console.error('Error fetching user:', error)
+      console.error('❌ Erro ao buscar usuário:', error)
       setUser(null)
     } finally {
       setLoading(false)
@@ -68,26 +72,44 @@ export function AuthProvider({ children }: AuthProviderProps) {
         credentials: 'include'
       })
       setUser(null)
+      console.log('✅ Logout realizado')
       router.push('/login')
       router.refresh()
     } catch (error) {
-      console.error('Logout error:', error)
+      console.error('❌ Erro no logout:', error)
     }
   }
 
   const refreshUser = async (): Promise<void> => {
+    console.log('🔄 Atualizando dados do usuário...')
     await fetchUser()
   }
 
+  // CARREGAR USUÁRIO NA INICIALIZAÇÃO
   useEffect(() => {
+    console.log('🚀 AuthProvider: Inicializando...')
     fetchUser()
+  }, [])
+
+  // ESCUTAR MUDANÇAS DE STORAGE PARA SINCRONIZAR ABAS
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'auth_user_updated') {
+        console.log('🔄 Detectada mudança de auth, atualizando...')
+        fetchUser()
+      }
+    }
+
+    window.addEventListener('storage', handleStorageChange)
+    return () => window.removeEventListener('storage', handleStorageChange)
   }, [])
 
   const contextValue: AuthContextType = {
     user,
     loading,
     logout,
-    refreshUser
+    refreshUser,
+    setUser // PERMITIR ATUALIZAÇÃO MANUAL DO USUÁRIO
   }
 
   return (

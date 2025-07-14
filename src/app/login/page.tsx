@@ -1,4 +1,4 @@
-// src/app/login/page.tsx - COM ANIMAÇÕES INSPIRADAS NO EXEMPLO
+// src/app/login/page.tsx - CORRIGIDO PARA ATUALIZAR ESTADO IMEDIATAMENTE
 'use client'
 
 import { useState } from 'react'
@@ -7,6 +7,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Mail, Lock, Eye, EyeOff, LogIn, ArrowRight } from 'lucide-react'
+import { useAuth } from '@/hooks/useAuth'
 
 const loginSchema = z.object({
   email: z.string().email('Email inválido'),
@@ -20,6 +21,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
+  const { setUser, refreshUser } = useAuth() // USAR CONTEXTO DE AUTH
 
   const {
     register,
@@ -34,21 +36,41 @@ export default function LoginPage() {
     setError('')
 
     try {
+      console.log('🔐 Tentando login...', { email: data.email })
+      
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
+        body: JSON.stringify(data),
+        credentials: 'include'
       })
 
       const result = await response.json()
 
       if (result.success) {
+        console.log('✅ Login bem-sucedido!')
+        
+        // ATUALIZAR CONTEXTO IMEDIATAMENTE
+        if (result.user) {
+          setUser(result.user)
+          console.log('✅ Usuário definido no contexto:', result.user)
+        }
+        
+        // FORÇAR ATUALIZAÇÃO DOS DADOS
+        await refreshUser()
+        
+        // NOTIFICAR OUTRAS ABAS
+        localStorage.setItem('auth_user_updated', Date.now().toString())
+        
+        console.log('🔄 Redirecionando para dashboard...')
         router.push('/dashboard')
         router.refresh()
       } else {
+        console.log('❌ Login falhou:', result.message)
         setError(result.message || 'Erro ao fazer login')
       }
     } catch (error) {
+      console.error('❌ Erro de conexão:', error)
       setError('Erro de conexão. Tente novamente.')
     } finally {
       setLoading(false)
