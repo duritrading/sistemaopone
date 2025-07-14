@@ -415,7 +415,7 @@ export function CashFlowProjection({ accounts, onClose }: CashFlowProjectionProp
                       getProjectionStats.netChange >= 0 ? 'text-green-600' : 'text-red-600'
                     }`}>
                       {getProjectionStats.netChange >= 0 ? '+' : ''}
-                      {formatCurrency(getProjectionStats.netChange)}
+                      {formatCurrency(getProjectionStats?.netChange ?? 0)}
                     </span>
                     <span className="text-gray-500 ml-2">vs atual</span>
                   </div>
@@ -479,11 +479,11 @@ export function CashFlowProjection({ accounts, onClose }: CashFlowProjectionProp
                 </div>
                 <div className="text-center p-4 bg-blue-50 rounded-lg">
                   <p className="text-sm text-blue-600 font-medium">Resultado Líquido</p>
-                  <p className={`text-2xl font-bold ${
-                    getProjectionStats.netChange >= 0 ? 'text-blue-700' : 'text-red-700'
-                  }`}>
-                    {formatCurrency(getProjectionStats.netChange)}
-                  </p>
+                 <p className={`text-2xl font-bold ${
+  (getProjectionStats?.netChange ?? 0) >= 0 ? 'text-green-600' : 'text-red-600'
+}`}>
+  {formatCurrency(getProjectionStats?.netChange ?? 0)}
+</p>
                 </div>
               </div>
             </div>
@@ -540,7 +540,7 @@ export function CashFlowProjection({ accounts, onClose }: CashFlowProjectionProp
                     <div>
                       <p className="text-sm font-medium text-green-800">Projeção positiva</p>
                       <p className="text-xs text-green-600">
-                        Crescimento projetado de {formatCurrency(getProjectionStats.netChange)}
+                        Crescimento projetado de {formatCurrency(getProjectionStats?.netChange ?? 0)}
                       </p>
                     </div>
                   </div>
