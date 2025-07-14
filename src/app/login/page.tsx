@@ -7,7 +7,6 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Mail, Lock, Eye, EyeOff, LogIn, ArrowRight } from 'lucide-react'
-import Image from 'next/image'
 
 const loginSchema = z.object({
   email: z.string().email('Email inválido'),
@@ -69,41 +68,38 @@ export default function LoginPage() {
         
         <div className="relative z-10 flex flex-col justify-center items-center text-center p-12 text-white">
           {/* Logo Real da OpOne */}
-          <div className="mb-8">
-            <div className="w-32 h-32 mx-auto mb-6 relative">
-              <Image
+          <div className="mb-12">
+            <div className="w-32 h-32 mx-auto mb-8 relative">
+              <img
                 src="/images/opone-logo.png"
                 alt="OpOne Logo"
-                width={128}
-                height={128}
-                className="object-contain drop-shadow-2xl"
-                priority
+                className="w-full h-full object-contain drop-shadow-2xl"
               />
             </div>
-            <h1 className="text-4xl font-bold mb-2 tracking-tight">OpOne</h1>
+            <h1 className="text-5xl font-bold mb-3 tracking-tight">OpOne</h1>
             <p className="text-xl text-slate-300 font-light">Sistema de Gestão</p>
           </div>
           
-          <div className="max-w-md">
-            <h2 className="text-2xl font-semibold mb-4">Bem-vindo de volta</h2>
-            <p className="text-slate-300 leading-relaxed">
-              Acesse sua conta para gerenciar projetos, equipes e clientes de forma inteligente e eficiente.
+          <div className="max-w-lg text-center">
+            <h2 className="text-3xl font-semibold mb-6 text-white">Bem-vindo de volta</h2>
+            <p className="text-slate-300 leading-relaxed text-lg mb-8">
+              Acesse sua conta para gerenciar projetos, equipes e clientes com inteligência e eficiência.
             </p>
           </div>
           
           {/* Features highlight */}
-          <div className="mt-12 grid grid-cols-1 gap-4 text-sm">
-            <div className="flex items-center space-x-3">
-              <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-              <span className="text-slate-300">Gestão de Projetos</span>
+          <div className="mt-16 grid grid-cols-1 gap-6 text-center">
+            <div className="flex flex-col items-center space-y-2">
+              <div className="w-3 h-3 bg-blue-400 rounded-full"></div>
+              <span className="text-slate-300 text-lg">Gestão Completa de Projetos</span>
             </div>
-            <div className="flex items-center space-x-3">
-              <div className="w-2 h-2 bg-indigo-400 rounded-full"></div>
-              <span className="text-slate-300">Controle Financeiro</span>
+            <div className="flex flex-col items-center space-y-2">
+              <div className="w-3 h-3 bg-indigo-400 rounded-full"></div>
+              <span className="text-slate-300 text-lg">Controle Financeiro Inteligente</span>
             </div>
-            <div className="flex items-center space-x-3">
-              <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
-              <span className="text-slate-300">Gerenciamento de Equipes</span>
+            <div className="flex flex-col items-center space-y-2">
+              <div className="w-3 h-3 bg-purple-400 rounded-full"></div>
+              <span className="text-slate-300 text-lg">Gerenciamento de Equipes</span>
             </div>
           </div>
         </div>
@@ -114,14 +110,11 @@ export default function LoginPage() {
         <div className="w-full max-w-md">
           {/* Mobile Logo */}
           <div className="lg:hidden text-center mb-8">
-            <div className="w-20 h-20 mx-auto mb-4 relative">
-              <Image
+            <div className="w-24 h-24 mx-auto mb-4 relative">
+              <img
                 src="/images/opone-logo.png"
                 alt="OpOne Logo"
-                width={80}
-                height={80}
-                className="object-contain drop-shadow-lg"
-                priority
+                className="w-full h-full object-contain drop-shadow-lg"
               />
             </div>
             <h1 className="text-2xl font-bold text-white mb-1">OpOne</h1>
@@ -148,7 +141,7 @@ export default function LoginPage() {
                   <input
                     type="email"
                     {...register('email')}
-                    className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white"
+                    className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 placeholder-gray-500"
                     placeholder="seu.email@opone.com"
                     disabled={loading}
                   />
@@ -173,7 +166,7 @@ export default function LoginPage() {
                   <input
                     type={showPassword ? 'text' : 'password'}
                     {...register('password')}
-                    className="block w-full pl-10 pr-12 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white"
+                    className="block w-full pl-10 pr-12 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 placeholder-gray-500"
                     placeholder="Digite sua senha"
                     disabled={loading}
                   />
@@ -221,18 +214,6 @@ export default function LoginPage() {
                 )}
               </button>
             </form>
-
-            {/* Default Password Info */}
-            <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-xl">
-              <div className="text-center">
-                <p className="text-sm text-blue-800 font-medium mb-1">
-                  🔐 Primeiro acesso?
-                </p>
-                <p className="text-xs text-blue-700">
-                  Use a senha padrão: <span className="font-mono font-bold bg-blue-100 px-2 py-1 rounded">opone123</span>
-                </p>
-              </div>
-            </div>
           </div>
 
           {/* Footer */}
