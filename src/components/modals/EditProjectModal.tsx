@@ -60,14 +60,14 @@ export default function EditProjectModal({ isOpen, onClose, project, onSuccess }
     }
   }, [project, isOpen, setValue]);
   
-  const onSubmit = async (data) => {
-    setIsSubmitting(true);
-    try {
-      const updateData = {
-        name: data.name,
-        description: data.description || null,
-        status: data.status,
-        health: data.health,
+  const onSubmit = async (data: any) => {
+  setIsSubmitting(true);
+  try {
+    const updateData = {
+      name: data.name,
+      description: data.description || null,
+      status: data.status,
+      health: data.health,
         risk_level: data.risk_level,
         project_type: data.project_type,
         manager_id: data.manager_id || null,
@@ -103,30 +103,44 @@ export default function EditProjectModal({ isOpen, onClose, project, onSuccess }
 
   if (!isOpen) return null;
 
-  const FormSection = ({ title, icon: Icon, children }) => (
-    <div className="bg-white p-6 rounded-lg border border-gray-200">
-      <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2 mb-4">
-        <Icon className="w-5 h-5 text-gray-500" />
-        {title}
-      </h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-        {children}
-      </div>
-    </div>
-  );
+// src/components/modals/EditProjectModal.tsx - corrigir componentes FormSection, FormField, Input, Select, TextArea
 
-  const FormField = ({ label, children, fullWidth = false }) => (
-    <div className={fullWidth ? 'md:col-span-2' : ''}>
-      <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+interface FormSectionProps {
+  title: string;
+  icon: React.ComponentType<{ className?: string }>;
+  children: React.ReactNode;
+}
+
+const FormSection = ({ title, icon: Icon, children }: FormSectionProps) => (
+  <div className="bg-white p-6 rounded-lg border border-gray-200">
+    <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2 mb-4">
+      <Icon className="w-5 h-5 text-gray-500" />
+      {title}
+    </h3>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
       {children}
     </div>
-  );
+  </div>
+);
 
-  // **CORREÇÃO VISUAL APLICADA AQUI**
-  const Input = (props) => <input {...props} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900 placeholder:text-gray-400" />;
-  const Select = (props) => <select {...props} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm bg-white text-gray-900" />;
-  const TextArea = (props) => <textarea {...props} rows={4} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900 placeholder:text-gray-400" />;
+interface FormFieldProps {
+  label: string;
+  children: React.ReactNode;
+  fullWidth?: boolean;
+}
 
+const FormField = ({ label, children, fullWidth = false }: FormFieldProps) => (
+  <div className={fullWidth ? 'md:col-span-2' : ''}>
+    <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+    {children}
+  </div>
+);
+
+const Input = (props: React.InputHTMLAttributes<HTMLInputElement>) => <input {...props} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900 placeholder:text-gray-500" />;
+
+const Select = (props: React.SelectHTMLAttributes<HTMLSelectElement>) => <select {...props} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm bg-white text-gray-900" />;
+
+const TextArea = (props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) => <textarea {...props} rows={4} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900 placeholder:text-gray-500" />;
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-gray-50 rounded-lg w-full max-w-6xl max-h-[95vh] flex flex-col" onClick={e => e.stopPropagation()}>

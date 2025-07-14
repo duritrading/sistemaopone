@@ -71,8 +71,8 @@ export default function NewClientModal({ isOpen, onClose, onClientCreated }: New
     }
   }
 
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {}
+const validateForm = (formData: any) => {
+  const newErrors: any = {};
 
     if (!formData.company_name.trim()) {
       newErrors.company_name = 'Nome da empresa é obrigatório'
@@ -86,12 +86,12 @@ export default function NewClientModal({ isOpen, onClose, onClientCreated }: New
       }
     }
 
-    if (formData.total_contract_value < 0) {
-      newErrors.total_contract_value = 'Valor do contrato não pode ser negativo'
-    }
+      if (formData.total_contract_value < 0) {
+    newErrors.total_contract_value = 'Valor do contrato não pode ser negativo';
+  }
 
-    if (formData.monthly_recurring_revenue < 0) {
-      newErrors.monthly_recurring_revenue = 'MRR não pode ser negativo'
+  if (formData.monthly_recurring_revenue < 0) {
+    newErrors.monthly_recurring_revenue = 'MRR não pode ser negativo';
     }
 
     if (formData.contract_start_date && formData.contract_end_date) {
@@ -139,7 +139,7 @@ export default function NewClientModal({ isOpen, onClose, onClientCreated }: New
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!validateForm()) return
+  if (!validateForm(formData)) return
 
     setLoading(true)
 
