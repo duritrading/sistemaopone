@@ -1,4 +1,3 @@
-// src/app/projetos/[id]/components/tabs/OverviewTab.tsx - SEM KPIs (movidos para estático)
 'use client'
 
 import { 
@@ -52,6 +51,12 @@ export const OverviewTab = ({ project, kpis, loading = false }: OverviewTabProps
     return 'Concluído'
   }
 
+  // Format risk level as string for InfoPair
+  const formatRiskLevel = () => {
+    const riskLevel = getRiskLevel()
+    return `${kpis.activeRisks} (${riskLevel.label})`
+  }
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -93,14 +98,14 @@ export const OverviewTab = ({ project, kpis, loading = false }: OverviewTabProps
             <InfoPair label="Gerente do Projeto" value={project.manager?.full_name || 'Não atribuído'} />
             <InfoPair label="Total de Marcos" value={kpis.totalMilestones.toString()} />
             <InfoPair label="Total de Atividades" value={kpis.totalActivities.toString()} />
-            <InfoPair 
-              label="Itens em Risco" 
-              value={
-                <span className={getRiskLevel().color}>
-                  {kpis.activeRisks} ({getRiskLevel().label})
-                </span>
-              } 
-            />
+            
+            {/* FIXED: Convert JSX to string */}
+            <div className="py-2">
+              <span className="text-gray-700 font-medium">Itens em Risco:</span>
+              <span className={`ml-2 ${getRiskLevel().color} font-medium`}>
+                {formatRiskLevel()}
+              </span>
+            </div>
           </div>
         </InfoCard>
       </div>
@@ -160,101 +165,128 @@ export const OverviewTab = ({ project, kpis, loading = false }: OverviewTabProps
             <ProgressBar 
               value={kpis.budgetUtilization} 
               color={kpis.budgetUtilization > kpis.overallProgress ? "bg-red-600" : "bg-green-600"}
-              showLabel={false}
             />
-            <div className="flex justify-between text-xs text-gray-500 mt-1">
-              <span>{formatCurrency(project.used_budget)}</span>
-              <span>{formatCurrency(project.total_budget)}</span>
+            <div className="flex justify-between text-sm text-gray-600 mt-2">
+              <span>Usado: {formatCurrency(project.used_budget || 0)}</span>
+              <span>Total: {formatCurrency(project.total_budget || 0)}</span>
             </div>
           </div>
 
-          {/* Estatísticas de Entregáveis */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="text-center p-4 bg-gray-50 rounded-lg">
-              <div className="flex items-center justify-center mb-2">
-                <Target className="w-5 h-5 text-purple-600 mr-2" />
-                <span className="text-sm font-medium text-gray-700">Marcos</span>
-              </div>
-              <p className="text-2xl font-bold text-gray-900">
-                {kpis.completedMilestones}/{kpis.totalMilestones}
-              </p>
-              <p className="text-xs text-gray-600">concluídos</p>
+          {/* Progresso dos Marcos */}
+          <div>
+            <div className="flex justify-between text-sm text-gray-700 mb-2">
+              <span>Marcos Concluídos</span>
+              <span>{kpis.completedMilestones}/{kpis.totalMilestones}</span>
             </div>
-            
-            <div className="text-center p-4 bg-gray-50 rounded-lg">
-              <div className="flex items-center justify-center mb-2">
-                <CheckCircle className="w-5 h-5 text-blue-600 mr-2" />
-                <span className="text-sm font-medium text-gray-700">Atividades</span>
-              </div>
-              <p className="text-2xl font-bold text-gray-900">
-                {kpis.completedActivities}/{kpis.totalActivities}
-              </p>
-              <p className="text-xs text-gray-600">concluídas</p>
+            <ProgressBar 
+              value={kpis.totalMilestones > 0 ? (kpis.completedMilestones / kpis.totalMilestones) * 100 : 0}
+              color="bg-purple-600"
+            />
+          </div>
+
+          {/* Progresso das Atividades */}
+          <div>
+            <div className="flex justify-between text-sm text-gray-700 mb-2">
+              <span>Atividades Concluídas</span>
+              <span>{kpis.completedActivities}/{kpis.totalActivities}</span>
             </div>
+            <ProgressBar 
+              value={kpis.totalActivities > 0 ? (kpis.completedActivities / kpis.totalActivities) * 100 : 0}
+              color="bg-indigo-600"
+            />
           </div>
         </div>
       </InfoCard>
 
-      {/* Alertas e Riscos (se houver) */}
-      {kpis.activeRisks > 0 && (
-        <InfoCard title="Alertas do Projeto" icon={AlertTriangle}>
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <div className="flex items-start">
-              <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5 mr-3 flex-shrink-0" />
-              <div>
-                <h4 className="font-medium text-yellow-800">
-                  {kpis.activeRisks} item(s) em risco
-                </h4>
-                <p className="text-sm text-yellow-700 mt-1">
-                  Existem marcos ou atividades com prazo vencido que ainda não foram concluídos.
-                  Verifique a aba "Marcos e Entregáveis" para mais detalhes.
-                </p>
+      {/* Orçamento */}
+      <InfoCard title="Orçamento do Projeto" icon={Target}>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-blue-50 p-4 rounded-lg">
+            <h4 className="text-sm font-medium text-blue-900 mb-2">Orçamento Total</h4>
+            <p className="text-2xl font-bold text-blue-600">
+              {formatCurrency(project.total_budget || 0)}
+            </p>
+          </div>
+          
+          <div className="bg-orange-50 p-4 rounded-lg">
+            <h4 className="text-sm font-medium text-orange-900 mb-2">Utilizado</h4>
+            <p className="text-2xl font-bold text-orange-600">
+              {formatCurrency(project.used_budget || 0)}
+            </p>
+            <p className="text-sm text-orange-700 mt-1">
+              {kpis.budgetUtilization}% do total
+            </p>
+          </div>
+          
+          <div className="bg-green-50 p-4 rounded-lg">
+            <h4 className="text-sm font-medium text-green-900 mb-2">Disponível</h4>
+            <p className="text-2xl font-bold text-green-600">
+              {formatCurrency((project.total_budget || 0) - (project.used_budget || 0))}
+            </p>
+            <p className="text-sm text-green-700 mt-1">
+              {100 - kpis.budgetUtilization}% restante
+            </p>
+          </div>
+        </div>
+      </InfoCard>
+
+      {/* Status e Alertas */}
+      {(kpis.activeRisks > 0 || kpis.overdueMilestones > 0 || kpis.overdueActivities > 0) && (
+        <InfoCard title="Alertas e Riscos" icon={AlertTriangle}>
+          <div className="space-y-4">
+            
+            {kpis.activeRisks > 0 && (
+              <div className="flex items-center p-3 bg-red-50 border border-red-200 rounded-lg">
+                <AlertTriangle className="w-5 h-5 text-red-600 mr-3" />
+                <div>
+                  <p className="text-sm font-medium text-red-900">
+                    {kpis.activeRisks} {kpis.activeRisks === 1 ? 'item em risco' : 'itens em risco'}
+                  </p>
+                  <p className="text-xs text-red-700">
+                    Nível de risco: {getRiskLevel().label}
+                  </p>
+                </div>
               </div>
-            </div>
+            )}
+
+            {kpis.overdueMilestones > 0 && (
+              <div className="flex items-center p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <Clock className="w-5 h-5 text-yellow-600 mr-3" />
+                <div>
+                  <p className="text-sm font-medium text-yellow-900">
+                    {kpis.overdueMilestones} {kpis.overdueMilestones === 1 ? 'marco atrasado' : 'marcos atrasados'}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {kpis.overdueActivities > 0 && (
+              <div className="flex items-center p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                <Clock className="w-5 h-5 text-orange-600 mr-3" />
+                <div>
+                  <p className="text-sm font-medium text-orange-900">
+                    {kpis.overdueActivities} {kpis.overdueActivities === 1 ? 'atividade atrasada' : 'atividades atrasadas'}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {kpis.activeRisks === 0 && kpis.overdueMilestones === 0 && kpis.overdueActivities === 0 && (
+              <div className="flex items-center p-3 bg-green-50 border border-green-200 rounded-lg">
+                <CheckCircle className="w-5 h-5 text-green-600 mr-3" />
+                <div>
+                  <p className="text-sm font-medium text-green-900">
+                    Projeto sem alertas críticos
+                  </p>
+                  <p className="text-xs text-green-700">
+                    Todos os itens estão dentro do prazo
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </InfoCard>
       )}
-
-      {/* Performance Insights */}
-      <InfoCard title="Insights de Performance" icon={TrendingUp}>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          
-          {/* Velocidade */}
-          <div className="text-center p-4 border rounded-lg">
-            <div className="text-2xl font-bold text-gray-900">
-              {kpis.totalMilestones + kpis.totalActivities > 0 
-                ? Math.round((kpis.completedMilestones + kpis.completedActivities) / 
-                    Math.max((new Date().getTime() - new Date(project.start_date || '').getTime()) / (1000 * 60 * 60 * 24), 1))
-                : 0}
-            </div>
-            <p className="text-sm text-gray-600">itens/dia</p>
-            <p className="text-xs text-gray-500 mt-1">Velocidade média</p>
-          </div>
-          
-          {/* Eficiência */}
-          <div className="text-center p-4 border rounded-lg">
-            <div className="text-2xl font-bold text-gray-900">
-              {kpis.budgetUtilization > 0 
-                ? Math.round((kpis.overallProgress / kpis.budgetUtilization) * 100)
-                : 100}%
-            </div>
-            <p className="text-sm text-gray-600">eficiência</p>
-            <p className="text-xs text-gray-500 mt-1">Progresso vs Orçamento</p>
-          </div>
-          
-          {/* Qualidade */}
-          <div className="text-center p-4 border rounded-lg">
-            <div className="text-2xl font-bold text-gray-900">
-              {kpis.totalMilestones + kpis.totalActivities > 0 
-                ? Math.round(((kpis.totalMilestones + kpis.totalActivities - kpis.activeRisks) / 
-                    (kpis.totalMilestones + kpis.totalActivities)) * 100)
-                : 100}%
-            </div>
-            <p className="text-sm text-gray-600">qualidade</p>
-            <p className="text-xs text-gray-500 mt-1">Itens no prazo</p>
-          </div>
-        </div>
-      </InfoCard>
     </div>
   )
 }
