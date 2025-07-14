@@ -7,7 +7,8 @@ import {
   AlertTriangle,
   CheckCircle,
   Calendar,
-  Target
+  Target,
+  Clock
 } from 'lucide-react'
 import { 
   InfoCard, 
@@ -231,7 +232,7 @@ export const OverviewTab = ({ project, kpis, loading = false }: OverviewTabProps
       </InfoCard>
 
       {/* Status e Alertas */}
-      {(kpis.activeRisks > 0 || kpis.overdueMilestones > 0 || kpis.overdueActivities > 0) && (
+      {kpis.activeRisks > 0 && (
         <InfoCard title="Alertas e Riscos" icon={AlertTriangle}>
           <div className="space-y-4">
             
@@ -249,29 +250,7 @@ export const OverviewTab = ({ project, kpis, loading = false }: OverviewTabProps
               </div>
             )}
 
-            {kpis.overdueMilestones > 0 && (
-              <div className="flex items-center p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <Clock className="w-5 h-5 text-yellow-600 mr-3" />
-                <div>
-                  <p className="text-sm font-medium text-yellow-900">
-                    {kpis.overdueMilestones} {kpis.overdueMilestones === 1 ? 'marco atrasado' : 'marcos atrasados'}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {kpis.overdueActivities > 0 && (
-              <div className="flex items-center p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                <Clock className="w-5 h-5 text-orange-600 mr-3" />
-                <div>
-                  <p className="text-sm font-medium text-orange-900">
-                    {kpis.overdueActivities} {kpis.overdueActivities === 1 ? 'atividade atrasada' : 'atividades atrasadas'}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {kpis.activeRisks === 0 && kpis.overdueMilestones === 0 && kpis.overdueActivities === 0 && (
+            {kpis.activeRisks === 0 && (
               <div className="flex items-center p-3 bg-green-50 border border-green-200 rounded-lg">
                 <CheckCircle className="w-5 h-5 text-green-600 mr-3" />
                 <div>
