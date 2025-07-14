@@ -344,8 +344,10 @@ export default function DeliverablesTab({
               "Nenhum marco corresponde aos filtros aplicados." : 
               "Nenhum marco foi criado ainda. Crie o primeiro marco do projeto."
             }
-            actionLabel={!hasActiveFilters ? "Criar Primeiro Marco" : undefined}
-            onAction={!hasActiveFilters ? onNewMilestone : undefined}
+            action={!hasActiveFilters ? {
+              label: "Criar Primeiro Marco",
+              onClick: onNewMilestone
+            } : undefined}
           />
         )}
       </InfoCard>
@@ -366,8 +368,10 @@ export default function DeliverablesTab({
               "Nenhuma atividade corresponde aos filtros aplicados." : 
               "Nenhuma atividade foi criada ainda. Crie a primeira atividade do projeto."
             }
-            actionLabel={!hasActiveFilters ? "Criar Primeira Atividade" : undefined}
-            onAction={!hasActiveFilters ? onNewActivity : undefined}
+            action={!hasActiveFilters ? {
+              label: "Criar Primeira Atividade",
+              onClick: onNewActivity
+            } : undefined}
           />
         )}
       </InfoCard>
