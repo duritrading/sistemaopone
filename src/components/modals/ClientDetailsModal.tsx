@@ -294,7 +294,7 @@ export default function ClientDetailsModal({
           <div className="flex items-center gap-2">
             <button
               onClick={() => client && onEditClient(client)}
-              className="flex items-center gap-2 px-4 py-2 text-green-700 bg-green-100 hover:bg-green-200 rounded-lg transition-colors"
+              className="flex items-center gap-2 px-4 py-2 text-green-700 bg-green-100 hover:bg-green-200 rounded-lg  transition-colors"
             >
               <Edit2 className="w-4 h-4" />
               Editar
@@ -515,7 +515,7 @@ export default function ClientDetailsModal({
                     <h3 className="text-lg font-medium text-gray-900">Contatos</h3>
                     <button
                       onClick={() => setShowNewContactModal(true)}
-                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-gray-700 transition-colors"
                     >
                       <Plus className="w-4 h-4" />
                       Novo Contato
@@ -603,7 +603,7 @@ export default function ClientDetailsModal({
                     <h3 className="text-lg font-medium text-gray-900">Histórico de Interações</h3>
                     <button
                       onClick={() => setShowNewInteraction(true)}
-                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-gray-700 transition-colors"
                     >
                       <Plus className="w-4 h-4" />
                       Nova Interação

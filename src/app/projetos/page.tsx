@@ -1234,14 +1234,14 @@ const loadProjectsAndMetrics = async () => {
                   placeholder="Buscar projetos..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 text-gray-700 focus:border-blue-500"
                 />
               </div>
 
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 text-gray-700 focus:border-blue-500"
               >
                 <option value="todos">Todos os Status</option>
                 <option value="Planejamento">Planejamento</option>
@@ -1253,7 +1253,7 @@ const loadProjectsAndMetrics = async () => {
               <select
                 value={filterType}
                 onChange={(e) => setFilterType(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 text-gray-700 focus:border-blue-500"
               >
                 <option value="todos">Todos os Tipos</option>
                 <option value="MVP">MVP</option>
@@ -1265,7 +1265,7 @@ const loadProjectsAndMetrics = async () => {
               <select
                 value={filterHealth}
                 onChange={(e) => setFilterHealth(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 text-gray-700 focus:border-blue-500"
               >
                 <option value="todos">Todas as Saúdes</option>
                 <option value="Excelente">Excelente</option>

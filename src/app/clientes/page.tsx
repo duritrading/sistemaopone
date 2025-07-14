@@ -329,7 +329,7 @@ export default function ClientsPage() {
                 placeholder="Buscar por nome da empresa..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
               />
             </div>
           </div>
@@ -340,7 +340,7 @@ export default function ClientsPage() {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as RelationshipStatus | 'all')}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
               >
                 <option value="all">Todos os Status</option>
                 <option value="Prospect">Prospect</option>
@@ -353,7 +353,7 @@ export default function ClientsPage() {
               <select
                 value={healthFilter}
                 onChange={(e) => setHealthFilter(e.target.value as AccountHealth | 'all')}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
               >
                 <option value="all">Todas as Saúdes</option>
                 <option value="Excelente">Excelente</option>
