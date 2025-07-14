@@ -12,8 +12,12 @@ import {
   DollarSign,
   Users, 
   Settings,
-  Menu
+  Menu,
+  LogOut,
+  User,
+  ChevronDown
 } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -21,7 +25,9 @@ interface AppLayoutProps {
 
 const AppLayout = ({ children }: AppLayoutProps) => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
   const pathname = usePathname();
+  const { user, loading, logout } = useAuth();
 
   const navigationItems = [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
@@ -35,6 +41,14 @@ const AppLayout = ({ children }: AppLayoutProps) => {
   const isActiveRoute = (href: string) => {
     return pathname.startsWith(href);
   };
+
+  if (loading) {
+    return (
+      <div className="flex h-screen bg-gray-50 items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -86,19 +100,9 @@ const AppLayout = ({ children }: AppLayoutProps) => {
                     ${sidebarCollapsed ? 'justify-center' : ''}
                   `}
                 >
-                  <Icon className={`
-                    w-5 h-5 flex-shrink-0
-                    ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-white'}
-                  `} />
+                  <Icon className={`h-5 w-5 ${sidebarCollapsed ? '' : 'mr-3'}`} />
                   {!sidebarCollapsed && (
-                    <span className="ml-3">{item.label}</span>
-                  )}
-                  
-                  {/* Tooltip when collapsed */}
-                  {sidebarCollapsed && (
-                    <div className="absolute left-20 bg-slate-800 text-white px-2 py-1 rounded-md text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50 shadow-lg">
-                      {item.label}
-                    </div>
+                    <span className="truncate">{item.label}</span>
                   )}
                 </Link>
               );
@@ -106,70 +110,85 @@ const AppLayout = ({ children }: AppLayoutProps) => {
           </nav>
         </div>
 
-        {/* Footer */}
-        <div className="border-t border-slate-700">
-          <div className="p-4">
-            <Link
-              href="/configuracoes"
-              className={`
-                group flex items-center px-3 py-3 rounded-xl text-sm font-medium text-slate-300 hover:bg-slate-800 hover:text-white transition-all duration-200
-                ${sidebarCollapsed ? 'justify-center' : ''}
-              `}
-            >
-              <Settings className="w-5 h-5 flex-shrink-0 text-slate-400 group-hover:text-white" />
-              {!sidebarCollapsed && (
-                <span className="ml-3">Configurações</span>
-              )}
-              
-              {/* Tooltip when collapsed */}
-              {sidebarCollapsed && (
-                <div className="absolute left-20 bg-slate-800 text-white px-2 py-1 rounded-md text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50 shadow-lg">
-                  Configurações
+        {/* User Menu */}
+        {user && (
+          <div className="p-4 border-t border-slate-700">
+            <div className="relative">
+              <button
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className={`
+                  w-full flex items-center p-3 rounded-xl hover:bg-slate-800 transition-colors
+                  ${sidebarCollapsed ? 'justify-center' : 'space-x-3'}
+                `}
+              >
+                <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                  {user.profile_photo_url ? (
+                    <img 
+                      src={user.profile_photo_url} 
+                      alt={user.full_name}
+                      className="w-8 h-8 rounded-lg object-cover"
+                    />
+                  ) : (
+                    <User className="h-4 w-4 text-white" />
+                  )}
+                </div>
+                {!sidebarCollapsed && (
+                  <>
+                    <div className="flex-1 text-left">
+                      <p className="text-sm font-medium text-white truncate">
+                        {user.full_name}
+                      </p>
+                      <p className="text-xs text-slate-400 truncate">
+                        {user.primary_specialization}
+                      </p>
+                    </div>
+                    <ChevronDown className="h-4 w-4 text-slate-400" />
+                  </>
+                )}
+              </button>
+
+              {/* Dropdown Menu */}
+              {showUserMenu && !sidebarCollapsed && (
+                <div className="absolute bottom-full left-0 right-0 mb-2 bg-white rounded-xl shadow-lg border py-2">
+                  <button
+                    onClick={logout}
+                    className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                  >
+                    <LogOut className="h-4 w-4 mr-3 text-gray-400" />
+                    Sair
+                  </button>
                 </div>
               )}
-            </Link>
-          </div>
-
-          {/* Versão */}
-          {!sidebarCollapsed && (
-            <div className="px-6 pb-4">
-              <div className="text-xs text-slate-500">
-                <div className="font-medium">Versão MVP</div>
-                <div>v1.0.0</div>
-              </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
-      {/* Main Content Area */}
+      {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Top Header */}
-        <header className="bg-white border-b border-gray-200 px-6 py-4">
+        {/* Top Bar */}
+        <div className="bg-white border-b border-gray-200 px-6 py-4">
           <div className="flex items-center justify-between">
-            {/* Toggle Button */}
             <button
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
             >
-              <Menu className="w-5 h-5" />
+              <Menu className="h-5 w-5 text-gray-600" />
             </button>
-
-            {/* User Info */}
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-                <span className="text-white font-medium text-sm">AD</span>
+            
+            {user && (
+              <div className="flex items-center space-x-4">
+                <span className="text-sm text-gray-600">
+                  Bem-vindo, {user.full_name.split(' ')[0]}
+                </span>
               </div>
-              <span className="text-sm font-medium text-gray-900">Admin</span>
-            </div>
+            )}
           </div>
-        </header>
+        </div>
 
         {/* Page Content */}
         <main className="flex-1 overflow-auto">
-          <div className="px-6 py-8">
-            {children}
-          </div>
+          {children}
         </main>
       </div>
     </div>
