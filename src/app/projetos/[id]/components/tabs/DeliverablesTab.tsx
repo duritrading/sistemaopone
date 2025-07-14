@@ -1,4 +1,4 @@
-// src/app/projetos/[id]/components/tabs/DeliverablesTab.tsx - IMPORT FIX
+// src/app/projetos/[id]/components/tabs/DeliverablesTab.tsx - PROGRESS BAR FIXED
 'use client'
 
 import { useMemo, useState } from 'react'
@@ -18,7 +18,7 @@ import {
 } from 'lucide-react'
 import { InfoCard, EmptyState, StatusBadge, ProgressBar } from '../shared'
 import { Milestone, Activity, TeamMember } from '../../types/project.types'
-import { ProjectUtils } from '../../utils/ProjectUtils' // Fixed import path
+import { ProjectUtils } from '../../utils/ProjectUtils'
 
 interface DeliverablesTabProps {
   milestones: Milestone[]
@@ -107,11 +107,11 @@ export default function DeliverablesTab({
               </p>
             )}
 
-            {/* Progress Bar */}
+            {/* Progress Bar - FIXED: className -> color */}
             <div className="mb-3">
               <ProgressBar
                 value={milestone.progress_percentage || 0}
-                className={isOverdue && milestone.progress_percentage !== 100 ? "bg-red-600" : "bg-green-600"}
+                color={isOverdue && milestone.progress_percentage !== 100 ? "bg-red-600" : "bg-green-600"}
                 showLabel={true}
               />
             </div>
@@ -125,37 +125,39 @@ export default function DeliverablesTab({
                   <p className={`${isOverdue && milestone.status !== 'completed' ? 
                     'text-red-600 font-medium' : 'text-gray-900'}`}>
                     {formatDate(milestone.due_date || milestone.deadline)}
-                    {daysUntilDue !== null && daysUntilDue >= 0 && (
-                      <span className="text-xs text-gray-900 ml-1">
-                        ({daysUntilDue} dias)
+                    {daysUntilDue !== null && (
+                      <span className={`ml-2 text-xs ${daysUntilDue < 0 ? 'text-red-600' : 'text-gray-500'}`}>
+                        ({daysUntilDue < 0 ? `${Math.abs(daysUntilDue)} dias atrasado` : 
+                           daysUntilDue === 0 ? 'Vence hoje' : `${daysUntilDue} dias restantes`})
                       </span>
                     )}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center">
-                <User className="w-4 h-4 text-gray-900 mr-2" />
-                <div>
+
+              {milestone.responsible && (
+                <div className="flex items-center">
+                  <User className="w-4 h-4 text-gray-900 mr-2" />
                   <span className="text-gray-700 font-medium">Responsável:</span>
-                  <p className="text-gray-900">{milestone.responsible?.full_name || 'Não atribuído'}</p>
+                  <span className="ml-1 text-gray-900">{milestone.responsible.full_name}</span>
                 </div>
-              </div>
+              )}
             </div>
           </div>
-          
+
           {/* Action Buttons */}
-          <div className="flex space-x-2 ml-4 opacity-80 hover:opacity-100 transition-opacity">
+          <div className="flex items-center space-x-1 ml-4">
             <button
               onClick={() => onEditMilestone(milestone)}
-              className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-              title="Editar marco"
+              className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+              title="Editar Marco"
             >
               <Edit3 className="w-4 h-4" />
             </button>
             <button
               onClick={() => onDeleteMilestone(milestone.id, milestone.title)}
-              className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-              title="Excluir marco"
+              className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+              title="Excluir Marco"
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -203,37 +205,39 @@ export default function DeliverablesTab({
                   <p className={`${isOverdue && !['completed', 'approved', 'delivered'].includes(activity.status) ? 
                     'text-red-600 font-medium' : 'text-gray-900'}`}>
                     {formatDate(activity.due_date || activity.deadline)}
-                    {daysUntilDue !== null && daysUntilDue >= 0 && (
-                      <span className="text-xs text-gray-900 ml-1">
-                        ({daysUntilDue} dias)
+                    {daysUntilDue !== null && (
+                      <span className={`ml-2 text-xs ${daysUntilDue < 0 ? 'text-red-600' : 'text-gray-500'}`}>
+                        ({daysUntilDue < 0 ? `${Math.abs(daysUntilDue)} dias atrasado` : 
+                           daysUntilDue === 0 ? 'Vence hoje' : `${daysUntilDue} dias restantes`})
                       </span>
                     )}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center">
-                <User className="w-4 h-4 text-gray-900 mr-2" />
-                <div>
+
+              {activity.responsible && (
+                <div className="flex items-center">
+                  <User className="w-4 h-4 text-gray-900 mr-2" />
                   <span className="text-gray-700 font-medium">Responsável:</span>
-                  <p className="text-gray-900">{activity.responsible?.full_name || 'Não atribuído'}</p>
+                  <span className="ml-1 text-gray-900">{activity.responsible.full_name}</span>
                 </div>
-              </div>
+              )}
             </div>
           </div>
-          
+
           {/* Action Buttons */}
-          <div className="flex space-x-2 ml-4 opacity-80 hover:opacity-100 transition-opacity">
+          <div className="flex items-center space-x-1 ml-4">
             <button
               onClick={() => onEditActivity(activity)}
-              className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-              title="Editar atividade"
+              className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+              title="Editar Atividade"
             >
               <Edit3 className="w-4 h-4" />
             </button>
             <button
               onClick={() => onDeleteActivity(activity.id, activity.title)}
-              className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-              title="Excluir atividade"
+              className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+              title="Excluir Atividade"
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -245,154 +249,128 @@ export default function DeliverablesTab({
 
   return (
     <div className="space-y-6">
-      {/* Header com Filtros e Ações */}
-      <div className="bg-white rounded-lg border p-6">
-        {/* Controles de Filtro */}
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0 mb-6">
-          {/* Busca */}
-          <div className="flex-1 max-w-md">
-            <div className="relative">
-              <Search className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Buscar marcos e atividades..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-              />
-            </div>
+      {/* Actions Bar */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex items-center space-x-4">
+          <button
+            onClick={onNewMilestone}
+            className="inline-flex items-center px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-800 transition-colors"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Novo Marco
+          </button>
+          <button
+            onClick={onNewActivity}
+            className="inline-flex items-center px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50 transition-colors"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Nova Atividade
+          </button>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="bg-white p-4 rounded-lg border border-gray-200">
+        <div className="flex flex-col sm:flex-row gap-4">
+          {/* Search */}
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <input
+              type="text"
+              placeholder="Buscar por título..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+            />
           </div>
 
-          {/* Filtros */}
-          <div className="flex flex-wrap items-center space-x-4">
+          {/* Status Filter */}
+          <div className="sm:w-48">
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
             >
               <option value="all">Todos os status</option>
               <option value="pending">Pendente</option>
-              <option value="in_progress">Em andamento</option>
+              <option value="in_progress">Em Andamento</option>
+              <option value="review">Em Revisão</option>
               <option value="completed">Concluído</option>
+              <option value="delayed">Atrasado</option>
             </select>
+          </div>
 
+          {/* Responsible Filter */}
+          <div className="sm:w-48">
             <select
               value={responsibleFilter}
               onChange={(e) => setResponsibleFilter(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
             >
               <option value="all">Todos os responsáveis</option>
-              {teamMembers.map((member) => (
-                <option key={member.id} value={member.id}>{member.full_name}</option>
+              {teamMembers.map(member => (
+                <option key={member.id} value={member.id}>
+                  {member.full_name}
+                </option>
               ))}
             </select>
-
-            {hasActiveFilters && (
-              <button
-                onClick={clearFilters}
-                className="text-sm text-blue-600 hover:text-gray-800 transition-colors"
-              >
-                Limpar filtros
-              </button>
-            )}
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex space-x-3">
+          {/* Clear Filters */}
+          {hasActiveFilters && (
             <button
-              onClick={onNewMilestone}
-              className="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+              onClick={clearFilters}
+              className="px-3 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
             >
-              <Plus className="w-4 h-4" />
-              <span>Novo Marco</span>
+              Limpar filtros
             </button>
-            <button
-              onClick={onNewActivity}
-              className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Nova Atividade</span>
-            </button>
-          </div>
+          )}
         </div>
+      </div>
 
-        {/* Filter Indicators */}
-        {(filteredMilestones.length !== milestones.length || filteredActivities.length !== activities.length) && (
-          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex items-center">
-              <Filter className="w-4 h-4 text-blue-600 mr-2" />
-              <span className="text-sm text-blue-800">
-                Mostrando {filteredMilestones.length} marco(s) e {filteredActivities.length} atividade(s) 
-                de {milestones.length + activities.length} total
-              </span>
-            </div>
+      {/* Milestones Section */}
+      <InfoCard title="Marcos do Projeto" icon={Target}>
+        {filteredMilestones.length > 0 ? (
+          <div className="space-y-4">
+            {filteredMilestones.map((milestone) => (
+              <MilestoneCard key={milestone.id} milestone={milestone} />
+            ))}
           </div>
+        ) : (
+          <EmptyState
+            icon={Target}
+            title="Nenhum marco encontrado"
+            description={hasActiveFilters ? 
+              "Nenhum marco corresponde aos filtros aplicados." : 
+              "Nenhum marco foi criado ainda. Crie o primeiro marco do projeto."
+            }
+            actionLabel={!hasActiveFilters ? "Criar Primeiro Marco" : undefined}
+            onAction={!hasActiveFilters ? onNewMilestone : undefined}
+          />
         )}
-      </div>
+      </InfoCard>
 
-      {/* Milestones and Activities Columns */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        {/* Milestones Column */}
-        <InfoCard 
-          title={`Marcos (${filteredMilestones.length})`} 
-          icon={Target}
-        >
+      {/* Activities Section */}
+      <InfoCard title="Atividades do Projeto" icon={CheckSquare}>
+        {filteredActivities.length > 0 ? (
           <div className="space-y-4">
-            {filteredMilestones.length > 0 ? (
-              filteredMilestones.map((milestone) => (
-                <MilestoneCard key={milestone.id} milestone={milestone} />
-              ))
-            ) : milestones.length === 0 ? (
-              <EmptyState
-                title="Nenhum marco cadastrado"
-                description="Crie o primeiro marco para começar a organizar as entregas do projeto."
-                icon={Target}
-                action={{
-                  label: "Criar Primeiro Marco",
-                  onClick: onNewMilestone
-                }}
-              />
-            ) : (
-              <EmptyState
-                title="Nenhum marco encontrado"
-                description="Nenhum marco corresponde aos filtros aplicados. Tente ajustar os critérios de busca."
-                icon={Filter}
-              />
-            )}
+            {filteredActivities.map((activity) => (
+              <ActivityCard key={activity.id} activity={activity} />
+            ))}
           </div>
-        </InfoCard>
-
-        {/* Activities Column */}
-        <InfoCard 
-          title={`Atividades (${filteredActivities.length})`} 
-          icon={CheckSquare}
-        >
-          <div className="space-y-4">
-            {filteredActivities.length > 0 ? (
-              filteredActivities.map((activity) => (
-                <ActivityCard key={activity.id} activity={activity} />
-              ))
-            ) : activities.length === 0 ? (
-              <EmptyState
-                title="Nenhuma atividade cadastrada"
-                description="Crie a primeira atividade para começar a organizar as tarefas do projeto."
-                icon={CheckSquare}
-                action={{
-                  label: "Criar Primeira Atividade",
-                  onClick: onNewActivity
-                }}
-              />
-            ) : (
-              <EmptyState
-                title="Nenhuma atividade encontrada"
-                description="Nenhuma atividade corresponde aos filtros aplicados. Tente ajustar os critérios de busca."
-                icon={Filter}
-              />
-            )}
-          </div>
-        </InfoCard>
-      </div>
+        ) : (
+          <EmptyState
+            icon={CheckSquare}
+            title="Nenhuma atividade encontrada"
+            description={hasActiveFilters ? 
+              "Nenhuma atividade corresponde aos filtros aplicados." : 
+              "Nenhuma atividade foi criada ainda. Crie a primeira atividade do projeto."
+            }
+            actionLabel={!hasActiveFilters ? "Criar Primeira Atividade" : undefined}
+            onAction={!hasActiveFilters ? onNewActivity : undefined}
+          />
+        )}
+      </InfoCard>
     </div>
   )
 }
