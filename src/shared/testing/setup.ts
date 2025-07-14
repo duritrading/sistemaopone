@@ -1,44 +1,34 @@
+// src/shared/testing/setup.ts
 import '@testing-library/jest-dom'
-import { beforeAll, afterEach, afterAll } from 'vitest'
 
-// Mock do crypto.randomUUID
-beforeAll(() => {
-  global.crypto = {
-    randomUUID: () => 'test-uuid-' + Math.random().toString(36).slice(2, 11)
-  } as any
-})
+// Configuração básica de testes sem dependências globais
+console.log('Setting up test environment...')
 
-// Cleanup after each test
-afterEach(() => {
-  // Reset all mocks
-  vi.clearAllMocks()
-})
+// Mock de APIs globais básicas
+if (typeof window !== 'undefined') {
+  // Mock do matchMedia para testes DOM
+  window.matchMedia = window.matchMedia || function(query) {
+    return {
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: function() {},
+      removeListener: function() {},
+      addEventListener: function() {},
+      removeEventListener: function() {},
+      dispatchEvent: function() {}
+    }
+  }
 
-// Global test utilities
-global.ResizeObserver = vi.fn(() => ({
-  observe: vi.fn(),
-  unobserve: vi.fn(),
-  disconnect: vi.fn()
-}))
-
-// Mock do IntersectionObserver
-global.IntersectionObserver = vi.fn(() => ({
-  observe: vi.fn(),
-  unobserve: vi.fn(),
-  disconnect: vi.fn()
-}))
-
-// Mock do matchMedia
-Object.defineProperty(window, 'matchMedia', {
-  writable: true,
-  value: vi.fn().mockImplementation(query => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addListener: vi.fn(),
-    removeListener: vi.fn(),
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    dispatchEvent: vi.fn()
-  }))
-})
+  // Mock do localStorage se necessário
+  const localStorageMock = {
+    getItem: function(key: string) { return null },
+    setItem: function(key: string, value: string) {},
+    removeItem: function(key: string) {},
+    clear: function() {}
+  }
+  
+  Object.defineProperty(window, 'localStorage', {
+    value: localStorageMock
+  })
+}

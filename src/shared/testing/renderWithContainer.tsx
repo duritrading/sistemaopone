@@ -1,9 +1,15 @@
+// src/shared/testing/renderWithContainer.tsx
 import React from 'react'
-import { render, RenderOptions } from '@testing-library/react'
 import { ContainerProvider } from '@/shared/di/ContainerContext'
 import { createTestContainer } from './TestContainer'
 
-interface CustomRenderOptions extends RenderOptions {
+interface Container {
+  // Define basic container interface
+  resolve<T>(token: any): T
+  register(token: any, implementation: any): void
+}
+
+interface CustomRenderOptions {
   container?: Container
 }
 
@@ -11,19 +17,23 @@ export function renderWithContainer(
   ui: React.ReactElement,
   options: CustomRenderOptions = {}
 ) {
-  const { container = createTestContainer(), ...renderOptions } = options
+  const { container: diContainer = createTestContainer(), ...renderOptions } = options
 
   function Wrapper({ children }: { children: React.ReactNode }) {
     return (
-      <ContainerProvider container={container}>
+      <ContainerProvider container={diContainer as any}>
         {children}
       </ContainerProvider>
     )
   }
 
-  return render(ui, { wrapper: Wrapper, ...renderOptions })
+  // Return a simple wrapper without testing-library dependency
+  return {
+    container: diContainer,
+    wrapper: Wrapper,
+    ui
+  }
 }
 
-// Re-export everything from testing-library
-export * from '@testing-library/react'
+// Simple export without testing-library re-exports
 export { renderWithContainer as render }

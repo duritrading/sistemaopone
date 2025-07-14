@@ -1,16 +1,58 @@
 import { useState, useEffect } from 'react'
 import { useContainer } from '@/shared/di/ContainerContext'
 
+interface Transaction {
+  id: string
+  amount: number
+  type: 'receita' | 'despesa'
+  status: 'pendente' | 'recebido' | 'pago' | 'vencido' | 'cancelado'
+  transaction_date: string
+  payment_date?: string
+  description?: string
+  account: {
+    id: string
+    name: string
+    type: string
+    bank: string
+  }
+}
+
+interface Account {
+  id: string
+  name: string
+  type: string
+  bank: string
+  is_active: boolean
+}
+
+interface Metrics {
+  receitasEmAberto: number
+  receitasRealizadas: number
+  despesasEmAberto: number
+  despesasRealizadas: number
+  saldoPeriodo: number
+  totalTransacoes: number
+}
+
+interface TransactionData {
+  amount: number
+  type: 'receita' | 'despesa'
+  description?: string
+  account_id: string
+  transaction_date: string
+  status?: string
+}
+
 export function useFinancialData() {
-  const [transactions, setTransactions] = useState([])
-  const [accounts, setAccounts] = useState([])
-  const [metrics, setMetrics] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [accounts, setAccounts] = useState<Account[]>([])
+  const [metrics, setMetrics] = useState<Metrics | null>(null)
+  const [loading, setLoading] = useState<boolean>(true)
+  const [error, setError] = useState<string | null>(null)
   const { supabase } = useContainer()
 
   // Buscar transações com joins otimizados
-  const fetchTransactions = async () => {
+  const fetchTransactions = async (): Promise<void> => {
     try {
       const { data, error } = await supabase
         .from('financial_transactions')
@@ -29,14 +71,15 @@ export function useFinancialData() {
       
       console.log('Transações carregadas:', data?.length || 0)
       setTransactions(data || [])
-    } catch (err) {
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido'
       console.error('Erro ao buscar transações:', err)
-      setError(err.message)
+      setError(errorMessage)
     }
   }
 
   // Buscar contas ativas
-  const fetchAccounts = async () => {
+  const fetchAccounts = async (): Promise<void> => {
     try {
       const { data, error } = await supabase
         .from('accounts')
@@ -48,14 +91,15 @@ export function useFinancialData() {
       
       console.log('Contas carregadas:', data?.length || 0)
       setAccounts(data || [])
-    } catch (err) {
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido'
       console.error('Erro ao buscar contas:', err)
-      setError(err.message)
+      setError(errorMessage)
     }
   }
 
   // Buscar métricas usando a nova função
-  const fetchMetrics = async () => {
+  const fetchMetrics = async (): Promise<void> => {
     try {
       // Usar a nova função get_financial_metrics_2025
       const { data, error } = await supabase
@@ -83,21 +127,21 @@ export function useFinancialData() {
 
         if (transactionsError) throw transactionsError
 
-        const receitasEmAberto = transactionsData
-          .filter(t => t.type === 'receita' && t.status === 'pendente')
-          .reduce((sum, t) => sum + Number(t.amount), 0)
+       const receitasEmAberto = (transactionsData || [])
+  .filter((t: any) => t.type === 'receita' && t.status === 'pendente')
+  .reduce((sum: number, t: any) => sum + Number(t.amount), 0)
 
-        const receitasRealizadas = transactionsData
-          .filter(t => t.type === 'receita' && t.status === 'recebido')
-          .reduce((sum, t) => sum + Number(t.amount), 0)
+const receitasRealizadas = (transactionsData || [])
+  .filter((t: any) => t.type === 'receita' && t.status === 'recebido')
+  .reduce((sum: number, t: any) => sum + Number(t.amount), 0)
 
-        const despesasEmAberto = transactionsData
-          .filter(t => t.type === 'despesa' && t.status === 'pendente')
-          .reduce((sum, t) => sum + Number(t.amount), 0)
+const despesasEmAberto = (transactionsData || [])
+  .filter((t: any) => t.type === 'despesa' && t.status === 'pendente')
+  .reduce((sum: number, t: any) => sum + Number(t.amount), 0)
 
-        const despesasRealizadas = transactionsData
-          .filter(t => t.type === 'despesa' && t.status === 'pago')
-          .reduce((sum, t) => sum + Number(t.amount), 0)
+const despesasRealizadas = (transactionsData || [])
+  .filter((t: any) => t.type === 'despesa' && t.status === 'pago')
+  .reduce((sum: number, t: any) => sum + Number(t.amount), 0)
 
         setMetrics({
           receitasEmAberto,
@@ -105,17 +149,18 @@ export function useFinancialData() {
           despesasEmAberto,
           despesasRealizadas,
           saldoPeriodo: receitasRealizadas - despesasRealizadas,
-          totalTransacoes: transactionsData.length
+          totalTransacoes: transactionsData?.length || 0
         })
       }
-    } catch (err) {
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido'
       console.error('Erro ao buscar métricas:', err)
-      setError(err.message)
+      setError(errorMessage)
     }
   }
 
   // Função para criar nova transação
-  const createTransaction = async (transactionData) => {
+  const createTransaction = async (transactionData: TransactionData) => {
     try {
       const { data, error } = await supabase
         .from('financial_transactions')
@@ -129,14 +174,15 @@ export function useFinancialData() {
       await fetchMetrics()
 
       return { success: true, data: data[0] }
-    } catch (err) {
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido'
       console.error('Erro ao criar transação:', err)
-      return { success: false, error: err.message }
+      return { success: false, error: errorMessage }
     }
   }
 
   // Função para atualizar transação
-  const updateTransaction = async (id, updates) => {
+  const updateTransaction = async (id: string, updates: Partial<TransactionData>) => {
     try {
       const { data, error } = await supabase
         .from('financial_transactions')
@@ -151,14 +197,15 @@ export function useFinancialData() {
       await fetchMetrics()
 
       return { success: true, data: data[0] }
-    } catch (err) {
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido'
       console.error('Erro ao atualizar transação:', err)
-      return { success: false, error: err.message }
+      return { success: false, error: errorMessage }
     }
   }
 
   // Função para deletar transação
-  const deleteTransaction = async (id) => {
+  const deleteTransaction = async (id: string) => {
     try {
       const { error } = await supabase
         .from('financial_transactions')
@@ -172,14 +219,15 @@ export function useFinancialData() {
       await fetchMetrics()
 
       return { success: true }
-    } catch (err) {
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido'
       console.error('Erro ao deletar transação:', err)
-      return { success: false, error: err.message }
+      return { success: false, error: errorMessage }
     }
   }
 
   // Função para marcar transação como paga
-  const markTransactionAsPaid = async (id) => {
+  const markTransactionAsPaid = async (id: string) => {
     try {
       const transaction = transactions.find(t => t.id === id)
       if (!transaction) throw new Error('Transação não encontrada')
@@ -201,14 +249,15 @@ export function useFinancialData() {
       await fetchMetrics()
 
       return { success: true }
-    } catch (err) {
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido'
       console.error('Erro ao marcar como pago:', err)
-      return { success: false, error: err.message }
+      return { success: false, error: errorMessage }
     }
   }
 
   // Função para refresh completo
-  const refreshData = async () => {
+  const refreshData = async (): Promise<void> => {
     setLoading(true)
     setError(null)
     
@@ -222,9 +271,10 @@ export function useFinancialData() {
       ])
       
       console.log('Dados carregados com sucesso!')
-    } catch (err) {
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido'
       console.error('Erro ao recarregar dados:', err)
-      setError(err.message)
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }
@@ -251,19 +301,19 @@ export function useFinancialData() {
     markTransactionAsPaid,
     
     // Utilitários
-    formatCurrency: (value) => {
+    formatCurrency: (value: number): string => {
       return new Intl.NumberFormat('pt-BR', {
         style: 'currency',
         currency: 'BRL'
       }).format(value || 0)
     },
     
-    formatDate: (dateString) => {
+    formatDate: (dateString: string): string => {
       return new Date(dateString).toLocaleDateString('pt-BR')
     },
     
-    getStatusColor: (status) => {
-      const colors = {
+    getStatusColor: (status: string): string => {
+      const colors: Record<string, string> = {
         pendente: 'bg-yellow-100 text-yellow-800',
         recebido: 'bg-green-100 text-green-800',
         pago: 'bg-blue-100 text-blue-800',

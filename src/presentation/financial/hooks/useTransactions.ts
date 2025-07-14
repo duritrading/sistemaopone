@@ -1,9 +1,9 @@
+// src/presentation/financial/hooks/useTransactions.ts
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { TransactionEntity } from '@/domain/financial/entities/Transaction'
 import { GetTransactionsUseCase } from '@/domain/financial/use-cases/GetTransactionsUseCase'
 import { BulkUpdateTransactionsUseCase } from '@/domain/financial/use-cases/BulkUpdateTransactionsUseCase'
 import { TransactionFilters } from '@/domain/financial/repositories/ITransactionRepository'
-import { useDebounce } from '@/shared/hooks/useDebounce'
 import { Logger } from '@/shared/utils/logger'
 
 interface UseTransactionsProps {
@@ -12,171 +12,118 @@ interface UseTransactionsProps {
   refreshInterval?: number
 }
 
-interface UseTransactionsReturn {
-  transactions: TransactionEntity[]
-  loading: boolean
-  error: string | null
-  totalCount: number
-  hasNext: boolean
-  hasPrevious: boolean
-  page: number
-  totalPages: number
-  
-  // Actions
-  refresh: () => Promise<void>
-  loadMore: () => Promise<void>
-  nextPage: () => void
-  previousPage: () => void
-  setFilters: (filters: TransactionFilters) => void
-  
-  // Bulk operations
-  bulkUpdate: (ids: string[], updates: any) => Promise<boolean>
-  bulkUpdateLoading: boolean
-  
-  // Selection
-  selectedIds: string[]
-  isSelected: (id: string) => boolean
-  toggleSelection: (id: string) => void
-  selectAll: () => void
-  clearSelection: () => void
-  hasSelection: boolean
-  
-  // Computed values
-  selectedTransactions: TransactionEntity[]
-  selectionStats: {
-    count: number
-    totalAmount: number
-    revenueCount: number
-    expenseCount: number
-  }
+// Custom useDebounce hook
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value)
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value)
+    }, delay)
+
+    return () => {
+      clearTimeout(handler)
+    }
+  }, [value, delay])
+
+  return debouncedValue
 }
 
 export function useTransactions({ 
-  filters = {}, 
+  filters, 
   autoRefresh = false, 
   refreshInterval = 30000 
-}: UseTransactionsProps = {}): UseTransactionsReturn {
-  // State
+}: UseTransactionsProps = {}) {
   const [transactions, setTransactions] = useState<TransactionEntity[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [totalCount, setTotalCount] = useState(0)
-  const [page, setPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(0)
-  const [hasNext, setHasNext] = useState(false)
-  const [hasPrevious, setHasPrevious] = useState(false)
-  const [currentFilters, setCurrentFilters] = useState<TransactionFilters>(filters)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
-  const [bulkUpdateLoading, setBulkUpdateLoading] = useState(false)
 
-  // Debounced search
-  const debouncedSearchTerm = useDebounce(currentFilters.searchTerm || '', 500)
+  // Debounce filters to avoid excessive API calls
+  const debouncedFilters = useDebounce(filters, 300)
 
   // Dependencies
-  const getTransactionsUseCase = useMemo(() => new GetTransactionsUseCase(
-    // TODO: Inject dependencies
-    {} as any,
-    new Logger()
-  ), [])
+  const getTransactionsUseCase = useMemo(() => {
+    // TODO: Inject dependencies properly
+    return {} as any
+  }, [])
+  
+  const logger = useMemo(() => new Logger('useTransactions'), [])
 
-  const bulkUpdateUseCase = useMemo(() => new BulkUpdateTransactionsUseCase(
-    // TODO: Inject dependencies
-    {} as any,
-    {} as any,
-    new Logger()
-  ), [])
+  const bulkUpdateUseCase = useMemo(() => {
+    // TODO: Inject dependencies properly
+    return {} as any
+  }, [])
 
   // Fetch transactions
-  const fetchTransactions = useCallback(async (resetPage = false) => {
+  const fetchTransactions = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
 
-      const currentPage = resetPage ? 1 : page
-      
-      const response = await getTransactionsUseCase.execute({
-        filters: {
-          ...currentFilters,
-          searchTerm: debouncedSearchTerm
-        },
-        page: currentPage,
-        limit: 50,
-        sortBy: 'date',
-        sortOrder: 'desc'
+      const result = await getTransactionsUseCase.execute({
+        filters: debouncedFilters,
+        pagination: { page: 1, limit: 50 }
       })
 
-      setTransactions(response.transactions)
-      setTotalCount(response.totalCount)
-      setTotalPages(response.totalPages)
-      setHasNext(response.hasNext)
-      setHasPrevious(response.hasPrevious)
-      
-      if (resetPage) {
-        setPage(1)
-      }
+      setTransactions(result.data)
+      setTotalCount(result.total)
 
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao carregar transações')
-      console.error('Error fetching transactions:', err)
+      logger.info('Transactions fetched successfully', {
+        count: result.data.length,
+        total: result.total,
+        filters: debouncedFilters
+      })
+
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error'
+      logger.error('Error fetching transactions', { error: err })
+      setError(errorMessage)
+      setTransactions([])
+      setTotalCount(0)
     } finally {
       setLoading(false)
     }
-  }, [currentFilters, debouncedSearchTerm, page, getTransactionsUseCase])
+  }, [debouncedFilters, getTransactionsUseCase, logger])
 
-  // Auto refresh
-  useEffect(() => {
-    if (!autoRefresh) return
+  // Bulk update transactions
+  const bulkUpdate = useCallback(async (
+    ids: string[], 
+    updates: Record<string, any>
+  ) => {
+    try {
+      setLoading(true)
+      
+      await bulkUpdateUseCase.execute({
+        transactionIds: ids,
+        updates
+      })
 
-    const interval = setInterval(() => {
-      fetchTransactions()
-    }, refreshInterval)
+      // Refresh transactions after bulk update
+      await fetchTransactions()
 
-    return () => clearInterval(interval)
-  }, [autoRefresh, refreshInterval, fetchTransactions])
+      logger.info('Bulk update completed successfully', {
+        count: ids.length,
+        updates
+      })
 
-  // Fetch on mount and dependency changes
-  useEffect(() => {
-    fetchTransactions(true)
-  }, [currentFilters, debouncedSearchTerm])
-
-  // Actions
-  const refresh = useCallback(async () => {
-    await fetchTransactions(true)
-    setSelectedIds([])
-  }, [fetchTransactions])
-
-  const loadMore = useCallback(async () => {
-    if (hasNext && !loading) {
-      setPage(prev => prev + 1)
+      return { success: true }
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error'
+      logger.error('Error in bulk update', { error: err })
+      setError(errorMessage)
+      return { success: false, error: errorMessage }
+    } finally {
+      setLoading(false)
     }
-  }, [hasNext, loading])
+  }, [bulkUpdateUseCase, fetchTransactions, logger])
 
-  const nextPage = useCallback(() => {
-    if (hasNext) {
-      setPage(prev => prev + 1)
-    }
-  }, [hasNext])
-
-  const previousPage = useCallback(() => {
-    if (hasPrevious) {
-      setPage(prev => prev - 1)
-    }
-  }, [hasPrevious])
-
-  const setFilters = useCallback((newFilters: TransactionFilters) => {
-    setCurrentFilters(newFilters)
-    setSelectedIds([])
-  }, [])
-
-  // Selection
-  const isSelected = useCallback((id: string) => {
-    return selectedIds.includes(id)
-  }, [selectedIds])
-
-  const toggleSelection = useCallback((id: string) => {
+  // Selection management
+  const selectTransaction = useCallback((id: string) => {
     setSelectedIds(prev => 
       prev.includes(id) 
-        ? prev.filter(x => x !== id)
+        ? prev.filter(selectedId => selectedId !== id)
         : [...prev, id]
     )
   }, [])
@@ -189,78 +136,71 @@ export function useTransactions({
     setSelectedIds([])
   }, [])
 
-  // Bulk operations
-  const bulkUpdate = useCallback(async (ids: string[], updates: any) => {
-    try {
-      setBulkUpdateLoading(true)
-      
-      const response = await bulkUpdateUseCase.execute({
-        transactionIds: ids,
-        updates
-      })
-
-      if (response.success) {
-        await refresh()
-        return true
-      } else {
-        setError(response.errors?.join(', ') || 'Erro na atualização em lote')
-        return false
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro na atualização em lote')
-      return false
-    } finally {
-      setBulkUpdateLoading(false)
+  // Auto-refresh effect
+  useEffect(() => {
+    if (autoRefresh && refreshInterval > 0) {
+      const interval = setInterval(fetchTransactions, refreshInterval)
+      return () => clearInterval(interval)
     }
-  }, [bulkUpdateUseCase, refresh])
+  }, [autoRefresh, refreshInterval, fetchTransactions])
+
+  // Initial fetch and refetch when filters change
+  useEffect(() => {
+    fetchTransactions()
+  }, [fetchTransactions])
 
   // Computed values
-  const selectedTransactions = useMemo(() => {
-    return transactions.filter(t => selectedIds.includes(t.id))
-  }, [transactions, selectedIds])
+  const selectedTransactions = useMemo(() => 
+    transactions.filter(t => selectedIds.includes(t.id)),
+    [transactions, selectedIds]
+  )
 
-  const selectionStats = useMemo(() => {
+  const summary = useMemo(() => {
+    const receitas = transactions
+      .filter(t => t.type === 'receita')
+      .reduce((sum, t) => sum + t.amount, 0)
+
+    const despesas = transactions
+      .filter(t => t.type === 'despesa')
+      .reduce((sum, t) => sum + t.amount, 0)
+
     return {
-      count: selectedTransactions.length,
-      totalAmount: selectedTransactions.reduce((sum, t) => sum + t.amount, 0),
-      revenueCount: selectedTransactions.filter(t => t.isRevenue()).length,
-      expenseCount: selectedTransactions.filter(t => t.isExpense()).length
+      totalReceitas: receitas,
+      totalDespesas: despesas,
+      saldo: receitas - despesas,
+      totalTransactions: transactions.length
     }
-  }, [selectedTransactions])
-
-  const hasSelection = selectedIds.length > 0
+  }, [transactions])
 
   return {
+    // Data
     transactions,
+    selectedTransactions,
+    totalCount,
+    summary,
+    
+    // State
     loading,
     error,
-    totalCount,
-    hasNext,
-    hasPrevious,
-    page,
-    totalPages,
+    selectedIds,
     
     // Actions
-    refresh,
-    loadMore,
-    nextPage,
-    previousPage,
-    setFilters,
-    
-    // Bulk operations
+    fetchTransactions,
     bulkUpdate,
-    bulkUpdateLoading,
-    
-    // Selection
-    selectedIds,
-    isSelected,
-    toggleSelection,
+    selectTransaction,
     selectAll,
     clearSelection,
-    hasSelection,
     
-    // Computed
-    selectedTransactions,
-    selectionStats
+    // Utils
+    formatCurrency: (value: number) => {
+      return new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+      }).format(value)
+    },
+    
+    formatDate: (date: Date) => {
+      return date.toLocaleDateString('pt-BR')
+    }
   }
 }

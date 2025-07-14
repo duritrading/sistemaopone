@@ -3,195 +3,183 @@ import { supabase } from '@/lib/supabase'
 import { TransactionEntity, Transaction } from '@/domain/financial/entities/Transaction'
 import { ITransactionRepository, TransactionFilters } from '@/domain/financial/repositories/ITransactionRepository'
 import { Logger } from '@/shared/utils/logger'
-import { performanceMonitor } from '@/shared/utils/performanceMonitor'
 
 export class SupabaseTransactionRepository implements ITransactionRepository {
+  findByAccountId(accountId: string): Promise<TransactionEntity[]> {
+    throw new Error('Method not implemented.')
+  }
   private readonly logger = new Logger('SupabaseTransactionRepository')
 
   async findById(id: string): Promise<TransactionEntity | null> {
-    return await performanceMonitor.measureAsync('transaction_find_by_id', async () => {
-      try {
-        const { data, error } = await supabase
-          .from('financial_transactions')
-          .select(`
-            *,
-            account:accounts(name, type)
-          `)
-          .eq('id', id)
-          .single()
+    try {
+      const { data, error } = await supabase
+        .from('financial_transactions')
+        .select(`
+          *,
+          account:accounts(name, type)
+        `)
+        .eq('id', id)
+        .single()
 
-        if (error) {
-          this.logger.error('Error finding transaction by ID', { error, id })
-          throw new Error(`Transaction not found: ${error.message}`)
-        }
-
-        return data ? TransactionEntity.fromData(this.mapFromDatabase(data)) : null
-      } catch (error) {
-        this.logger.error('Database error in findById', { error, id })
-        throw error
+      if (error) {
+        this.logger.error('Error finding transaction by ID', { error, id })
+        throw new Error(`Transaction not found: ${error.message}`)
       }
-    })
+
+      return data ? TransactionEntity.fromData(this.mapFromDatabase(data)) : null
+    } catch (error) {
+      this.logger.error('Database error in findById', { error, id })
+      throw error
+    }
   }
 
   async findAll(filters?: TransactionFilters): Promise<TransactionEntity[]> {
-    return await performanceMonitor.measureAsync('transaction_find_all', async () => {
-      try {
-        let query = supabase
-          .from('financial_transactions')
-          .select(`
-            *,
-            account:accounts(name, type)
-          `)
+    try {
+      let query = supabase
+        .from('financial_transactions')
+        .select(`
+          *,
+          account:accounts(name, type)
+        `)
 
-        // Apply filters
-        if (filters) {
-          query = this.applyFilters(query, filters)
-        }
-
-        query = query.order('transaction_date', { ascending: false })
-
-        const { data, error } = await query
-
-        if (error) {
-          this.logger.error('Error finding transactions', { error, filters })
-          throw new Error(`Failed to fetch transactions: ${error.message}`)
-        }
-
-        return (data || []).map(item => 
-          TransactionEntity.fromData(this.mapFromDatabase(item))
-        )
-      } catch (error) {
-        this.logger.error('Database error in findAll', { error, filters })
-        throw error
+      // Apply filters
+      if (filters) {
+        query = this.applyFilters(query, filters)
       }
-    })
+
+      query = query.order('transaction_date', { ascending: false })
+
+      const { data, error } = await query
+
+      if (error) {
+        this.logger.error('Error finding transactions', { error, filters })
+        throw new Error(`Failed to fetch transactions: ${error.message}`)
+      }
+
+      return (data || []).map(item => 
+        TransactionEntity.fromData(this.mapFromDatabase(item))
+      )
+    } catch (error) {
+      this.logger.error('Database error in findAll', { error, filters })
+      throw error
+    }
   }
 
   async create(transaction: TransactionEntity): Promise<TransactionEntity> {
-    return await performanceMonitor.measureAsync('transaction_create', async () => {
-      try {
-        const { data, error } = await supabase
-          .from('financial_transactions')
-          .insert([this.mapToDatabase(transaction.toJSON())])
-          .select()
-          .single()
+    try {
+      const { data, error } = await supabase
+        .from('financial_transactions')
+        .insert([this.mapToDatabase(transaction.toJSON())])
+        .select()
+        .single()
 
-        if (error) {
-          this.logger.error('Error creating transaction', { error, transaction: transaction.id })
-          throw new Error(`Failed to create transaction: ${error.message}`)
-        }
-
-        this.logger.info('Transaction created successfully', { 
-          id: data.id, 
-          amount: data.amount,
-          type: data.type 
-        })
-
-        return TransactionEntity.fromData(this.mapFromDatabase(data))
-      } catch (error) {
-        this.logger.error('Database error in create', { error })
-        throw error
+      if (error) {
+        this.logger.error('Error creating transaction', { error, transaction: transaction.id })
+        throw new Error(`Failed to create transaction: ${error.message}`)
       }
-    })
+
+      this.logger.info('Transaction created successfully', { 
+        id: data.id, 
+        amount: data.amount,
+        type: data.type 
+      })
+
+      return TransactionEntity.fromData(this.mapFromDatabase(data))
+    } catch (error) {
+      this.logger.error('Database error in create', { error })
+      throw error
+    }
   }
 
   async update(id: string, updates: Partial<Transaction>): Promise<TransactionEntity> {
-    return await performanceMonitor.measureAsync('transaction_update', async () => {
-      try {
-        const { data, error } = await supabase
-          .from('financial_transactions')
-          .update({
-            ...this.mapToDatabase(updates),
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', id)
-          .select()
-          .single()
+    try {
+      const { data, error } = await supabase
+        .from('financial_transactions')
+        .update({
+          ...this.mapToDatabase(updates),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select()
+        .single()
 
-        if (error) {
-          this.logger.error('Error updating transaction', { error, id, updates })
-          throw new Error(`Failed to update transaction: ${error.message}`)
-        }
-
-        this.logger.info('Transaction updated successfully', { id, updates })
-
-        return TransactionEntity.fromData(this.mapFromDatabase(data))
-      } catch (error) {
-        this.logger.error('Database error in update', { error, id })
-        throw error
+      if (error) {
+        this.logger.error('Error updating transaction', { error, id, updates })
+        throw new Error(`Failed to update transaction: ${error.message}`)
       }
-    })
+
+      this.logger.info('Transaction updated successfully', { id, updates })
+
+      return TransactionEntity.fromData(this.mapFromDatabase(data))
+    } catch (error) {
+      this.logger.error('Database error in update', { error, id })
+      throw error
+    }
   }
 
   async delete(id: string): Promise<void> {
-    return await performanceMonitor.measureAsync('transaction_delete', async () => {
-      try {
-        const { error } = await supabase
-          .from('financial_transactions')
-          .delete()
-          .eq('id', id)
+    try {
+      const { error } = await supabase
+        .from('financial_transactions')
+        .delete()
+        .eq('id', id)
 
-        if (error) {
-          this.logger.error('Error deleting transaction', { error, id })
-          throw new Error(`Failed to delete transaction: ${error.message}`)
-        }
-
-        this.logger.info('Transaction deleted successfully', { id })
-      } catch (error) {
-        this.logger.error('Database error in delete', { error, id })
-        throw error
+      if (error) {
+        this.logger.error('Error deleting transaction', { error, id })
+        throw new Error(`Failed to delete transaction: ${error.message}`)
       }
-    })
+
+      this.logger.info('Transaction deleted successfully', { id })
+    } catch (error) {
+      this.logger.error('Database error in delete', { error, id })
+      throw error
+    }
   }
 
   async bulkUpdate(ids: string[], updates: Partial<Transaction>): Promise<void> {
-    return await performanceMonitor.measureAsync('transaction_bulk_update', async () => {
-      try {
-        const { error } = await supabase
-          .from('financial_transactions')
-          .update({
-            ...this.mapToDatabase(updates),
-            updated_at: new Date().toISOString()
-          })
-          .in('id', ids)
+    try {
+      const { error } = await supabase
+        .from('financial_transactions')
+        .update({
+          ...this.mapToDatabase(updates),
+          updated_at: new Date().toISOString()
+        })
+        .in('id', ids)
 
-        if (error) {
-          this.logger.error('Error bulk updating transactions', { error, ids, updates })
-          throw new Error(`Failed to bulk update transactions: ${error.message}`)
-        }
-
-        this.logger.info('Bulk update completed successfully', { count: ids.length, updates })
-      } catch (error) {
-        this.logger.error('Database error in bulkUpdate', { error, ids })
-        throw error
+      if (error) {
+        this.logger.error('Error bulk updating transactions', { error, ids, updates })
+        throw new Error(`Failed to bulk update transactions: ${error.message}`)
       }
-    })
+
+      this.logger.info('Bulk update completed successfully', { count: ids.length, updates })
+    } catch (error) {
+      this.logger.error('Database error in bulkUpdate', { error, ids })
+      throw error
+    }
   }
 
   async countByFilters(filters?: TransactionFilters): Promise<number> {
-    return await performanceMonitor.measureAsync('transaction_count', async () => {
-      try {
-        let query = supabase
-          .from('financial_transactions')
-          .select('*', { count: 'exact', head: true })
+    try {
+      let query = supabase
+        .from('financial_transactions')
+        .select('*', { count: 'exact', head: true })
 
-        if (filters) {
-          query = this.applyFilters(query, filters)
-        }
-
-        const { count, error } = await query
-
-        if (error) {
-          this.logger.error('Error counting transactions', { error, filters })
-          throw new Error(`Failed to count transactions: ${error.message}`)
-        }
-
-        return count || 0
-      } catch (error) {
-        this.logger.error('Database error in countByFilters', { error, filters })
-        throw error
+      if (filters) {
+        query = this.applyFilters(query, filters)
       }
-    })
+
+      const { count, error } = await query
+
+      if (error) {
+        this.logger.error('Error counting transactions', { error, filters })
+        throw new Error(`Failed to count transactions: ${error.message}`)
+      }
+
+      return count || 0
+    } catch (error) {
+      this.logger.error('Database error in countByFilters', { error, filters })
+      throw error
+    }
   }
 
   private applyFilters(query: any, filters: TransactionFilters): any {
