@@ -118,17 +118,17 @@ export default function LoginPage() {
           <div className="text-center mb-12 animate-fadeInDown">
             <div className="w-28 h-28 mx-auto mb-6 relative flex items-center justify-center">
               <img
-                src="/opone-logo.png"
+                src="/Logo%20OpOne%20Fundo%20Preto.png"
                 alt="OpOne Logo"
                 className="w-24 h-24 object-contain filter drop-shadow-2xl"
                 style={{
                   filter: 'drop-shadow(0 0 20px rgba(59, 130, 246, 0.3))'
                 }}
-                onLoad={() => console.log('✅ Logo carregada de /opone-logo.png')}
+                onLoad={() => console.log('✅ Logo carregada de /Logo%20OpOne%20Fundo%20Preto.png')}
                 onError={(e) => {
-                  console.log('❌ Tentando /images/opone-logo.png...')
+                  console.log('❌ Tentando /images/Logo%20OpOne%20Fundo%20Preto.png...')
                   const target = e.target as HTMLImageElement;
-                  target.src = '/images/opone-logo.png';
+                  target.src = '/images/Logo%20OpOne%20Fundo%20Preto.png';
                   target.onerror = () => {
                     console.log('❌ Tentando JPG...')
                     target.src = '/opone-logo.jpg';
