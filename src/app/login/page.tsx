@@ -1,4 +1,4 @@
-// src/app/login/page.tsx - CORRIGIDO PARA ATUALIZAR ESTADO IMEDIATAMENTE
+// src/app/login/page.tsx - BACKGROUND ONDAS SUTIS + CARD AJUSTADO
 'use client'
 
 import { useState } from 'react'
@@ -21,7 +21,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
-  const { setUser, refreshUser } = useAuth() // USAR CONTEXTO DE AUTH
+  const { setUser, refreshUser } = useAuth()
 
   const {
     register,
@@ -50,16 +50,12 @@ export default function LoginPage() {
       if (result.success) {
         console.log('✅ Login bem-sucedido!')
         
-        // ATUALIZAR CONTEXTO IMEDIATAMENTE
         if (result.user) {
           setUser(result.user)
           console.log('✅ Usuário definido no contexto:', result.user)
         }
         
-        // FORÇAR ATUALIZAÇÃO DOS DADOS
         await refreshUser()
-        
-        // NOTIFICAR OUTRAS ABAS
         localStorage.setItem('auth_user_updated', Date.now().toString())
         
         console.log('🔄 Redirecionando para dashboard...')
@@ -78,168 +74,188 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen relative overflow-hidden" style={{ backgroundColor: '#060E16' }}>
-      {/* Enhanced Technology Background */}
+    <div className="min-h-screen relative overflow-hidden" style={{ backgroundColor: '#040E15' }}>
+      
+      {/* BACKGROUND ONDAS SUTIS */}
       <div className="absolute inset-0">
-        {/* Floating circles */}
-        <div className="absolute top-20 left-20 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl animate-float"></div>
-        <div className="absolute bottom-20 right-20 w-80 h-80 bg-indigo-500/5 rounded-full blur-2xl animate-float-delayed"></div>
-        <div className="absolute top-1/2 left-1/3 w-64 h-64 bg-cyan-500/5 rounded-full blur-xl animate-float-slow"></div>
         
-        {/* Grid Pattern */}
-        <div className="absolute inset-0 opacity-20">
-          <div className="absolute inset-0" style={{
-            backgroundImage: `
-              linear-gradient(rgba(59, 130, 246, 0.1) 1px, transparent 1px),
-              linear-gradient(90deg, rgba(59, 130, 246, 0.1) 1px, transparent 1px),
-              linear-gradient(rgba(99, 102, 241, 0.05) 1px, transparent 1px),
-              linear-gradient(90deg, rgba(99, 102, 241, 0.05) 1px, transparent 1px)
-            `,
-            backgroundSize: '100px 100px, 100px 100px, 20px 20px, 20px 20px'
-          }}></div>
+        {/* Wave Background */}
+        <div className="absolute inset-0 opacity-8">
+          <svg className="absolute inset-0 w-full h-full" style={{ opacity: 0.1 }}>
+            <defs>
+              <linearGradient id="wave1" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="rgba(59, 130, 246, 0.3)" />
+                <stop offset="50%" stopColor="rgba(34, 211, 238, 0.4)" />
+                <stop offset="100%" stopColor="rgba(99, 102, 241, 0.3)" />
+              </linearGradient>
+              <linearGradient id="wave2" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="rgba(34, 211, 238, 0.25)" />
+                <stop offset="50%" stopColor="rgba(139, 92, 246, 0.35)" />
+                <stop offset="100%" stopColor="rgba(59, 130, 246, 0.25)" />
+              </linearGradient>
+            </defs>
+            <path d="M 0 400 Q 400 300 800 400 T 1600 400 L 1600 500 L 0 500 Z" fill="url(#wave1)" className="animate-wave-1"/>
+            <path d="M 0 450 Q 300 350 600 450 T 1200 450 L 1200 550 L 0 550 Z" fill="url(#wave2)" className="animate-wave-2"/>
+            <path d="M 0 500 Q 500 400 1000 500 T 2000 500 L 2000 600 L 0 600 Z" fill="url(#wave1)" className="animate-wave-3"/>
+          </svg>
         </div>
         
-        {/* Tech Circuit Lines */}
-        <div className="absolute top-0 left-1/4 w-px h-full bg-gradient-to-b from-transparent via-blue-500/20 to-transparent"></div>
-        <div className="absolute top-0 right-1/4 w-px h-full bg-gradient-to-b from-transparent via-indigo-500/20 to-transparent"></div>
-        <div className="absolute top-1/4 left-0 w-full h-px bg-gradient-to-r from-transparent via-blue-500/20 to-transparent"></div>
-        <div className="absolute bottom-1/4 left-0 w-full h-px bg-gradient-to-r from-transparent via-indigo-500/20 to-transparent"></div>
+        {/* Flowing Data Streams - Vertical */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-0 left-1/6 w-0.5 h-full bg-gradient-to-b from-transparent via-blue-400/30 to-transparent animate-data-stream"></div>
+          <div className="absolute top-0 left-1/4 w-0.5 h-full bg-gradient-to-b from-transparent via-cyan-400/25 to-transparent animate-data-stream delay-700"></div>
+          <div className="absolute top-0 left-1/3 w-0.5 h-full bg-gradient-to-b from-transparent via-indigo-400/30 to-transparent animate-data-stream delay-1400"></div>
+          <div className="absolute top-0 left-1/2 w-0.5 h-full bg-gradient-to-b from-transparent via-blue-400/25 to-transparent animate-data-stream delay-2100"></div>
+          <div className="absolute top-0 left-2/3 w-0.5 h-full bg-gradient-to-b from-transparent via-cyan-400/30 to-transparent animate-data-stream delay-2800"></div>
+          <div className="absolute top-0 left-3/4 w-0.5 h-full bg-gradient-to-b from-transparent via-violet-400/25 to-transparent animate-data-stream delay-3500"></div>
+          <div className="absolute top-0 left-5/6 w-0.5 h-full bg-gradient-to-b from-transparent via-blue-400/30 to-transparent animate-data-stream delay-4200"></div>
+        </div>
         
-        {/* Animated dots */}
-        <div className="absolute top-32 right-32 w-3 h-3 bg-blue-400/30 rounded-full animate-ping"></div>
-        <div className="absolute bottom-32 left-32 w-2 h-2 bg-indigo-400/40 rounded-full animate-ping delay-300"></div>
-        <div className="absolute top-2/3 right-1/4 w-1 h-1 bg-cyan-400/50 rounded-full animate-ping delay-700"></div>
+        {/* Scanning Waves - Horizontal */}
+        <div className="absolute inset-0 opacity-6">
+          <div className="absolute top-1/6 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-blue-400/40 to-transparent animate-scan-horizontal"></div>
+          <div className="absolute top-1/3 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-cyan-400/35 to-transparent animate-scan-horizontal delay-2000"></div>
+          <div className="absolute top-1/2 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-indigo-400/40 to-transparent animate-scan-horizontal delay-4000"></div>
+          <div className="absolute top-2/3 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-violet-400/35 to-transparent animate-scan-horizontal delay-6000"></div>
+          <div className="absolute top-5/6 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-blue-400/40 to-transparent animate-scan-horizontal delay-8000"></div>
+        </div>
+        
+        {/* Organic Connections */}
+        <div className="absolute inset-0 opacity-12">
+          <svg className="absolute inset-0 w-full h-full" style={{ opacity: 0.15 }}>
+            <path d="M 100 200 Q 300 100 500 300 T 900 400" stroke="rgba(59, 130, 246, 0.3)" strokeWidth="1" fill="none" className="animate-path-draw"/>
+            <path d="M 200 500 Q 400 300 600 600 T 1000 500" stroke="rgba(34, 211, 238, 0.25)" strokeWidth="1" fill="none" className="animate-path-draw delay-700"/>
+            <path d="M 50 600 Q 250 400 450 700 T 800 600" stroke="rgba(99, 102, 241, 0.3)" strokeWidth="1" fill="none" className="animate-path-draw delay-1400"/>
+            <path d="M 150 100 Q 350 250 550 150 T 850 300" stroke="rgba(139, 92, 246, 0.25)" strokeWidth="1" fill="none" className="animate-path-draw delay-2100"/>
+          </svg>
+        </div>
+        
+        {/* AI Processing Orbs */}
+        <div className="absolute top-20 left-20 w-96 h-96 bg-gradient-radial from-blue-500/4 via-blue-500/1 to-transparent rounded-full blur-3xl animate-orb-breathe"></div>
+        <div className="absolute bottom-20 right-20 w-80 h-80 bg-gradient-radial from-indigo-500/4 via-indigo-500/1 to-transparent rounded-full blur-2xl animate-orb-breathe-delayed"></div>
+        <div className="absolute top-1/2 left-1/2 w-64 h-64 bg-gradient-radial from-cyan-500/4 via-cyan-500/1 to-transparent rounded-full blur-xl animate-orb-breathe-slow"></div>
+        
+        {/* Floating Data Particles */}
+        <div className="absolute top-1/6 right-1/4 w-1 h-1 bg-blue-400/40 rounded-full animate-particle-drift"></div>
+        <div className="absolute top-1/3 left-1/5 w-1 h-1 bg-cyan-400/40 rounded-full animate-particle-drift delay-800"></div>
+        <div className="absolute top-2/3 right-1/5 w-1 h-1 bg-indigo-400/40 rounded-full animate-particle-drift delay-1600"></div>
+        <div className="absolute bottom-1/4 left-1/3 w-1 h-1 bg-violet-400/40 rounded-full animate-particle-drift delay-2400"></div>
+        
       </div>
 
       {/* Login Container */}
       <div className="relative z-10 flex items-center justify-center min-h-screen p-8">
         <div className="w-full max-w-md">
-          {/* Logo com animação fadeInDown */}
-          <div className="text-center mb-12 animate-fadeInDown">
-            <div className="w-28 h-28 mx-auto mb-6 relative flex items-center justify-center">
-              <img
-                src="/Logo%20OpOne%20Fundo%20Preto.png"
-                alt="OpOne Logo"
-                className="w-24 h-24 object-contain filter drop-shadow-2xl"
-                style={{
-                  filter: 'drop-shadow(0 0 20px rgba(59, 130, 246, 0.3))'
-                }}
-                onLoad={() => console.log('✅ Logo carregada de /Logo%20OpOne%20Fundo%20Preto.png')}
-                onError={(e) => {
-                  console.log('❌ Tentando /images/Logo%20OpOne%20Fundo%20Preto.png...')
-                  const target = e.target as HTMLImageElement;
-                  target.src = '/images/Logo%20OpOne%20Fundo%20Preto.png';
-                  target.onerror = () => {
-                    console.log('❌ Tentando JPG...')
-                    target.src = '/opone-logo.jpg';
-                    target.onerror = () => {
-                      console.log('❌ Usando SVG fallback')
-                      target.style.display = 'none';
-                      const svg = target.nextElementSibling as HTMLElement;
-                      if (svg) svg.style.display = 'block';
-                    }
-                  }
-                }}
-              />
-              
-              {/* SVG Fallback */}
-              <svg 
-                width="96" 
-                height="96" 
-                viewBox="0 0 120 120" 
-                className="hidden filter drop-shadow-2xl"
-                style={{
-                  filter: 'drop-shadow(0 0 20px rgba(59, 130, 246, 0.3))'
-                }}
-              >
-                <circle cx="60" cy="60" r="56" fill="white" stroke="none"/>
-                <circle cx="60" cy="60" r="42" fill="#1a1a2e"/>
-                <path
-                  d="M 35 45 Q 35 30 50 30 Q 65 30 65 45 Q 65 60 50 75 Q 45 70 42 65 Q 35 55 35 45 Z"
-                  fill="white"
-                  transform="translate(8, 8)"
-                />
-                <circle cx="60" cy="60" r="56" fill="none" stroke="rgba(59, 130, 246, 0.4)" strokeWidth="2"/>
-              </svg>
-            </div>
-            <h1 className="text-5xl font-bold text-white mb-3 tracking-wide">OpOne</h1>
-            <p className="text-slate-300 text-lg">Sistema de Gestão</p>
-            <div className="w-24 h-px bg-gradient-to-r from-transparent via-blue-400 to-transparent mx-auto mt-4"></div>
-          </div>
-
-          {/* Login Card com animação fadeInUp */}
-          <div className="bg-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-white/20 relative overflow-hidden animate-fadeInUp">
-            {/* Card glow effect */}
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-transparent to-indigo-500/10 rounded-3xl"></div>
+          
+          {/* Login Card - Gradiente Ajustado */}
+          <div className="relative overflow-hidden animate-fadeInUp" style={{ 
+            background: 'linear-gradient(135deg, rgba(20, 35, 55, 0.95) 0%, rgba(12, 22, 35, 0.95) 50%, rgba(8, 15, 26, 0.95) 100%)', 
+            backdropFilter: 'blur(20px)',
+            borderRadius: '24px',
+            border: '1px solid rgba(30, 58, 138, 0.25)',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(20, 35, 55, 0.3)',
+            paddingTop: '0px', 
+            paddingLeft: '32px', 
+            paddingRight: '32px', 
+            paddingBottom: '32px', 
+            marginTop: '-26px' 
+          }}>
+            
+            {/* Card Inner Glow */}
+            <div className="absolute inset-0 bg-gradient-to-br from-slate-700/8 via-transparent to-blue-900/8 rounded-3xl"></div>
             
             <div className="relative z-10">
-              <div className="mb-8 text-center">
+              
+              {/* Logo + Sistema de Gestão */}
+              <div className="text-center" style={{ marginBottom: '24px', marginTop: '-12px' }}>
+                <div className="flex justify-center" style={{ marginBottom: '-60px' }}>
+                  <img
+                    src="/logo-vazia.png"
+                    alt="OpOne Logo"
+                    className="object-contain"
+                    style={{ 
+                      width: '280px',     
+                      height: '280px',    
+                      display: 'block',
+                      marginTop: '-20px'
+                    }}
+                    onLoad={() => console.log('✅ Logo carregada: logo-vazia.png')}
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = '/opone-logo.png';
+                    }}
+                  />
+                </div>
+                
+                <p className="text-slate-300 text-base" style={{ marginBottom: '50px', transform: 'translateY(-24px)' }}>Consultoria em Inteligência Artificial</p>
+                
                 <h2 className="text-2xl font-bold text-white mb-2">Acesso ao Sistema</h2>
-                <p className="text-gray-300">Entre com suas credenciais</p>
+                <p className="text-slate-300">Entre com suas credenciais</p>
               </div>
 
-              <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-                {/* Email Field com animação */}
-                <div className="animate-slideInLeft">
-                  <label className="block text-sm font-semibold text-gray-200 mb-3">
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+                
+                {/* Email Field */}
+                <div>
+                  <label className="block text-sm font-semibold text-slate-200 mb-3">
                     Email
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                      <Mail className="h-5 w-5 text-gray-400" />
+                      <Mail className="h-5 w-5 text-slate-400" />
                     </div>
                     <input
                       type="email"
                       {...register('email')}
-                      className="block w-full pl-12 pr-4 py-4 bg-white/20 backdrop-blur-sm border border-white/30 rounded-2xl focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-300 text-white placeholder-gray-300 hover:bg-white/25 focus:scale-[1.02]"
+                      className="block w-full pl-12 pr-4 py-4 bg-slate-900/50 backdrop-blur-sm border border-slate-700/60 rounded-2xl focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-300 text-white placeholder-slate-400 hover:bg-slate-900/70"
                       placeholder="seu.email@opone.com"
                       disabled={loading}
                     />
                   </div>
                   {errors.email && (
-                    <p className="mt-2 text-sm text-red-400 flex items-center animate-shake">
+                    <p className="mt-2 text-sm text-red-400 flex items-center">
                       <span className="w-1 h-1 bg-red-400 rounded-full mr-2"></span>
                       {errors.email.message}
                     </p>
                   )}
                 </div>
 
-                {/* Password Field com animação */}
-                <div className="animate-slideInRight">
-                  <label className="block text-sm font-semibold text-gray-200 mb-3">
+                {/* Password Field */}
+                <div>
+                  <label className="block text-sm font-semibold text-slate-200 mb-3">
                     Senha
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                      <Lock className="h-5 w-5 text-gray-400" />
+                      <Lock className="h-5 w-5 text-slate-400" />
                     </div>
                     <input
                       type={showPassword ? 'text' : 'password'}
                       {...register('password')}
-                      className="block w-full pl-12 pr-12 py-4 bg-white/20 backdrop-blur-sm border border-white/30 rounded-2xl focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-300 text-white placeholder-gray-300 hover:bg-white/25 focus:scale-[1.02]"
+                      className="block w-full pl-12 pr-12 py-4 bg-slate-900/50 backdrop-blur-sm border border-slate-700/60 rounded-2xl focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-300 text-white placeholder-slate-400 hover:bg-slate-900/70"
                       placeholder="Digite sua senha"
                       disabled={loading}
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-200 transition-colors"
+                      className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-200 transition-colors"
                       disabled={loading}
                     >
                       {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                     </button>
                   </div>
                   {errors.password && (
-                    <p className="mt-2 text-sm text-red-400 flex items-center animate-shake">
+                    <p className="mt-2 text-sm text-red-400 flex items-center">
                       <span className="w-1 h-1 bg-red-400 rounded-full mr-2"></span>
                       {errors.password.message}
                     </p>
                   )}
                 </div>
 
-                {/* Error Message com animação shake */}
+                {/* Error Message */}
                 {error && (
-                  <div className="bg-red-500/20 backdrop-blur-sm border border-red-400/30 rounded-2xl p-4 animate-shake">
+                  <div className="bg-red-500/20 backdrop-blur-sm border border-red-400/30 rounded-2xl p-4">
                     <p className="text-sm text-red-300 text-center flex items-center justify-center">
                       <span className="w-2 h-2 bg-red-400 rounded-full mr-2"></span>
                       {error}
@@ -247,11 +263,11 @@ export default function LoginPage() {
                   </div>
                 )}
 
-                {/* Submit Button com animação bounce */}
+                {/* Submit Button */}
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 disabled:from-blue-400/50 disabled:to-indigo-500/50 text-white py-4 px-6 rounded-2xl font-semibold transition-all duration-300 flex items-center justify-center space-x-3 shadow-lg hover:shadow-2xl transform hover:-translate-y-2 active:translate-y-0 disabled:transform-none backdrop-blur-sm animate-bounceIn"
+                  className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 disabled:from-blue-400/50 disabled:to-indigo-500/50 text-white py-4 px-6 rounded-2xl font-semibold transition-all duration-300 flex items-center justify-center space-x-3 shadow-lg hover:shadow-2xl"
                 >
                   {loading ? (
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
@@ -267,141 +283,78 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Footer com animação fadeIn */}
-          <div className="text-center mt-8 animate-fadeIn">
-            <p className="text-xs text-gray-400">
-              © 2025 OpOne. Sistema de Gestão Empresarial.
+          {/* Footer */}
+          <div className="text-center mt-6">
+            <p className="text-xs text-white">
+              © 2025 OpOne. Consultoria em Inteligência Artificial.
             </p>
           </div>
         </div>
       </div>
 
       <style jsx>{`
-        @keyframes float {
-          0%, 100% { transform: translate(0, 0) rotate(0deg); }
-          33% { transform: translate(-20px, -20px) rotate(1deg); }
-          66% { transform: translate(20px, -10px) rotate(-1deg); }
-        }
-        
-        @keyframes fadeInDown {
-          from {
-            opacity: 0;
-            transform: translateY(-30px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        
         @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(30px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
         }
         
-        @keyframes slideInLeft {
-          from {
-            opacity: 0;
-            transform: translateX(-30px);
-          }
-          to {
-            opacity: 1;
-            transform: translateX(0);
-          }
-        }
-        
-        @keyframes slideInRight {
-          from {
-            opacity: 0;
-            transform: translateX(30px);
-          }
-          to {
-            opacity: 1;
-            transform: translateX(0);
-          }
-        }
-        
-        @keyframes bounceIn {
-          0% {
-            opacity: 0;
-            transform: scale(0.3);
-          }
-          50% {
-            opacity: 1;
-            transform: scale(1.05);
-          }
-          70% {
-            transform: scale(0.9);
-          }
-          100% {
-            opacity: 1;
-            transform: scale(1);
-          }
-        }
-        
-        @keyframes shake {
+        @keyframes wave-1 {
           0%, 100% { transform: translateX(0); }
-          10%, 30%, 50%, 70%, 90% { transform: translateX(-8px); }
-          20%, 40%, 60%, 80% { transform: translateX(8px); }
+          50% { transform: translateX(-50px); }
         }
         
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
+        @keyframes wave-2 {
+          0%, 100% { transform: translateX(0); }
+          50% { transform: translateX(50px); }
         }
         
-        .animate-float {
-          animation: float 20s ease-in-out infinite;
+        @keyframes wave-3 {
+          0%, 100% { transform: translateX(0); }
+          50% { transform: translateX(-30px); }
         }
         
-        .animate-float-delayed {
-          animation: float 20s ease-in-out infinite;
-          animation-delay: 7s;
+        @keyframes data-stream {
+          0% { transform: translateY(-100vh) scaleY(0); opacity: 0; }
+          10% { opacity: 1; transform: scaleY(1); }
+          90% { opacity: 1; }
+          100% { transform: translateY(100vh) scaleY(0); opacity: 0; }
         }
         
-        .animate-float-slow {
-          animation: float 25s ease-in-out infinite;
-          animation-delay: 3s;
+        @keyframes scan-horizontal {
+          0% { transform: translateX(-100%); opacity: 0; }
+          50% { opacity: 1; }
+          100% { transform: translateX(100%); opacity: 0; }
         }
         
-        .animate-fadeInDown {
-          animation: fadeInDown 0.8s ease-out;
+        @keyframes path-draw {
+          0% { stroke-dasharray: 0 1000; }
+          100% { stroke-dasharray: 1000 0; }
         }
         
-        .animate-fadeInUp {
-          animation: fadeInUp 0.8s ease-out 0.2s;
-          animation-fill-mode: both;
+        @keyframes orb-breathe {
+          0%, 100% { transform: scale(1); opacity: 0.4; }
+          50% { transform: scale(1.1); opacity: 0.2; }
         }
         
-        .animate-slideInLeft {
-          animation: slideInLeft 0.6s ease-out 0.4s;
-          animation-fill-mode: both;
+        @keyframes particle-drift {
+          0% { transform: translate(0, 0); opacity: 0.4; }
+          25% { transform: translate(30px, -15px); opacity: 0.8; }
+          50% { transform: translate(-15px, -40px); opacity: 0.6; }
+          75% { transform: translate(-30px, -25px); opacity: 0.8; }
+          100% { transform: translate(0, -60px); opacity: 0; }
         }
         
-        .animate-slideInRight {
-          animation: slideInRight 0.6s ease-out 0.6s;
-          animation-fill-mode: both;
-        }
-        
-        .animate-bounceIn {
-          animation: bounceIn 0.8s ease-out 0.8s;
-          animation-fill-mode: both;
-        }
-        
-        .animate-shake {
-          animation: shake 0.6s ease-out;
-        }
-        
-        .animate-fadeIn {
-          animation: fadeIn 1s ease-out 1s;
-          animation-fill-mode: both;
-        }
+        .animate-fadeInUp { animation: fadeInUp 0.6s ease-out; }
+        .animate-wave-1 { animation: wave-1 20s ease-in-out infinite; }
+        .animate-wave-2 { animation: wave-2 25s ease-in-out infinite; }
+        .animate-wave-3 { animation: wave-3 30s ease-in-out infinite; }
+        .animate-data-stream { animation: data-stream 8s linear infinite; }
+        .animate-scan-horizontal { animation: scan-horizontal 10s linear infinite; }
+        .animate-path-draw { animation: path-draw 8s ease-in-out infinite; }
+        .animate-orb-breathe { animation: orb-breathe 12s ease-in-out infinite; }
+        .animate-orb-breathe-delayed { animation: orb-breathe 12s ease-in-out infinite; animation-delay: 4s; }
+        .animate-orb-breathe-slow { animation: orb-breathe 16s ease-in-out infinite; animation-delay: 2s; }
+        .animate-particle-drift { animation: particle-drift 12s ease-out infinite; }
       `}</style>
     </div>
   )

@@ -1,4 +1,4 @@
-// src/middleware.ts
+// src/middleware.ts - VERSÃO SIMPLIFICADA E SEGURA
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
@@ -10,6 +10,30 @@ export async function middleware(request: NextRequest) {
   const token = request.cookies.get('auth-token')?.value
 
   console.log('Middleware:', { pathname, hasToken: !!token })
+
+  // ✅ SKIP: Arquivos estáticos (verificação simples por extensão)
+  if (pathname.endsWith('.svg') || 
+      pathname.endsWith('.png') || 
+      pathname.endsWith('.jpg') || 
+      pathname.endsWith('.jpeg') || 
+      pathname.endsWith('.gif') || 
+      pathname.endsWith('.ico') || 
+      pathname.endsWith('.css') || 
+      pathname.endsWith('.js') ||
+      pathname.endsWith('.woff') ||
+      pathname.endsWith('.woff2') ||
+      pathname.endsWith('.ttf') ||
+      pathname.endsWith('.eot')) {
+    console.log('✅ Skipping static asset:', pathname)
+    return NextResponse.next()
+  }
+
+  // ✅ SKIP: Rotas Next.js internas
+  if (pathname.startsWith('/api/') || 
+      pathname.startsWith('/_next/') || 
+      pathname === '/favicon.ico') {
+    return NextResponse.next()
+  }
 
   // Permitir rotas públicas sempre
   if (publicRoutes.includes(pathname)) {
@@ -53,8 +77,16 @@ export async function middleware(request: NextRequest) {
   return NextResponse.next()
 }
 
+// ✅ MATCHER SIMPLES - SEM REGEX COMPLEXA
 export const config = {
   matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     */
     '/((?!api|_next/static|_next/image|favicon.ico).*)',
   ],
 }
