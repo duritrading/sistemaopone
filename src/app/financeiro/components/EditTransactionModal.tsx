@@ -166,7 +166,7 @@ export default function EditTransactionModal({
                 min="0"
                 value={formData.amount}
                 onChange={(e) => setFormData({ ...formData, amount: parseFloat(e.target.value) || 0 })}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                 required
               />
             </div>
@@ -180,7 +180,7 @@ export default function EditTransactionModal({
                 type="date"
                 value={formData.transaction_date}
                 onChange={(e) => setFormData({ ...formData, transaction_date: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                 required
               />
             </div>
@@ -197,7 +197,7 @@ export default function EditTransactionModal({
                 type="text"
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                 required
               />
             </div>
@@ -210,7 +210,7 @@ export default function EditTransactionModal({
               <select
                 value={formData.account_id}
                 onChange={(e) => setFormData({ ...formData, account_id: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                 required
               >
                 <option value="">Selecione uma conta</option>
@@ -236,7 +236,7 @@ export default function EditTransactionModal({
               type="date"
               value={formData.due_date}
               onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
             />
           </div>
 
@@ -249,7 +249,7 @@ export default function EditTransactionModal({
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               rows={3}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
               placeholder="Observações adicionais..."
             />
           </div>

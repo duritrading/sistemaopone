@@ -367,7 +367,7 @@ export default function NewReceitaModal({
             </label>
             <select
               {...register('client_id')}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-700 transition-colors"
             >
               <option value="">Selecione um cliente</option>
               {clients.map(client => (
@@ -390,7 +390,7 @@ export default function NewReceitaModal({
               <input
                 type="date"
                 {...register('transaction_date')}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-700 transition-colors"
               />
               {errors.transaction_date && (
                 <p className="mt-1 text-sm text-red-600">{errors.transaction_date.message}</p>
@@ -404,7 +404,7 @@ export default function NewReceitaModal({
               <input
                 type="date"
                 {...register('due_date')}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-700 transition-colors"
               />
               {errors.due_date && (
                 <p className="mt-1 text-sm text-red-600">{errors.due_date.message}</p>
@@ -421,7 +421,7 @@ export default function NewReceitaModal({
               type="text"
               {...register('description')}
               placeholder="Ex: Prestação de serviços de consultoria"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-700 transition-colors"
             />
             {errors.description && (
               <p className="mt-1 text-sm text-red-600">{errors.description.message}</p>
@@ -442,7 +442,7 @@ export default function NewReceitaModal({
                   min="0"
                   {...register('amount', { valueAsNumber: true })}
                   placeholder="0,00"
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-700 transition-colors"
                 />
               </div>
               {errors.amount && (
@@ -456,7 +456,7 @@ export default function NewReceitaModal({
               </label>
               <select
                 {...register('category')}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-700 transition-colors"
               >
                 <option value="">Selecione uma categoria</option>
                 {categories.map(category => (
@@ -479,7 +479,7 @@ export default function NewReceitaModal({
               </label>
               <select
                 {...register('cost_center')}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-700 transition-colors"
               >
                 <option value="">Selecione um centro de custo</option>
                 {costCenters.map(center => (
@@ -498,7 +498,7 @@ export default function NewReceitaModal({
                 type="text"
                 {...register('reference_code')}
                 placeholder="Ex: NF-001, OS-123"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-700 transition-colors"
               />
             </div>
           </div>
@@ -541,7 +541,7 @@ export default function NewReceitaModal({
                   </label>
                   <select
                     {...register('installments', { valueAsNumber: true })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-700 transition-colors"
                   >
                     {Array.from({ length: 12 }, (_, i) => i + 1).map(num => (
                       <option key={num} value={num}>{num}x</option>
@@ -579,7 +579,7 @@ export default function NewReceitaModal({
                     </label>
                     <select
                       {...register('repeat_frequency')}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-700 transition-colors"
                     >
                       <option value="">Selecione a frequência</option>
                       <option value="mensal">Mensal</option>
@@ -599,7 +599,7 @@ export default function NewReceitaModal({
                       max="120"
                       {...register('repeat_months', { valueAsNumber: true })}
                       placeholder="Ex: 12"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-700 transition-colors"
                     />
                   </div>
                 </div>
@@ -615,7 +615,7 @@ export default function NewReceitaModal({
               </label>
               <select
                 {...register('payment_method')}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-700 transition-colors"
               >
                 <option value="">Selecione a forma de pagamento</option>
                 <option value="dinheiro">Dinheiro</option>
@@ -636,7 +636,7 @@ export default function NewReceitaModal({
               </label>
               <select
                 {...register('account_id')}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-700 transition-colors"
               >
                 <option value="">Selecione a conta</option>
                 {accounts.map(account => (
@@ -710,7 +710,7 @@ export default function NewReceitaModal({
                     {...register('notes')}
                     rows={4}
                     placeholder="Adicione observações sobre esta receita..."
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-700 transition-colors resize-none"
                   />
                 </div>
               )}
