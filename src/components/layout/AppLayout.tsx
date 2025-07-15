@@ -60,8 +60,16 @@ const AppLayout = ({ children }: AppLayoutProps) => {
         {/* Header */}
         <div className="p-6 border-b border-slate-700">
           <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'space-x-3'}`}>
-            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center flex-shrink-0">
-              <span className="text-white font-bold text-lg">O</span>
+            <div className="flex items-center justify-center flex-shrink-0">
+              <img
+                src="Logo OpOne Fundo Preto.png"
+                alt="OpOne Logo"
+                className={`object-contain rounded-2xl ${sidebarCollapsed ? 'w-12 h-12' : 'w-10 h-10'}`}
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = '/logo-vazia.png';
+                }}
+              />
             </div>
             {!sidebarCollapsed && (
               <div>
@@ -92,15 +100,15 @@ const AppLayout = ({ children }: AppLayoutProps) => {
                   key={item.href}
                   href={item.href}
                   className={`
-                    group flex items-center px-3 py-3 rounded-xl text-sm font-medium transition-all duration-200
+                    group flex items-center rounded-xl text-sm font-medium transition-all duration-200
                     ${isActive 
                       ? 'bg-blue-600 text-white shadow-lg' 
                       : 'text-slate-300 hover:bg-slate-800 hover:text-white'
                     }
-                    ${sidebarCollapsed ? 'justify-center' : ''}
+                    ${sidebarCollapsed ? 'justify-center px-3 py-4' : 'px-3 py-3'}
                   `}
                 >
-                  <Icon className={`h-5 w-5 ${sidebarCollapsed ? '' : 'mr-3'}`} />
+                  <Icon className={`${sidebarCollapsed ? 'w-5 h-5' : 'w-3 h-3'} ${sidebarCollapsed ? '' : 'mr-3'} flex-shrink-0`} />
                   {!sidebarCollapsed && (
                     <span className="truncate">{item.label}</span>
                   )}
@@ -108,6 +116,23 @@ const AppLayout = ({ children }: AppLayoutProps) => {
               );
             })}
           </nav>
+        </div>
+
+        {/* Settings */}
+        <div className="px-4 pb-4">
+          <Link
+            href="/configuracoes"
+            className={`
+              group flex items-center rounded-xl text-sm font-medium transition-all duration-200
+              text-slate-300 hover:bg-slate-800 hover:text-white
+              ${sidebarCollapsed ? 'justify-center px-3 py-4' : 'px-3 py-3'}
+            `}
+          >
+            <Settings className={`${sidebarCollapsed ? 'w-5 h-5' : 'w-4 h-4'} ${sidebarCollapsed ? '' : 'mr-3'} flex-shrink-0`} />
+            {!sidebarCollapsed && (
+              <span className="truncate">Configurações</span>
+            )}
+          </Link>
         </div>
 
         {/* User Menu */}
@@ -121,15 +146,15 @@ const AppLayout = ({ children }: AppLayoutProps) => {
                   ${sidebarCollapsed ? 'justify-center' : 'space-x-3'}
                 `}
               >
-                <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                <div className={`bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0 ${sidebarCollapsed ? 'w-8 h-8' : 'w-7 h-7'}`}>
                   {user.profile_photo_url ? (
-                    <img 
-                      src={user.profile_photo_url} 
+                    <img
+                      src={user.profile_photo_url}
                       alt={user.full_name}
-                      className="w-8 h-8 rounded-lg object-cover"
+                      className={`rounded-lg object-cover ${sidebarCollapsed ? 'w-8 h-8' : 'w-7 h-7'}`}
                     />
                   ) : (
-                    <User className="h-4 w-4 text-white" />
+                    <User className={`text-white ${sidebarCollapsed ? 'h-4 w-4' : 'h-4 w-4'}`} />
                   )}
                 </div>
                 {!sidebarCollapsed && (
@@ -139,23 +164,36 @@ const AppLayout = ({ children }: AppLayoutProps) => {
                         {user.full_name}
                       </p>
                       <p className="text-xs text-slate-400 truncate">
-                        {user.primary_specialization}
+                        {user.seniority_level}
                       </p>
                     </div>
-                    <ChevronDown className="h-4 w-4 text-slate-400" />
+                    <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform duration-200 ${
+                      showUserMenu ? 'rotate-180' : ''
+                    }`} />
                   </>
                 )}
               </button>
 
-              {/* Dropdown Menu */}
+              {/* User Dropdown */}
               {showUserMenu && !sidebarCollapsed && (
-                <div className="absolute bottom-full left-0 right-0 mb-2 bg-white rounded-xl shadow-lg border py-2">
-                  <button
-                    onClick={logout}
-                    className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                <div className="absolute bottom-full left-0 right-0 mb-2 py-2 bg-slate-800 rounded-xl shadow-lg border border-slate-700">
+                  <Link
+                    href="/perfil"
+                    className="flex items-center px-4 py-2 text-sm text-slate-300 hover:text-white hover:bg-slate-700 transition-colors"
+                    onClick={() => setShowUserMenu(false)}
                   >
-                    <LogOut className="h-4 w-4 mr-3 text-gray-400" />
-                    Sair
+                    <User className="h-4 w-4 mr-3" />
+                    Meu Perfil
+                  </Link>
+                  <button
+                    onClick={() => {
+                      logout();
+                      setShowUserMenu(false);
+                    }}
+                    className="w-full flex items-center px-4 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-slate-700 transition-colors"
+                  >
+                    <LogOut className="h-4 w-4 mr-3" />
+                    Sair do Sistema
                   </button>
                 </div>
               )}
@@ -171,25 +209,21 @@ const AppLayout = ({ children }: AppLayoutProps) => {
           <div className="flex items-center justify-between">
             <button
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              className="p-2 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"
             >
-              <Menu className="h-5 w-5 text-gray-600" />
+              <Menu className="h-5 w-5" />
             </button>
             
-            {user && (
-              <div className="flex items-center space-x-4">
-                <span className="text-sm text-gray-600">
-                  Bem-vindo, {user.full_name.split(' ')[0]}
-                </span>
-              </div>
-            )}
+            <div className="text-sm text-gray-600">
+              Bem-vindo, {user?.full_name}!
+            </div>
           </div>
         </div>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-y-auto">
           {children}
-        </main>
+        </div>
       </div>
     </div>
   );
