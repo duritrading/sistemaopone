@@ -165,7 +165,7 @@ const CommunicationModal = ({ isOpen, onClose, projectId, communication, onSucce
               <select
                 value={formData.type}
                 onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value as Communication['type'] }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 text-gray-700 focus:border-blue-500"
               >
                 {communicationTypes.map(type => (
                   <option key={type.value} value={type.value}>{type.label}</option>
@@ -178,7 +178,7 @@ const CommunicationModal = ({ isOpen, onClose, projectId, communication, onSucce
               <select
                 value={formData.sentiment}
                 onChange={(e) => setFormData(prev => ({ ...prev, sentiment: e.target.value as Communication['sentiment'] }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 text-gray-700 focus:border-blue-500"
               >
                 <option value="Positivo">Positivo</option>
                 <option value="Neutro">Neutro</option>
@@ -193,7 +193,7 @@ const CommunicationModal = ({ isOpen, onClose, projectId, communication, onSucce
               type="text"
               value={formData.title}
               onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 text-gray-700 focus:border-blue-500"
               placeholder="Ex: Reunião de alinhamento semanal"
             />
           </div>
@@ -204,7 +204,7 @@ const CommunicationModal = ({ isOpen, onClose, projectId, communication, onSucce
               value={formData.content}
               onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
               rows={4}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 text-gray-700 focus:border-blue-500"
               placeholder="Descreva o que foi discutido ou decidido..."
             />
           </div>
@@ -215,7 +215,7 @@ const CommunicationModal = ({ isOpen, onClose, projectId, communication, onSucce
               type="text"
               value={formData.participants}
               onChange={(e) => setFormData(prev => ({ ...prev, participants: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 text-gray-700 focus:border-blue-500"
               placeholder="Ex: João Silva, Maria Santos (separados por vírgula)"
             />
           </div>
@@ -226,7 +226,7 @@ const CommunicationModal = ({ isOpen, onClose, projectId, communication, onSucce
               value={formData.follow_up_actions}
               onChange={(e) => setFormData(prev => ({ ...prev, follow_up_actions: e.target.value }))}
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 text-gray-700 focus:border-blue-500"
               placeholder="Uma ação por linha..."
             />
           </div>
@@ -242,7 +242,7 @@ const CommunicationModal = ({ isOpen, onClose, projectId, communication, onSucce
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center space-x-2"
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors text-gray-700 flex items-center space-x-2"
             >
               {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
               <span>{isSubmitting ? 'Salvando...' : (isEditing ? 'Atualizar' : 'Criar')}</span>
@@ -441,7 +441,7 @@ const CommunicationTab = ({ projectId, loading = false }: CommunicationTabProps)
             <select
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
-              className="border border-gray-300 rounded-md px-3 py-1 text-sm focus:ring-blue-500 focus:border-blue-500"
+              className="border border-gray-300 rounded-md px-3 py-1 text-sm focus:ring-blue-500 text-gray-700 focus:border-blue-500"
             >
               <option value="Todos os tipos">Todos os tipos</option>
               <option value="Reunião">Reunião</option>
@@ -456,7 +456,7 @@ const CommunicationTab = ({ projectId, loading = false }: CommunicationTabProps)
 
         <button
           onClick={handleNewCommunication}
-          className="flex items-center space-x-2 px-4 py-2 bg-gray-900 text-white rounded-md hover:bg-gray-800 transition-colors"
+          className="flex items-center space-x-2 px-4 py-2 bg-gray-900 text-white rounded-md hover:bg-gray-800 text-gray-700 transition-colors"
         >
           <Plus className="w-4 h-4" />
           <span>Nova Comunicação</span>
