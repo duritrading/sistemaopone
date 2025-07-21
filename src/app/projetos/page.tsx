@@ -760,6 +760,7 @@ const EditProjectModal = ({ project, isOpen, onClose, onSave }: {
                     <option value="Planejamento">Planejamento</option>
                     <option value="Executando">Executando</option>
                     <option value="Pausado">Pausado</option>
+                    <option value="Pausado">Cancelado</option>
                     <option value="Concluído">Concluído</option>
                   </select>
                 </div>
