@@ -1,35 +1,33 @@
-// src/app/financeiro/components/NovaCategoriaModal.tsx
+// src/app/financeiro/components/NovaCategoriaModal.tsx - CORRIGIDO COMPLETO
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
-import { 
-  X, 
-  Save, 
-  Folder, 
-  TrendingUp,
-  TrendingDown,
-  Tag,
-  Info,
-  Palette
-} from 'lucide-react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import { createClient } from '@supabase/supabase-js'
+import { X, Tag, Save, Info, Palette } from 'lucide-react'
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
+
+const categoriaSchema = z.object({
+  name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
+  type: z.enum(['receita', 'despesa']),
+  color: z.string().min(1, 'Cor é obrigatória'),
+  icon: z.string().min(1, 'Ícone é obrigatório'),
+  description: z.string().optional()
+})
+
+type CategoriaFormData = z.infer<typeof categoriaSchema>
 
 interface NovaCategoriaModalProps {
   isOpen: boolean
   onClose: () => void
   onSuccess: () => void
   editData?: any
-}
-
-interface CategoryFormData {
-  name: string
-  type: 'receita' | 'despesa'
-  description: string
-  parent_category_id: string
-  color: string
-  icon: string
-  is_active: boolean
-  notes: string
 }
 
 export default function NovaCategoriaModal({
@@ -39,92 +37,92 @@ export default function NovaCategoriaModal({
   editData
 }: NovaCategoriaModalProps) {
   const [loading, setLoading] = useState(false)
-  const [formData, setFormData] = useState<CategoryFormData>({
-    name: '',
-    type: 'despesa',
-    description: '',
-    parent_category_id: '',
-    color: '#3B82F6',
-    icon: 'folder',
-    is_active: true,
-    notes: ''
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    reset,
+    watch,
+    setValue
+  } = useForm<CategoriaFormData>({
+    resolver: zodResolver(categoriaSchema),
+    defaultValues: {
+      type: 'despesa',
+      color: '#ef4444',
+      icon: 'tag',
+      description: ''
+    }
   })
 
-  useEffect(() => {
-    if (editData) {
-      setFormData({
-        name: editData.name || '',
-        type: editData.type || 'despesa',
-        description: editData.description || '',
-        parent_category_id: editData.parent_category_id || '',
-        color: editData.color || '#3B82F6',
-        icon: editData.icon || 'folder',
-        is_active: editData.is_active ?? true,
-        notes: editData.notes || ''
-      })
-    } else {
-      // Reset form for new category
-      setFormData({
-        name: '',
-        type: 'despesa',
-        description: '',
-        parent_category_id: '',
-        color: '#3B82F6',
-        icon: 'folder',
-        is_active: true,
-        notes: ''
-      })
-    }
-  }, [editData])
-
-  if (!isOpen) return null
+  const selectedType = watch('type')
+  const selectedColor = watch('color')
+  const selectedIcon = watch('icon')
 
   const predefinedColors = [
-    '#3B82F6', // Blue
-    '#10B981', // Green
-    '#F59E0B', // Yellow
-    '#EF4444', // Red
-    '#8B5CF6', // Purple
-    '#F97316', // Orange
-    '#06B6D4', // Cyan
-    '#84CC16', // Lime
-    '#EC4899', // Pink
-    '#6B7280'  // Gray
+    { value: '#ef4444', name: 'Vermelho' },
+    { value: '#f97316', name: 'Laranja' },
+    { value: '#f59e0b', name: 'Âmbar' },
+    { value: '#eab308', name: 'Amarelo' },
+    { value: '#84cc16', name: 'Verde Claro' },
+    { value: '#22c55e', name: 'Verde' },
+    { value: '#10b981', name: 'Esmeralda' },
+    { value: '#14b8a6', name: 'Teal' },
+    { value: '#06b6d4', name: 'Ciano' },
+    { value: '#3b82f6', name: 'Azul' },
+    { value: '#6366f1', name: 'Índigo' },
+    { value: '#8b5cf6', name: 'Violeta' },
+    { value: '#a855f7', name: 'Púrpura' },
+    { value: '#d946ef', name: 'Fúcsia' },
+    { value: '#ec4899', name: 'Rosa' },
+    { value: '#f43f5e', name: 'Rosa Escuro' }
   ]
 
-  const iconOptions = [
-    { value: 'folder', label: 'Pasta', icon: '📁' },
-    { value: 'shopping-cart', label: 'Compras', icon: '🛒' },
-    { value: 'car', label: 'Transporte', icon: '🚗' },
-    { value: 'home', label: 'Casa', icon: '🏠' },
-    { value: 'laptop', label: 'Tecnologia', icon: '💻' },
-    { value: 'heart', label: 'Saúde', icon: '❤️' },
-    { value: 'book', label: 'Educação', icon: '📚' },
-    { value: 'coffee', label: 'Alimentação', icon: '☕' },
-    { value: 'users', label: 'Pessoal', icon: '👥' },
-    { value: 'briefcase', label: 'Trabalho', icon: '💼' }
+  const predefinedIcons = [
+    { value: 'tag', name: 'Tag', emoji: '🏷️' },
+    { value: 'dollar-sign', name: 'Dinheiro', emoji: '💰' },
+    { value: 'shopping-cart', name: 'Compras', emoji: '🛒' },
+    { value: 'home', name: 'Casa', emoji: '🏠' },
+    { value: 'car', name: 'Transporte', emoji: '🚗' },
+    { value: 'utensils', name: 'Alimentação', emoji: '🍽️' },
+    { value: 'laptop', name: 'Tecnologia', emoji: '💻' },
+    { value: 'heart', name: 'Saúde', emoji: '❤️' },
+    { value: 'briefcase', name: 'Trabalho', emoji: '💼' },
+    { value: 'graduation-cap', name: 'Educação', emoji: '🎓' },
+    { value: 'plane', name: 'Viagem', emoji: '✈️' },
+    { value: 'gift', name: 'Presentes', emoji: '🎁' },
+    { value: 'zap', name: 'Energia', emoji: '⚡' },
+    { value: 'phone', name: 'Comunicação', emoji: '📱' }
   ]
 
-  const handleInputChange = (field: keyof CategoryFormData, value: string | boolean) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }))
-  }
+  useEffect(() => {
+    if (isOpen) {
+      if (editData) {
+        setValue('name', editData.name || '')
+        setValue('type', editData.type || 'despesa')
+        setValue('color', editData.color || '#ef4444')
+        setValue('icon', editData.icon || 'tag')
+        setValue('description', editData.description || '')
+      }
+    } else {
+      reset()
+    }
+  }, [isOpen, editData, setValue, reset])
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-
+  const onSubmit = async (data: CategoriaFormData) => {
     try {
+      setLoading(true)
+
       const categoryData = {
-        ...formData,
-        parent_category_id: formData.parent_category_id || null,
-        updated_at: new Date().toISOString()
+        name: data.name.trim(),
+        type: data.type,
+        color: data.color,
+        icon: data.icon,
+        description: data.description?.trim() || null,
+        is_active: true
       }
 
       if (editData) {
-        // Update existing category
         const { error } = await supabase
           .from('custom_categories')
           .update(categoryData)
@@ -132,136 +130,94 @@ export default function NovaCategoriaModal({
 
         if (error) throw error
       } else {
-        // Create new category
         const { error } = await supabase
           .from('custom_categories')
-          .insert([{
-            ...categoryData,
-            created_at: new Date().toISOString()
-          }])
+          .insert([categoryData])
 
         if (error) throw error
       }
 
       onSuccess()
       onClose()
-    } catch (err: any) {
-      console.error('Erro ao salvar categoria:', err)
-      alert(`Erro ao ${editData ? 'atualizar' : 'criar'} categoria: ${err.message}`)
+    } catch (error) {
+      console.error('Erro ao salvar categoria:', error)
+      alert('Erro ao salvar categoria')
     } finally {
       setLoading(false)
     }
   }
 
+  if (!isOpen) return null
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-white relative">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-              <Tag className="w-5 h-5 text-green-600" />
+            <div 
+              className="w-10 h-10 rounded-lg flex items-center justify-center"
+              style={{ backgroundColor: selectedColor + '20' }}
+            >
+              <Tag 
+                className="w-5 h-5" 
+                style={{ color: selectedColor }}
+              />
             </div>
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">
+              <h2 className="text-lg font-semibold text-gray-900">
                 {editData ? 'Editar Categoria' : 'Nova Categoria'}
               </h2>
-              <p className="text-sm text-gray-600">
-                {editData ? 'Atualize as informações da categoria' : 'Crie uma nova categoria para organizar suas transações'}
+              <p className="text-sm text-gray-500">
+                {editData ? 'Atualize os dados da categoria' : 'Crie uma nova categoria personalizada'}
               </p>
             </div>
           </div>
+          
+          {/* Botão X corrigido */}
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="absolute top-4 right-4 w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center transition-colors z-10 text-gray-600 hover:text-gray-800"
+            type="button"
           >
-            <X className="w-6 h-6" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          <div className="p-6 space-y-6">
-            {/* Nome da Categoria */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Nome da Categoria *
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Folder className="h-5 w-5 text-gray-400" />
-                </div>
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto">
+          <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-6">
+            {/* Nome e Tipo */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Nome da Categoria *
+                </label>
                 <input
                   type="text"
-                  value={formData.name}
-                  onChange={(e) => handleInputChange('name', e.target.value)}
-                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-700 focus:border-transparent"
-                  placeholder="Ex: Marketing Digital, Hospedagem, Vendas Online"
-                  required
+                  {...register('name')}
+                  placeholder="Ex: Marketing Digital"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
                 />
+                {errors.name && (
+                  <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>
+                )}
               </div>
-            </div>
 
-            {/* Tipo de Categoria */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">
-                Tipo de Categoria *
-              </label>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <input
-                    type="radio"
-                    id="receita"
-                    name="type"
-                    value="receita"
-                    checked={formData.type === 'receita'}
-                    onChange={(e) => handleInputChange('type', e.target.value as 'receita' | 'despesa')}
-                    className="sr-only"
-                  />
-                  <label
-                    htmlFor="receita"
-                    className={`block w-full p-4 border rounded-lg cursor-pointer transition-colors ${
-                      formData.type === 'receita'
-                        ? 'border-green-500 bg-green-50 text-green-700'
-                        : 'border-gray-300 hover:border-gray-400'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <TrendingUp className="w-6 h-6" />
-                      <div>
-                        <p className="font-medium">Receita</p>
-                        <p className="text-sm text-gray-600">Entradas de dinheiro</p>
-                      </div>
-                    </div>
-                  </label>
-                </div>
-
-                <div>
-                  <input
-                    type="radio"
-                    id="despesa"
-                    name="type"
-                    value="despesa"
-                    checked={formData.type === 'despesa'}
-                    onChange={(e) => handleInputChange('type', e.target.value as 'receita' | 'despesa')}
-                    className="sr-only"
-                  />
-                  <label
-                    htmlFor="despesa"
-                    className={`block w-full p-4 border rounded-lg cursor-pointer transition-colors ${
-                      formData.type === 'despesa'
-                        ? 'border-red-500 bg-red-50 text-red-700'
-                        : 'border-gray-300 hover:border-gray-400'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <TrendingDown className="w-6 h-6" />
-                      <div>
-                        <p className="font-medium">Despesa</p>
-                        <p className="text-sm text-gray-600">Saídas de dinheiro</p>
-                      </div>
-                    </div>
-                  </label>
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tipo *
+                </label>
+                <select
+                  {...register('type')}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent"
+                >
+                  <option value="receita">Receita</option>
+                  <option value="despesa">Despesa</option>
+                </select>
+                {errors.type && (
+                  <p className="text-red-500 text-sm mt-1">{errors.type.message}</p>
+                )}
               </div>
             </div>
 
@@ -271,129 +227,101 @@ export default function NovaCategoriaModal({
                 Descrição
               </label>
               <textarea
-                value={formData.description}
-                onChange={(e) => handleInputChange('description', e.target.value)}
+                {...register('description')}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-700 focus:border-transparent"
-                placeholder="Descreva o que essa categoria representa..."
+                placeholder="Descrição opcional da categoria..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-700 focus:border-transparent resize-none"
               />
             </div>
 
-            {/* Cor da Categoria */}
+            {/* Seleção de Cor */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-3">
-                Cor da Categoria
+                Cor da Categoria *
               </label>
-              <div className="flex items-center space-x-4">
-                <div className="flex space-x-2">
-                  {predefinedColors.map((color) => (
-                    <button
-                      key={color}
-                      type="button"
-                      onClick={() => handleInputChange('color', color)}
-                      className={`w-8 h-8 rounded-full border-2 transition-all ${
-                        formData.color === color 
-                          ? 'border-gray-800 scale-110' 
-                          : 'border-gray-300 hover:border-gray-400'
-                      }`}
-                      style={{ backgroundColor: color }}
-                    />
-                  ))}
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Palette className="w-4 h-4 text-gray-400" />
-                  <input
-                    type="color"
-                    value={formData.color}
-                    onChange={(e) => handleInputChange('color', e.target.value)}
-                    className="w-8 h-8 border border-gray-300 rounded cursor-pointer"
-                  />
-                </div>
+              <div className="grid grid-cols-8 gap-2">
+                {predefinedColors.map((color) => (
+                  <button
+                    key={color.value}
+                    type="button"
+                    onClick={() => setValue('color', color.value)}
+                    className={`w-8 h-8 rounded-lg border-2 transition-all ${
+                      selectedColor === color.value
+                        ? 'border-gray-800 scale-110'
+                        : 'border-gray-300 hover:border-gray-400'
+                    }`}
+                    style={{ backgroundColor: color.value }}
+                    title={color.name}
+                  >
+                    {selectedColor === color.value && (
+                      <div className="w-full h-full rounded-md flex items-center justify-center">
+                        <div className="w-2 h-2 bg-white rounded-full"></div>
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+              
+              {/* Input personalizado para cor */}
+              <div className="mt-3 flex items-center space-x-3">
+                <input
+                  type="color"
+                  {...register('color')}
+                  className="w-12 h-8 border border-gray-300 rounded cursor-pointer"
+                />
+                <span className="text-sm text-gray-600">Ou escolha uma cor personalizada</span>
               </div>
             </div>
 
-            {/* Ícone */}
+            {/* Seleção de Ícone */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-3">
-                Ícone da Categoria
+                Ícone da Categoria *
               </label>
-              <div className="grid grid-cols-5 gap-3">
-                {iconOptions.map((iconOption) => (
+              <div className="grid grid-cols-7 gap-2">
+                {predefinedIcons.map((icon) => (
                   <button
-                    key={iconOption.value}
+                    key={icon.value}
                     type="button"
-                    onClick={() => handleInputChange('icon', iconOption.value)}
-                    className={`p-3 border rounded-lg text-center transition-colors ${
-                      formData.icon === iconOption.value
-                        ? 'border-green-500 bg-green-50'
-                        : 'border-gray-300 hover:border-gray-400'
+                    onClick={() => setValue('icon', icon.value)}
+                    className={`p-3 rounded-lg border-2 transition-all text-center ${
+                      selectedIcon === icon.value
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
                     }`}
+                    title={icon.name}
                   >
-                    <div className="text-xl mb-1">{iconOption.icon}</div>
-                    <div className="text-xs text-gray-600">{iconOption.label}</div>
+                    <span className="text-lg">{icon.emoji}</span>
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Observações */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Observações
-              </label>
-              <textarea
-                value={formData.notes}
-                onChange={(e) => handleInputChange('notes', e.target.value)}
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-700 focus:border-transparent"
-                placeholder="Informações adicionais sobre esta categoria..."
-              />
-            </div>
-
-            {/* Status */}
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="is_active"
-                checked={formData.is_active}
-                onChange={(e) => handleInputChange('is_active', e.target.checked)}
-                className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
-              />
-              <label htmlFor="is_active" className="ml-2 block text-sm text-gray-900">
-                Categoria ativa
-              </label>
-            </div>
-
             {/* Preview */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Visualização da Categoria
-              </label>
-              <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                <div className="flex items-center space-x-3">
-                  <div 
-                    className="w-8 h-8 rounded-full flex items-center justify-center"
-                    style={{ backgroundColor: formData.color }}
-                  >
-                    <span className="text-white text-sm">
-                      {iconOptions.find(icon => icon.value === formData.icon)?.icon || '📁'}
+            <div className="bg-gray-50 rounded-lg p-4">
+              <h3 className="text-sm font-medium text-gray-700 mb-3">Preview</h3>
+              <div className="flex items-center space-x-3">
+                <div 
+                  className="w-8 h-8 rounded-lg flex items-center justify-center"
+                  style={{ backgroundColor: selectedColor }}
+                >
+                  <Tag className="w-4 h-4 text-white" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-gray-900">
+                    {watch('name') || 'Nome da categoria'}
+                  </p>
+                  <div className="flex items-center space-x-2 mt-1">
+                    <span 
+                      className={`px-2 py-1 rounded text-xs font-medium ${
+                        selectedType === 'receita' 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-red-100 text-red-800'
+                      }`}
+                    >
+                      {selectedType === 'receita' ? 'Receita' : 'Despesa'}
                     </span>
                   </div>
-                  <div className="flex-1">
-                    <h3 className="font-medium text-gray-900">
-                      {formData.name || 'Nome da categoria'}
-                    </h3>
-                    <p className="text-sm text-gray-600">
-                      {formData.description || 'Descrição da categoria'}
-                    </p>
-                  </div>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    formData.type === 'receita' 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-red-100 text-red-800'
-                  }`}>
-                    {formData.type === 'receita' ? 'Receita' : 'Despesa'}
-                  </span>
                 </div>
               </div>
             </div>
@@ -412,27 +340,27 @@ export default function NovaCategoriaModal({
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Footer */}
-          <div className="flex justify-end space-x-3 p-6 border-t border-gray-200">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors inline-flex items-center"
-            >
-              <Save className="w-4 h-4 mr-2" />
-              {loading ? 'Salvando...' : (editData ? 'Atualizar' : 'Salvar')} Categoria
-            </button>
-          </div>
-        </form>
+            {/* Footer */}
+            <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors inline-flex items-center"
+              >
+                <Save className="w-4 h-4 mr-2" />
+                {loading ? 'Salvando...' : (editData ? 'Atualizar' : 'Salvar')} Categoria
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   )

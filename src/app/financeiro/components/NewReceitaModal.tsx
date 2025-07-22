@@ -1,32 +1,38 @@
+// src/app/financeiro/components/NewReceitaModal.tsx - CORRIGIDO
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { createClient } from '@supabase/supabase-js'
 import { 
-  X, Calendar, DollarSign, HelpCircle, Upload, File, 
-  Repeat, CreditCard, Tag, Building2, User, Paperclip, CheckCircle 
+  X, User, DollarSign, Calendar, CreditCard, 
+  Building, Paperclip, Upload, FileText, Trash2,
+  Info, Save, MessageCircle, AlertCircle
 } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
 
 const receitaSchema = z.object({
-  client_id: z.string().min(1, 'Cliente é obrigatório'),
-  transaction_date: z.string().min(1, 'Data de competência é obrigatória'),
-  description: z.string().min(1, 'Descrição é obrigatória'),
+  client_id: z.string().optional(),
+  transaction_date: z.string().min(1, 'Data da transação é obrigatória'),
+  description: z.string().min(3, 'Descrição deve ter pelo menos 3 caracteres'),
   amount: z.number().min(0.01, 'Valor deve ser maior que zero'),
   category: z.string().min(1, 'Categoria é obrigatória'),
   cost_center: z.string().optional(),
   reference_code: z.string().optional(),
-  repeat_transaction: z.boolean().default(false),
-  repeat_frequency: z.enum(['mensal', 'trimestral', 'semestral', 'anual']).optional(),
-  repeat_months: z.number().min(1).max(120).optional(),
-  installment_type: z.enum(['vista', 'parcelado']).default('vista'),
-  installments: z.number().min(1).max(12).default(1),
-  due_date: z.string().min(1, 'Vencimento é obrigatório'),
-  payment_method: z.string().min(1, 'Forma de pagamento é obrigatória'),
+  due_date: z.string().min(1, 'Data de vencimento é obrigatória'),
+  payment_method: z.string().min(1, 'Método de pagamento é obrigatório'),
   account_id: z.string().min(1, 'Conta de recebimento é obrigatória'),
-  is_received: z.boolean().default(false),
+  installment_type: z.enum(['vista', 'parcelado']),
+  installments: z.number().min(1).max(12).optional(),
+  repeat_transaction: z.boolean(),
+  repeat_frequency: z.enum(['semanal', 'mensal', 'trimestral', 'anual']).optional(),
+  is_received: z.boolean(),
   notes: z.string().optional()
 })
 
@@ -118,7 +124,6 @@ export default function NewReceitaModal({
       loadCostCenters()
       loadCategories()
 
-      // Load edit data if provided
       if (editData) {
         setValue('client_id', editData.client_id || '')
         setValue('transaction_date', editData.transaction_date?.split('T')[0] || new Date().toISOString().split('T')[0])
@@ -186,10 +191,11 @@ export default function NewReceitaModal({
     }
   }
 
+  // ✅ CORREÇÃO: Tabela correta custom_categories
   const loadCategories = async () => {
     try {
       const { data, error } = await supabase
-        .from('categories')
+        .from('custom_categories')
         .select('id, name, type, color')
         .eq('type', 'receita')
         .eq('is_active', true)
@@ -227,84 +233,23 @@ export default function NewReceitaModal({
       if (editData) {
         const { error } = await supabase
           .from('financial_transactions')
-          .update({
-            ...transactionData,
-            updated_at: new Date().toISOString()
-          })
+          .update(transactionData)
           .eq('id', editData.id)
 
         if (error) throw error
       } else {
-        if (data.repeat_transaction && data.repeat_frequency && data.repeat_months) {
-          const transactions = []
-          const baseDate = new Date(data.transaction_date)
-          
-          for (let i = 0; i < data.repeat_months; i++) {
-            const currentDate = new Date(baseDate)
-            
-            switch (data.repeat_frequency) {
-              case 'mensal':
-                currentDate.setMonth(baseDate.getMonth() + i)
-                break
-              case 'trimestral':
-                currentDate.setMonth(baseDate.getMonth() + (i * 3))
-                break
-              case 'semestral':
-                currentDate.setMonth(baseDate.getMonth() + (i * 6))
-                break
-              case 'anual':
-                currentDate.setFullYear(baseDate.getFullYear() + i)
-                break
-            }
+        const { error } = await supabase
+          .from('financial_transactions')
+          .insert([transactionData])
 
-            transactions.push({
-              ...transactionData,
-              transaction_date: currentDate.toISOString().split('T')[0],
-              due_date: currentDate.toISOString().split('T')[0]
-            })
-          }
-
-          const { error } = await supabase
-            .from('financial_transactions')
-            .insert(transactions)
-
-          if (error) throw error
-        } else if (data.installment_type === 'parcelado' && data.installments > 1) {
-          const transactions = []
-          const baseDate = new Date(data.due_date)
-          const installmentAmount = data.amount / data.installments
-
-          for (let i = 0; i < data.installments; i++) {
-            const dueDate = new Date(baseDate)
-            dueDate.setMonth(baseDate.getMonth() + i)
-
-            transactions.push({
-              ...transactionData,
-              amount: installmentAmount,
-              due_date: dueDate.toISOString().split('T')[0],
-              description: `${data.description} (${i + 1}/${data.installments})`
-            })
-          }
-
-          const { error } = await supabase
-            .from('financial_transactions')
-            .insert(transactions)
-
-          if (error) throw error
-        } else {
-          const { error } = await supabase
-            .from('financial_transactions')
-            .insert([transactionData])
-
-          if (error) throw error
-        }
+        if (error) throw error
       }
 
       onSuccess()
       onClose()
     } catch (error) {
       console.error('Erro ao salvar receita:', error)
-      alert('Erro ao salvar receita. Tente novamente.')
+      alert('Erro ao salvar receita')
     } finally {
       setLoading(false)
     }
@@ -312,26 +257,29 @@ export default function NewReceitaModal({
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files
-    if (!files || files.length === 0) return
+    if (!files) return
 
     setUploading(true)
-    
-    try {
-      for (const file of files) {
-        const newFile: UploadedFile = {
-          name: file.name,
-          size: file.size,
-          type: file.type,
-          url: URL.createObjectURL(file)
-        }
-        
-        setUploadedFiles(prev => [...prev, newFile])
+    const newFiles: UploadedFile[] = []
+
+    for (const file of Array.from(files)) {
+      if (file.size > 10 * 1024 * 1024) {
+        alert(`Arquivo ${file.name} é muito grande. Máximo 10MB.`)
+        continue
       }
-    } catch (error) {
-      console.error('Erro ao fazer upload:', error)
-      alert('Erro ao fazer upload dos arquivos')
-    } finally {
-      setUploading(false)
+
+      newFiles.push({
+        name: file.name,
+        size: file.size,
+        type: file.type
+      })
+    }
+
+    setUploadedFiles(prev => [...prev, ...newFiles])
+    setUploading(false)
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
     }
   }
 
@@ -339,460 +287,431 @@ export default function NewReceitaModal({
     setUploadedFiles(prev => prev.filter((_, i) => i !== index))
   }
 
-  if (!isOpen) return null
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return bytes + ' B'
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+  }
 
-  const isEditMode = !!editData
+  if (!isOpen) return null
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">
-            {isEditMode ? 'Editar Receita' : 'Nova Receita'}
-          </h2>
+      <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        {/* ✅ CORREÇÃO: Header com botão X mais visível */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-white relative">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+              <DollarSign className="w-5 h-5 text-green-600" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">
+                {editData ? 'Editar Receita' : 'Nova Receita'}
+              </h2>
+              <p className="text-sm text-gray-500">
+                {editData ? 'Atualize os dados da receita' : 'Registre uma nova entrada de receita'}
+              </p>
+            </div>
+          </div>
+          
+          {/* ✅ CORREÇÃO: Botão X com melhor visibilidade e z-index */}
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="absolute top-4 right-4 w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center transition-colors z-10 text-gray-600 hover:text-gray-800"
+            type="button"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-6">
-          {/* Cliente */}
-          <div>
-            <label className="block text-sm font-medium text-gray-900 mb-2">
-              Cliente *
-            </label>
-            <select
-              {...register('client_id')}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-700 transition-colors"
-            >
-              <option value="">Selecione um cliente</option>
-              {clients.map(client => (
-                <option key={client.id} value={client.id}>
-                  {client.company_name}
-                </option>
-              ))}
-            </select>
-            {errors.client_id && (
-              <p className="mt-1 text-sm text-red-600">{errors.client_id.message}</p>
-            )}
-          </div>
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto">
+          <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-6">
+            {/* Cliente */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Cliente
+                </label>
+                <select
+                  {...register('client_id')}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-700 focus:border-transparent"
+                >
+                  <option value="">Selecione um cliente</option>
+                  {clients.map(client => (
+                    <option key={client.id} value={client.id}>
+                      {client.company_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-          {/* Data de competência e descrição */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-900 mb-2">
-                Data de Competência *
-              </label>
-              <input
-                type="date"
-                {...register('transaction_date')}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-700 transition-colors"
-              />
-              {errors.transaction_date && (
-                <p className="mt-1 text-sm text-red-600">{errors.transaction_date.message}</p>
-              )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Data da Transação *
+                </label>
+                <input
+                  type="date"
+                  {...register('transaction_date')}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-700 focus:border-transparent"
+                />
+                {errors.transaction_date && (
+                  <p className="text-red-500 text-sm mt-1">{errors.transaction_date.message}</p>
+                )}
+              </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-900 mb-2">
-                Vencimento *
-              </label>
-              <input
-                type="date"
-                {...register('due_date')}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-700 transition-colors"
-              />
-              {errors.due_date && (
-                <p className="mt-1 text-sm text-red-600">{errors.due_date.message}</p>
-              )}
-            </div>
-          </div>
+            {/* Descrição e Valor */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Descrição *
+                </label>
+                <input
+                  type="text"
+                  {...register('description')}
+                  placeholder="Ex: Pagamento do projeto X"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-700 focus:border-transparent"
+                />
+                {errors.description && (
+                  <p className="text-red-500 text-sm mt-1">{errors.description.message}</p>
+                )}
+              </div>
 
-          {/* Descrição */}
-          <div>
-            <label className="block text-sm font-medium text-gray-900 mb-2">
-              Descrição *
-            </label>
-            <input
-              type="text"
-              {...register('description')}
-              placeholder="Ex: Prestação de serviços de consultoria"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-700 transition-colors"
-            />
-            {errors.description && (
-              <p className="mt-1 text-sm text-red-600">{errors.description.message}</p>
-            )}
-          </div>
-
-          {/* Valor e categoria */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-900 mb-2">
-                Valor *
-              </label>
-              <div className="relative">
-                <DollarSign className="absolute left-3 top-3.5 w-5 h-5 text-gray-400" />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Valor (R$) *
+                </label>
                 <input
                   type="number"
                   step="0.01"
                   min="0"
                   {...register('amount', { valueAsNumber: true })}
                   placeholder="0,00"
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-700 transition-colors"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-700 focus:border-transparent"
+                />
+                {errors.amount && (
+                  <p className="text-red-500 text-sm mt-1">{errors.amount.message}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Categoria e Centro de Custo */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Categoria *
+                </label>
+                <select
+                  {...register('category')}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-700 focus:border-transparent"
+                >
+                  <option value="">Selecione uma categoria</option>
+                  {categories.map(category => (
+                    <option key={category.id} value={category.name}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+                {errors.category && (
+                  <p className="text-red-500 text-sm mt-1">{errors.category.message}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Centro de Custo
+                </label>
+                <select
+                  {...register('cost_center')}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-700 focus:border-transparent"
+                >
+                  <option value="">Selecione um centro de custo</option>
+                  {costCenters.map(center => (
+                    <option key={center.id} value={center.name}>
+                      {center.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Código de Referência e Data de Vencimento */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Código de Referência
+                </label>
+                <input
+                  type="text"
+                  {...register('reference_code')}
+                  placeholder="Ex: #001, NF-123"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-700 focus:border-transparent"
                 />
               </div>
-              {errors.amount && (
-                <p className="mt-1 text-sm text-red-600">{errors.amount.message}</p>
-              )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Data de Vencimento *
+                </label>
+                <input
+                  type="date"
+                  {...register('due_date')}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-700 focus:border-transparent"
+                />
+                {errors.due_date && (
+                  <p className="text-red-500 text-sm mt-1">{errors.due_date.message}</p>
+                )}
+              </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-900 mb-2">
-                Categoria *
-              </label>
-              <select
-                {...register('category')}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-700 transition-colors"
-              >
-                <option value="">Selecione uma categoria</option>
-                {categories.map(category => (
-                  <option key={category.id} value={category.name}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-              {errors.category && (
-                <p className="mt-1 text-sm text-red-600">{errors.category.message}</p>
-              )}
-            </div>
-          </div>
+            {/* Método de Pagamento e Conta */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Método de Pagamento *
+                </label>
+                <select
+                  {...register('payment_method')}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-700 focus:border-transparent"
+                >
+                  <option value="">Selecione o método</option>
+                  <option value="transferencia">Transferência</option>
+                  <option value="pix">PIX</option>
+                  <option value="boleto">Boleto</option>
+                  <option value="cartao_credito">Cartão de Crédito</option>
+                  <option value="cartao_debito">Cartão de Débito</option>
+                  <option value="dinheiro">Dinheiro</option>
+                  <option value="cheque">Cheque</option>
+                </select>
+                {errors.payment_method && (
+                  <p className="text-red-500 text-sm mt-1">{errors.payment_method.message}</p>
+                )}
+              </div>
 
-          {/* Centro de custo e código de referência */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-900 mb-2">
-                Centro de Custo
-              </label>
-              <select
-                {...register('cost_center')}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-700 transition-colors"
-              >
-                <option value="">Selecione um centro de custo</option>
-                {costCenters.map(center => (
-                  <option key={center.id} value={center.name}>
-                    {center.name}
-                  </option>
-                ))}
-              </select>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Conta de Recebimento *
+                </label>
+                <select
+                  {...register('account_id')}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-700 focus:border-transparent"
+                >
+                  <option value="">Selecione uma conta</option>
+                  {accounts.map(account => (
+                    <option key={account.id} value={account.id}>
+                      {account.name} ({account.type})
+                    </option>
+                  ))}
+                </select>
+                {errors.account_id && (
+                  <p className="text-red-500 text-sm mt-1">{errors.account_id.message}</p>
+                )}
+              </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-900 mb-2">
-                Código de Referência
-              </label>
-              <input
-                type="text"
-                {...register('reference_code')}
-                placeholder="Ex: NF-001, OS-123"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-700 transition-colors"
-              />
-            </div>
-          </div>
-
-          {/* Parcelamento */}
-          <div className="border border-gray-200 rounded-lg p-4">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Parcelamento</h3>
-            
+            {/* Parcelamento */}
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-900 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-3">
                   Tipo de Pagamento
                 </label>
                 <div className="flex space-x-4">
                   <label className="flex items-center">
                     <input
                       type="radio"
-                      value="vista"
                       {...register('installment_type')}
-                      className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                      value="vista"
+                      className="h-4 w-4 text-green-600 focus:ring-green-500"
                     />
-                    <span className="ml-2 text-sm text-gray-900">À vista</span>
+                    <span className="ml-2 text-sm text-gray-700">À vista</span>
                   </label>
                   <label className="flex items-center">
                     <input
                       type="radio"
-                      value="parcelado"
                       {...register('installment_type')}
-                      className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                      value="parcelado"
+                      className="h-4 w-4 text-green-600 focus:ring-green-500"
                     />
-                    <span className="ml-2 text-sm text-gray-900">Parcelado</span>
+                    <span className="ml-2 text-sm text-gray-700">Parcelado</span>
                   </label>
                 </div>
               </div>
 
               {installmentType === 'parcelado' && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-900 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Número de Parcelas
                   </label>
                   <select
                     {...register('installments', { valueAsNumber: true })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-700 transition-colors"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-700 focus:border-transparent max-w-xs"
                   >
-                    {Array.from({ length: 12 }, (_, i) => i + 1).map(num => (
-                      <option key={num} value={num}>{num}x</option>
+                    {[...Array(12)].map((_, i) => (
+                      <option key={i + 1} value={i + 1}>
+                        {i + 1}x
+                      </option>
                     ))}
                   </select>
                 </div>
               )}
             </div>
-          </div>
 
-          {/* Recorrência */}
-          <div className="border border-gray-200 rounded-lg p-4">
-            <div className="flex items-center space-x-3 mb-4">
-              <Repeat className="w-5 h-5 text-gray-400" />
-              <h3 className="text-lg font-medium text-gray-900">Transação Recorrente</h3>
-            </div>
-
+            {/* Transação Recorrente */}
             <div className="space-y-4">
-              <label className="flex items-center">
+              <div className="flex items-center">
                 <input
                   type="checkbox"
                   {...register('repeat_transaction')}
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
                 />
-                <span className="ml-2 text-sm text-gray-900">
-                  Esta é uma transação recorrente
-                </span>
-              </label>
+                <label className="ml-2 text-sm text-gray-700">
+                  Transação recorrente
+                </label>
+              </div>
 
               {repeatTransaction && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-900 mb-2">
-                      Frequência
-                    </label>
-                    <select
-                      {...register('repeat_frequency')}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-700 transition-colors"
-                    >
-                      <option value="">Selecione a frequência</option>
-                      <option value="mensal">Mensal</option>
-                      <option value="trimestral">Trimestral</option>
-                      <option value="semestral">Semestral</option>
-                      <option value="anual">Anual</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-900 mb-2">
-                      Repetir por quantos períodos?
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="120"
-                      {...register('repeat_months', { valueAsNumber: true })}
-                      placeholder="Ex: 12"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-700 transition-colors"
-                    />
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Frequência
+                  </label>
+                  <select
+                    {...register('repeat_frequency')}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-700 focus:border-transparent max-w-xs"
+                  >
+                    <option value="semanal">Semanal</option>
+                    <option value="mensal">Mensal</option>
+                    <option value="trimestral">Trimestral</option>
+                    <option value="anual">Anual</option>
+                  </select>
                 </div>
               )}
             </div>
-          </div>
 
-          {/* Forma de pagamento e conta */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-900 mb-2">
-                Forma de Pagamento *
-              </label>
-              <select
-                {...register('payment_method')}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-700 transition-colors"
-              >
-                <option value="">Selecione a forma de pagamento</option>
-                <option value="dinheiro">Dinheiro</option>
-                <option value="pix">PIX</option>
-                <option value="cartao_credito">Cartão de Crédito</option>
-                <option value="cartao_debito">Cartão de Débito</option>
-                <option value="transferencia">Transferência Bancária</option>
-                <option value="boleto">Boleto</option>
-              </select>
-              {errors.payment_method && (
-                <p className="mt-1 text-sm text-red-600">{errors.payment_method.message}</p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-900 mb-2">
-                Conta de Recebimento *
-              </label>
-              <select
-                {...register('account_id')}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-700 transition-colors"
-              >
-                <option value="">Selecione a conta</option>
-                {accounts.map(account => (
-                  <option key={account.id} value={account.id}>
-                    {account.name} ({account.type})
-                  </option>
-                ))}
-              </select>
-              {errors.account_id && (
-                <p className="mt-1 text-sm text-red-600">{errors.account_id.message}</p>
-              )}
-            </div>
-          </div>
-
-          {/* Status de recebimento */}
-          <div className="border border-gray-200 rounded-lg p-4">
-            <label className="flex items-center space-x-3">
+            {/* Status */}
+            <div className="flex items-center">
               <input
                 type="checkbox"
                 {...register('is_received')}
-                className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
               />
-              <div className="flex items-center space-x-2">
-                <CheckCircle className="w-5 h-5 text-green-600" />
-                <span className="text-sm font-medium text-gray-900">
-                  Marcar como recebido
-                </span>
-              </div>
-            </label>
-            <p className="mt-2 text-sm text-gray-500">
-              Marque esta opção se o valor já foi recebido
-            </p>
-          </div>
+              <label className="ml-2 text-sm text-gray-700">
+                Receita já foi recebida
+              </label>
+            </div>
 
-          {/* Tabs para observações e anexos */}
-          <div className="border border-gray-200 rounded-lg">
-            <div className="border-b border-gray-200">
-              <nav className="flex space-x-8" aria-label="Tabs">
+            {/* Tabs para Observações e Anexos */}
+            <div className="border border-gray-200 rounded-lg">
+              <div className="flex border-b border-gray-200">
                 <button
                   type="button"
                   onClick={() => setActiveTab('observacoes')}
-                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  className={`px-4 py-3 text-sm font-medium flex items-center space-x-2 ${
                     activeTab === 'observacoes'
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      ? 'border-b-2 border-green-500 text-green-600 bg-green-50'
+                      : 'text-gray-500 hover:text-gray-700'
                   }`}
                 >
-                  Observações
+                  <MessageCircle className="w-4 h-4" />
+                  <span>Observações</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveTab('anexo')}
-                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  className={`px-4 py-3 text-sm font-medium flex items-center space-x-2 ${
                     activeTab === 'anexo'
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      ? 'border-b-2 border-green-500 text-green-600 bg-green-50'
+                      : 'text-gray-500 hover:text-gray-700'
                   }`}
                 >
-                  Anexos
+                  <Paperclip className="w-4 h-4" />
+                  <span>Anexos ({uploadedFiles.length})</span>
                 </button>
-              </nav>
-            </div>
+              </div>
 
-            <div className="p-4">
-              {activeTab === 'observacoes' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-900 mb-2">
-                    Observações
-                  </label>
-                  <textarea
-                    {...register('notes')}
-                    rows={4}
-                    placeholder="Adicione observações sobre esta receita..."
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-700 transition-colors resize-none"
-                  />
-                </div>
-              )}
+              <div className="p-4">
+                {activeTab === 'observacoes' && (
+                  <div>
+                    <textarea
+                      {...register('notes')}
+                      rows={4}
+                      placeholder="Informações adicionais sobre esta receita..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-700 focus:border-transparent resize-none"
+                    />
+                  </div>
+                )}
 
-              {activeTab === 'anexo' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-900 mb-2">
-                    Anexos
-                  </label>
-                  
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                {activeTab === 'anexo' && (
+                  <div className="space-y-4">
+                    <div
+                      onClick={() => fileInputRef.current?.click()}
+                      className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-green-400 transition-colors"
+                    >
+                      <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                      <p className="text-sm text-gray-600">
+                        Clique para fazer upload ou arraste arquivos aqui
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        PDF, JPG, PNG até 10MB
+                      </p>
+                    </div>
+
                     <input
-                      ref={fileInputRef}
                       type="file"
-                      multiple
-                      accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                      ref={fileInputRef}
                       onChange={handleFileUpload}
+                      multiple
+                      accept=".pdf,.jpg,.jpeg,.png"
                       className="hidden"
                     />
-                    
-                    <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                    <p className="text-sm text-gray-600 mb-2">
-                      Clique para adicionar arquivos ou arraste aqui
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={uploading}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400"
-                    >
-                      {uploading ? 'Enviando...' : 'Selecionar Arquivos'}
-                    </button>
-                  </div>
 
-                  {uploadedFiles.length > 0 && (
-                    <div className="mt-4 space-y-2">
-                      {uploadedFiles.map((file, index) => (
-                        <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                          <div className="flex items-center space-x-3">
-                            <File className="w-5 h-5 text-gray-400" />
-                            <div>
-                              <p className="text-sm font-medium text-gray-900">{file.name}</p>
-                              <p className="text-xs text-gray-500">
-                                {(file.size / 1024 / 1024).toFixed(2)} MB
-                              </p>
+                    {uploadedFiles.length > 0 && (
+                      <div className="space-y-2">
+                        {uploadedFiles.map((file, index) => (
+                          <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                            <div className="flex items-center space-x-3">
+                              <FileText className="w-5 h-5 text-gray-400" />
+                              <div>
+                                <p className="text-sm font-medium text-gray-900">{file.name}</p>
+                                <p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
+                              </div>
                             </div>
+                            <button
+                              type="button"
+                              onClick={() => removeFile(index)}
+                              className="text-red-500 hover:text-red-700"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => removeFile(index)}
-                            className="p-1 text-red-600 hover:bg-red-100 rounded transition-colors"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
 
-          {/* Form actions */}
-          <div className="flex items-center justify-end space-x-3 pt-6 border-t border-gray-200">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-              disabled={loading}
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400"
-              disabled={loading}
-            >
-              {loading ? 'Salvando...' : (isEditMode ? 'Atualizar' : 'Salvar')}
-            </button>
-          </div>
-        </form>
+            {/* Footer */}
+            <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors inline-flex items-center"
+              >
+                <Save className="w-4 h-4 mr-2" />
+                {loading ? 'Salvando...' : (editData ? 'Atualizar' : 'Salvar')} Receita
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   )
